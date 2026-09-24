@@ -1,0 +1,17 @@
+{
+  "name": "@platform/worker",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "build": "tsc -p tsconfig.json",
+    "typecheck": "tsc --noEmit -p tsconfig.json",
+    "start": "node dist/main.js"
+  },
+  "dependencies": {
+    "@platform/database": "workspace:*",
+    "nats": "2.29.2",
+    "pino": "9.6.0",
+    "zod": "3.24.1"
+  }
+}

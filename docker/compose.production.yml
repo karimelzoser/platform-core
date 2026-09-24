@@ -1,0 +1,23 @@
+services:
+  api:
+    image: ${PLATFORM_API_IMAGE:?set immutable API image digest}
+    env_file: /etc/platform/platform.env
+    networks: [platform_internal]
+    restart: unless-stopped
+    deploy: { resources: { limits: { cpus: '0.75', memory: 512M } } }
+  worker:
+    image: ${PLATFORM_WORKER_IMAGE:?set immutable worker image digest}
+    env_file: /etc/platform/platform.env
+    networks: [platform_internal]
+    restart: unless-stopped
+    deploy: { resources: { limits: { cpus: '0.50', memory: 512M } } }
+  ai-gateway:
+    image: ${PLATFORM_AI_GATEWAY_IMAGE:?set immutable AI gateway image digest}
+    env_file: /etc/platform/platform.env
+    networks: [platform_internal]
+    restart: unless-stopped
+    deploy: { resources: { limits: { cpus: '0.50', memory: 512M } } }
+
+networks:
+  platform_internal:
+    external: true

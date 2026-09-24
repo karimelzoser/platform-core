@@ -1,0 +1,13 @@
+# Event Catalog
+
+All events are versioned envelopes stored in `platform.outbox_events` inside the same transaction as domain changes and audit records. Publication begins only after commit.
+
+| Subject                    | Event                          | Producer            | Consumer behavior                                       |
+| -------------------------- | ------------------------------ | ------------------- | ------------------------------------------------------- |
+| `platform.identity.v1`     | `identity.membership.changed`  | Identity module     | Recompute effective permission projections idempotently |
+| `platform.crm.v1`          | `crm.customer.changed`         | Customer 360        | Refresh search, segments, and timeline projections      |
+| `platform.integrations.v1` | `integration.webhook.received` | Webhook ingress     | Normalize asynchronously from persisted delivery        |
+| `platform.integrations.v1` | `integration.sync.requested`   | Integration command | Start deterministic Temporal sync workflow              |
+| `platform.policy.v1`       | `policy.approval.decided`      | Approval service    | Verify digest then execute once or record failure       |
+
+The canonical wire format is defined by `@platform/contracts`. Consumers must use event ID/dedupe keys and retain tenant, correlation, and causation identifiers.
