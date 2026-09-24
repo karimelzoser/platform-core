@@ -12,6 +12,7 @@
     "@nestjs/common": "11.0.1",
     "@nestjs/core": "11.0.1",
     "@nestjs/platform-fastify": "11.0.1",
+    "@platform/auth": "workspace:*",
     "@platform/authorization": "workspace:*",
     "@platform/database": "workspace:*",
     "fastify": "5.1.0",

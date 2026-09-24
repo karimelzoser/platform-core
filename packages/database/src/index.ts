@@ -39,3 +39,5 @@ export async function withTenantTransaction<T>(
 export async function destroyDatabase(db: PlatformDatabase): Promise<void> {
   await db.destroy();
 }
+
+export { resolveTenantAccess, type TenantAccess } from './access.js';

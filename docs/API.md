@@ -5,6 +5,7 @@ All non-public endpoints require a valid Keycloak access token, an active applic
 | Endpoint                                               | Status      | Purpose                                                                     |
 | ------------------------------------------------------ | ----------- | --------------------------------------------------------------------------- |
 | `GET /health`                                          | Implemented | Liveness response; excludes dependencies and tenant data                    |
+| `GET /v1/session`                                      | In progress | JWT-verified active membership and effective-permission context             |
 | `POST /v1/integrations/:connection/webhooks/:provider` | Planned     | Signature-verified, deduplicated webhook ingress with quick acknowledgement |
 | `POST /v1/approvals/:id/decision`                      | Planned     | Digest-bound approval decision                                              |
 

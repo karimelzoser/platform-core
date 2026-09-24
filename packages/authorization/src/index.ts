@@ -1,5 +1,6 @@
 import { approvalActionDigest, type ApprovalAction } from '@platform/contracts';
 import { z } from 'zod';
+export { toOpaInput, type AuthorizationSubject } from './policy-input.js';
 
 const opaDecisionSchema = z.object({
   allow: z.boolean(),

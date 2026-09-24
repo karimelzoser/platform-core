@@ -18,7 +18,7 @@
 | Module                            | Database               | API / worker | UI          | Tests       | Documentation | State       |
 | --------------------------------- | ---------------------- | ------------ | ----------- | ----------- | ------------- | ----------- |
 | Repository tooling / CI           | N/A                    | N/A          | N/A         | IN PROGRESS | IN PROGRESS   | IN PROGRESS |
-| Identity, auth, RBAC, approvals   | Existing `0001`–`0002` | NOT STARTED  | NOT STARTED | NOT STARTED | NOT STARTED   | NOT STARTED |
+| Identity, auth, RBAC, approvals   | Existing `0001`–`0002` | IN PROGRESS  | NOT STARTED | IN PROGRESS | IN PROGRESS   | IN PROGRESS |
 | CRM / Customer 360                | Existing `0003`        | NOT STARTED  | NOT STARTED | NOT STARTED | NOT STARTED   | NOT STARTED |
 | Integrations / connector SDK      | IN PROGRESS (`0004`)   | IN PROGRESS  | IN PROGRESS | IN PROGRESS | IN PROGRESS   | IN PROGRESS |
 | Messaging / tickets               | NOT STARTED            | NOT STARTED  | NOT STARTED | NOT STARTED | NOT STARTED   | NOT STARTED |
@@ -38,5 +38,4 @@ No overall completion percentage is recorded: the required release gate is a bin
 ## Current blockers
 
 - Docker and Python 3.11+ are absent, so PostgreSQL/RLS, NATS, Temporal, and FastAPI tests remain blocked locally.
-- Git has no configured author identity, so the verified baseline and implementation changes are staged but cannot be committed without an identity chosen by the repository owner.
 - Production credentials, domains, and provider applications are intentionally unavailable and are not required for repository implementation.
