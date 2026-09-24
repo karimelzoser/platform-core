@@ -1,0 +1,6 @@
+# Production migrations are immutable binary-history artifacts.  Never permit
+# Git line-ending conversion or whitespace normalization for them.
+migrations/0001_foundation.sql -text
+migrations/0002_authorization.sql -text
+migrations/0003_crm_customer360.sql -text
+migrations/SHA256SUMS -text

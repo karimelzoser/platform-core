@@ -1,0 +1,3 @@
+55fb7d13ca07bf7e6bbe6e8b6012dbd7748adf24720367eaac785cb9438ebed0  /root/platform-github-baseline/migrations/0001_foundation.sql
+9d7e6c8ee3e199c848a41d060cc653cc1a6bcb8288b21b42b553c5110d1e97f5  /root/platform-github-baseline/migrations/0002_authorization.sql
+292e7766b1f9e9e50691d7a3d0e93a50059148c36387c66f212b20e67914b944  /root/platform-github-baseline/migrations/0003_crm_customer360.sql

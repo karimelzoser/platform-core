@@ -1,0 +1,83 @@
+﻿# ============================================================
+# SECRETS
+# ============================================================
+
+.env
+.env.*
+!.env.example
+VPS Credentials.txt
+*Credentials*.txt
+
+*.pem
+*.key
+*.p12
+*.pfx
+
+secrets/
+credentials/
+
+# ============================================================
+# PRODUCTION DATA / EXPORTS
+# ============================================================
+
+*.dump
+*.dump.gz
+*.sql.gz
+*.tar.gz
+
+backups/
+production-data/
+
+.baseline-import/
+platform_codex_blueprint/
+platform_codex_blueprint.zip
+platform-github-baseline/
+platform-github-baseline.tar.gz
+
+# ============================================================
+# NODE / NEXT / TURBO
+# ============================================================
+
+node_modules/
+.pnpm-store/
+.next/
+dist/
+build/
+coverage/
+.turbo/
+*.tsbuildinfo
+
+# ============================================================
+# PYTHON
+# ============================================================
+
+__pycache__/
+*.py[cod]
+
+.venv/
+venv/
+
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+
+# ============================================================
+# IDE / OS
+# ============================================================
+
+.vscode/
+.idea/
+
+.DS_Store
+Thumbs.db
+
+# ============================================================
+# LOGS / TEMP
+# ============================================================
+
+*.log
+logs/
+
+tmp/
+temp/
+.local/
