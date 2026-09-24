@@ -5,6 +5,9 @@ const environmentSchema = z.object({
   API_PORT: z.coerce.number().int().min(1).max(65535).default(3001),
   DATABASE_URL: z.string().url(),
   OPA_URL: z.string().url(),
+  KEYCLOAK_ISSUER: z.string().url(),
+  KEYCLOAK_JWKS_URL: z.string().url(),
+  KEYCLOAK_CLIENT_ID: z.string().min(1),
 });
 
 export type ApiConfig = z.infer<typeof environmentSchema>;
