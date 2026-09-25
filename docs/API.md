@@ -14,6 +14,7 @@ All non-public endpoints require a valid Keycloak access token, an active applic
 | `GET /v1/customers/tags`                                       | Implemented | Authenticated, RLS-scoped CRM tag catalog                                                                  |
 | `POST /v1/customers/tags`                                      | Implemented | Idempotent, OPA-authorized tag creation                                                                    |
 | `POST /v1/customers/:customerId/tags/:tagId`                   | Implemented | Idempotent, OPA-authorized assignment of a tenant tag to a customer                                        |
+| `POST /v1/customers/tags/:tagId/assignments`                   | Implemented | Idempotent, bounded (100) OPA-authorized bulk tag assignment                                               |
 | `POST /v1/customers/:customerId/suppressions`                  | Implemented | Idempotent, audited channel opt-out; no unverified opt-in endpoint                                         |
 | `GET /v1/customers/segments`                                   | Implemented | Authenticated, RLS-scoped static and dynamic segment catalog                                               |
 | `POST /v1/customers/segments`                                  | Implemented | Idempotent, OPA-authorized creation of a static customer segment                                           |

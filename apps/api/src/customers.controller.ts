@@ -17,6 +17,7 @@ import {
 } from '@nestjs/common';
 import { CommandExecutionError } from '@platform/command-execution';
 import {
+  type BulkTagAssignmentInput,
   CustomerIdentityConflictError,
   CustomerMergeError,
   CustomerService,
@@ -193,6 +194,28 @@ export class CustomersController {
     );
   }
 
+  @Post('/tags/:tagId/assignments')
+  public async assignTagBulk(
+    @Param('tagId') tagId: string,
+    @Body() body: unknown,
+    @Headers('authorization') authorization: string | undefined,
+    @Headers('x-tenant-id') tenantId: string | undefined,
+    @Headers('x-correlation-id') correlationId: string | undefined,
+    @Headers('idempotency-key') idempotencyKey: string | undefined,
+    @Headers('x-approval-id') approvalId: string | undefined,
+  ) {
+    if (!Buffer.isBuffer(body)) throw new BadRequestException('Bulk tag body must be JSON');
+    const context = await this.context(authorization, tenantId, correlationId);
+    return this.executeTagCommand(() =>
+      this.customers.assignTagBulk(
+        context,
+        idempotencyKey ?? '',
+        parseBulkTagBody(body, tagId),
+        approvalId,
+      ),
+    );
+  }
+
   @Post(':customerId/merge')
   public async merge(
     @Param('customerId') sourceCustomerId: string,
@@ -335,6 +358,15 @@ function parseStaticSegmentBody(body: Buffer): CreateStaticSegmentInput {
     throw new Error('Segment body must be a JSON object');
   }
   return parsed as CreateStaticSegmentInput;
+}
+
+function parseBulkTagBody(body: Buffer, tagId: string): BulkTagAssignmentInput {
+  const parsed: unknown = JSON.parse(body.toString('utf8'));
+  if (parsed === null || Array.isArray(parsed) || typeof parsed !== 'object') {
+    throw new Error('Bulk tag body must be a JSON object');
+  }
+  const record = parsed as { customerIds?: unknown };
+  return { tagId, customerIds: record.customerIds } as BulkTagAssignmentInput;
 }
 
 function parseMergeBody(body: Buffer, sourceCustomerId: string): MergeCustomerInput {

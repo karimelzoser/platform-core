@@ -150,6 +150,15 @@ const createTagSchema = z.object({
 
 export type CreateTagInput = z.input<typeof createTagSchema>;
 
+const bulkTagAssignmentSchema = z
+  .object({
+    tagId: z.string().uuid(),
+    customerIds: z.array(z.string().uuid()).min(1).max(100),
+  })
+  .transform((input) => ({ ...input, customerIds: [...new Set(input.customerIds)].toSorted() }));
+
+export type BulkTagAssignmentInput = z.input<typeof bulkTagAssignmentSchema>;
+
 const suppressCustomerChannelSchema = z.object({
   customerId: z.string().uuid(),
   channel: preferenceChannelSchema,
@@ -572,6 +581,60 @@ export class CustomerService {
             customerId: validated.customerId,
             tagId: validated.tagId,
             assigned: assigned.rows.length === 1,
+          };
+        },
+      },
+      { context, input: validated, idempotencyKey, ...(approvalId ? { approvalId } : {}) },
+    );
+  }
+
+  public async assignTagBulk(
+    context: TenantRequestContext,
+    idempotencyKey: string,
+    input: BulkTagAssignmentInput,
+    approvalId?: string,
+  ): Promise<CommandResult<{ tagId: string; customerCount: number; assignedCount: number }>> {
+    const validated = bulkTagAssignmentSchema.parse(input);
+    return this.commands.execute(
+      {
+        action: 'crm.customer.tag.assign_bulk',
+        permission: 'crm.tags.manage',
+        risk: 'MEDIUM',
+        resource: (commandInput) => ({ type: 'crm.tag', id: commandInput.tagId }),
+        event: {
+          type: 'crm.customer.tag.bulk_assigned',
+          data: (_commandInput, result) => result,
+        },
+        audit: {
+          metadata: (commandInput, result) => ({
+            tagId: commandInput.tagId,
+            customerIds: commandInput.customerIds,
+            assignedCount: result.assignedCount,
+          }),
+        },
+        execute: async (transaction) => {
+          const tag = await sql<{ id: string }>`select id from crm.tags
+            where id = ${validated.tagId}::uuid`.execute(transaction);
+          if (!tag.rows[0]) throw new Error('Tag not found');
+          const customerIds = sql.join(
+            validated.customerIds.map((customerId) => sql`${customerId}::uuid`),
+          );
+          const customers = await sql<{ id: string }>`select id from crm.customers
+            where id in (${customerIds}) and status = 'ACTIVE'`.execute(transaction);
+          if (customers.rows.length !== validated.customerIds.length) {
+            throw new Error('One or more active customers were not found');
+          }
+          const assigned = await sql<{ customer_id: string }>`insert into crm.customer_tags (
+            tenant_id, customer_id, tag_id, assigned_by
+          ) select ${context.tenantId}::uuid, id, ${validated.tagId}::uuid, ${context.actorId}::uuid
+            from crm.customers where id in (${customerIds}) and status = 'ACTIVE'
+          on conflict (tenant_id, customer_id, tag_id) do nothing returning customer_id`.execute(
+            transaction,
+          );
+          return {
+            tagId: validated.tagId,
+            customerCount: validated.customerIds.length,
+            assignedCount: assigned.rows.length,
           };
         },
       },

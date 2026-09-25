@@ -10,6 +10,7 @@ The worker claims at most 100 pending events through a narrowly scoped database 
 | `platform.crm.v1`          | `crm.customer.created`                  | Customer 360        | Refresh search, segments, and timeline projections             |
 | `platform.crm.v1`          | `crm.tag.created`                       | Customer 360        | Refresh tenant tag catalog                                     |
 | `platform.crm.v1`          | `crm.customer.tag.assigned`             | Customer 360        | Refresh customer profile and segment projections               |
+| `platform.crm.v1`          | `crm.customer.tag.bulk_assigned`        | Customer 360        | Refresh tagged customer profiles and segment projections       |
 | `platform.crm.v1`          | `crm.customer.communication.suppressed` | Customer 360        | Stop outbound channel activity and refresh consent projections |
 | `platform.crm.v1`          | `crm.customer.merged`                   | Customer 360        | Repoint projections and re-evaluate customer segments          |
 | `platform.crm.v1`          | `crm.customer.changed`                  | Customer 360        | Refresh search, segments, and timeline projections             |
