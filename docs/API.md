@@ -8,6 +8,7 @@ All non-public endpoints require a valid Keycloak access token, an active applic
 | `GET /v1/session`                                              | Implemented | JWT-verified active membership and effective-permission context                                            |
 | `GET /v1/customers`                                            | Implemented | Authenticated, RLS-scoped Customer 360 search and offset pagination                                        |
 | `GET /v1/customers/:customerId`                                | Implemented | Authenticated profile detail with RLS-scoped contact-based duplicate candidates                            |
+| `GET /v1/customers/:customerId/timeline`                       | Implemented | RLS-scoped audit and customer-merge history timeline                                                       |
 | `POST /v1/customers`                                           | Implemented | Idempotent, audited and event-emitting Customer 360 creation                                               |
 | `GET /v1/customers/tags`                                       | Implemented | Authenticated, RLS-scoped CRM tag catalog                                                                  |
 | `POST /v1/customers/tags`                                      | Implemented | Idempotent, OPA-authorized tag creation                                                                    |

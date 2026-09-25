@@ -149,6 +149,18 @@ export class CustomersController {
     return customer;
   }
 
+  @Get(':customerId/timeline')
+  public async timeline(
+    @Param('customerId') customerId: string,
+    @Headers('authorization') authorization: string | undefined,
+    @Headers('x-tenant-id') tenantId: string | undefined,
+    @Headers('x-correlation-id') correlationId: string | undefined,
+  ) {
+    const context = await this.context(authorization, tenantId, correlationId);
+    this.assertReadPermission(context.permissions);
+    return this.customers.timeline(context, customerId);
+  }
+
   @Post(':customerId/tags/:tagId')
   public async assignTag(
     @Param('customerId') customerId: string,

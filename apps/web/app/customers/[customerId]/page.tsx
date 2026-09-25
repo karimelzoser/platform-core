@@ -49,13 +49,26 @@ interface CustomerSegment {
   status: 'ACTIVE' | 'PAUSED' | 'ARCHIVED';
 }
 
+interface CustomerTimelineItem {
+  id: string;
+  kind: 'AUDIT' | 'MERGE';
+  action: string;
+  actorType: string | null;
+  detail: string | null;
+  occurredAt: string;
+}
+
 export default async function CustomerDetailPage({
   params,
 }: {
   params: Promise<{ customerId: string }>;
 }) {
   const { customerId } = await params;
-  const [result, segmentResult] = await Promise.all([loadCustomer(customerId), loadSegments()]);
+  const [result, segmentResult, timelineResult] = await Promise.all([
+    loadCustomer(customerId),
+    loadSegments(),
+    loadTimeline(customerId),
+  ]);
   if (result.kind === 'not_found') notFound();
   if (result.kind !== 'success') {
     return (
@@ -155,6 +168,28 @@ export default async function CustomerDetailPage({
             <p className="muted">No canonical identities recorded.</p>
           )}
         </section>
+        <section className="customer-card customer-card-wide" aria-labelledby="timeline-heading">
+          <h2 id="timeline-heading">Timeline</h2>
+          {timelineResult.kind === 'success' ? (
+            timelineResult.items.length ? (
+              <ul className="detail-list">
+                {timelineResult.items.map((item) => (
+                  <li key={`${item.kind}:${item.id}`}>
+                    <strong>{item.action}</strong>
+                    <span>{item.detail ?? 'Recorded customer activity'}</span>
+                    <small>
+                      {item.actorType ?? 'Historical record'} · {formatTimestamp(item.occurredAt)}
+                    </small>
+                  </li>
+                ))}
+              </ul>
+            ) : (
+              <p className="muted">No customer activity has been recorded.</p>
+            )
+          ) : (
+            <p className="muted">Customer timeline is currently unavailable.</p>
+          )}
+        </section>
         <section className="customer-card customer-card-wide" aria-labelledby="duplicates-heading">
           <h2 id="duplicates-heading">Possible duplicates</h2>
           {customer.duplicateCandidates.length ? (
@@ -244,6 +279,26 @@ async function loadSegments(): Promise<
   }
 }
 
+async function loadTimeline(
+  customerId: string,
+): Promise<{ kind: 'success'; items: readonly CustomerTimelineItem[] } | { kind: 'error' }> {
+  const cookieStore = await cookies();
+  const token = cookieStore.get('platform_access_token')?.value;
+  const tenantId = cookieStore.get('platform_tenant_id')?.value;
+  const baseUrl = process.env.API_INTERNAL_URL;
+  if (!token || !tenantId || !baseUrl) return { kind: 'error' };
+  try {
+    const response = await fetch(
+      new URL(`/v1/customers/${encodeURIComponent(customerId)}/timeline`, baseUrl),
+      { headers: { authorization: `Bearer ${token}`, 'x-tenant-id': tenantId } },
+    );
+    if (!response.ok) return { kind: 'error' };
+    return { kind: 'success', items: (await response.json()) as CustomerTimelineItem[] };
+  } catch {
+    return { kind: 'error' };
+  }
+}
+
 function displayName(customer: CustomerDetail): string {
   return (
     customer.displayName ??
@@ -256,4 +311,9 @@ function candidateName(customer: CustomerDetail['duplicateCandidates'][number]):
     customer.displayName ??
     ([customer.firstName, customer.lastName].filter(Boolean).join(' ') || 'Unnamed customer')
   );
+}
+
+function formatTimestamp(value: string): string {
+  const parsed = new Date(value);
+  return Number.isNaN(parsed.valueOf()) ? 'Unknown time' : parsed.toLocaleString();
 }

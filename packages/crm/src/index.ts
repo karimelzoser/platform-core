@@ -105,6 +105,15 @@ export interface CustomerSegment {
   memberCount: number;
 }
 
+export interface CustomerTimelineItem {
+  id: string;
+  kind: 'AUDIT' | 'MERGE';
+  action: string;
+  actorType: string | null;
+  detail: string | null;
+  occurredAt: Date;
+}
+
 const createTagSchema = z.object({
   name: z.string().trim().min(1).max(100),
   description: z.string().trim().max(500).optional(),
@@ -310,6 +319,45 @@ export class CustomerService {
         mode: segment.mode,
         status: segment.status,
         memberCount: segment.member_count,
+      }));
+    });
+  }
+
+  public async timeline(
+    context: TenantRequestContext,
+    customerId: string,
+  ): Promise<readonly CustomerTimelineItem[]> {
+    const validatedCustomerId = z.string().uuid().parse(customerId);
+    return withTenantTransaction(this.database, context, async (transaction) => {
+      const result = await sql<{
+        id: string;
+        kind: CustomerTimelineItem['kind'];
+        action: string;
+        actor_type: string | null;
+        detail: string | null;
+        occurred_at: Date;
+      }>`select id, kind, action, actor_type, detail, occurred_at from (
+          select a.id::text as id, 'AUDIT'::text as kind, a.action, a.actor_type,
+            a.metadata ->> 'reason' as detail, a.created_at as occurred_at
+          from platform.audit_log a
+          where a.resource_id = ${validatedCustomerId}
+            and a.resource_type in ('customer', 'crm.customer')
+          union all
+          select h.id::text as id, 'MERGE'::text as kind, 'crm.customer.merged' as action,
+            null::text as actor_type, h.reason as detail, h.merged_at as occurred_at
+          from crm.customer_merge_history h
+          where h.source_customer_id = ${validatedCustomerId}::uuid
+             or h.target_customer_id = ${validatedCustomerId}::uuid
+        ) timeline
+        order by occurred_at desc, id desc
+        limit 100`.execute(transaction);
+      return result.rows.map((item) => ({
+        id: item.id,
+        kind: item.kind,
+        action: item.action,
+        actorType: item.actor_type,
+        detail: item.detail,
+        occurredAt: item.occurred_at,
       }));
     });
   }
