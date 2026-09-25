@@ -10,6 +10,7 @@ final data boundary; OPA is the policy decision point for protected commands.
 | `crm.tags.manage`     | Create and assign CRM tags                                        | MEDIUM | Policy controlled                     |
 | `crm.customers.merge` | Merge a source customer into a canonical target                   | HIGH   | Exact approved action digest required |
 
-`crm.customers.merge` was added in append-only migration `0007`. It must only
-be granted to deliberately authorized tenant roles; the command executor and
-OPA still require approval even when the permission is present.
+`crm.customers.merge` was added in append-only migration `0007` and backfilled
+only to owner/admin system roles in `0008`; it is not granted to manager,
+agent, or viewer. The command executor and OPA still require approval even when
+the permission is present.
