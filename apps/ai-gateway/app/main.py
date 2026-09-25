@@ -1,5 +1,7 @@
 """AI gateway: model routing never executes arbitrary SQL, HTTP, or shell commands."""
+
 from enum import Enum
+
 from fastapi import FastAPI, HTTPException
 from pydantic import BaseModel, Field
 
