@@ -17,9 +17,11 @@ import {
 import { CommandExecutionError } from '@platform/command-execution';
 import {
   CustomerIdentityConflictError,
+  CustomerMergeError,
   CustomerService,
   type CreateCustomerInput,
   type CreateTagInput,
+  type MergeCustomerInput,
 } from '@platform/crm';
 import { AuthenticatedContextService } from './authenticated-context.service.js';
 
@@ -108,6 +110,28 @@ export class CustomersController {
     );
   }
 
+  @Post(':customerId/merge')
+  public async merge(
+    @Param('customerId') sourceCustomerId: string,
+    @Body() body: unknown,
+    @Headers('authorization') authorization: string | undefined,
+    @Headers('x-tenant-id') tenantId: string | undefined,
+    @Headers('x-correlation-id') correlationId: string | undefined,
+    @Headers('idempotency-key') idempotencyKey: string | undefined,
+    @Headers('x-approval-id') approvalId: string | undefined,
+  ) {
+    if (!Buffer.isBuffer(body)) throw new BadRequestException('Merge body must be JSON');
+    const context = await this.context(authorization, tenantId, correlationId);
+    return this.executeCustomerCommand(() =>
+      this.customers.merge(
+        context,
+        idempotencyKey ?? '',
+        parseMergeBody(body, sourceCustomerId),
+        approvalId,
+      ),
+    );
+  }
+
   @Post()
   @HttpCode(HttpStatus.CREATED)
   public async create(
@@ -129,7 +153,7 @@ export class CustomersController {
     try {
       return await operation();
     } catch (error) {
-      if (error instanceof CustomerIdentityConflictError)
+      if (error instanceof CustomerIdentityConflictError || error instanceof CustomerMergeError)
         throw new ConflictException(error.message);
       this.rethrowCommandError(error);
       if (error instanceof Error) throw new BadRequestException(error.message);
@@ -186,6 +210,19 @@ function parseTagBody(body: Buffer): CreateTagInput {
     throw new Error('Tag body must be a JSON object');
   }
   return parsed as CreateTagInput;
+}
+
+function parseMergeBody(body: Buffer, sourceCustomerId: string): MergeCustomerInput {
+  const parsed: unknown = JSON.parse(body.toString('utf8'));
+  if (parsed === null || Array.isArray(parsed) || typeof parsed !== 'object') {
+    throw new Error('Merge body must be a JSON object');
+  }
+  const record = parsed as { targetCustomerId?: unknown; reason?: unknown };
+  return {
+    sourceCustomerId,
+    targetCustomerId: record.targetCustomerId as string,
+    reason: record.reason as string,
+  };
 }
 
 function parseOptionalNumber(value: string | undefined): number | undefined {

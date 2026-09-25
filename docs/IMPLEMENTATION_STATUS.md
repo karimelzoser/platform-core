@@ -1,7 +1,7 @@
 # Implementation Status
 
 **Last updated:** 2026-09-25
-**Branch/workstream:** `main` / Customer 360 live workspace
+**Branch/workstream:** `main` / Customer 360 merge workflow
 **Release status:** IN PROGRESS — this is not yet a release candidate.
 
 ## Baseline and controls
@@ -39,3 +39,4 @@ No overall completion percentage is recorded: the required release gate is a bin
 
 - Docker and Python 3.11+ are absent locally, so PostgreSQL/RLS, NATS, Temporal, and FastAPI tests are validated by the passing GitHub Actions disposable-stack workflow.
 - Production credentials, domains, and provider applications are intentionally unavailable and are not required for repository implementation.
+- Customer merge command reconciliation is implemented, but reusable approval-request decision APIs and approval-aware merge UI remain in progress; CRM is not complete.

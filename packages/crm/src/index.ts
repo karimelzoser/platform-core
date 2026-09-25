@@ -103,6 +103,31 @@ const createTagSchema = z.object({
 
 export type CreateTagInput = z.input<typeof createTagSchema>;
 
+const mergeCustomerSchema = z.object({
+  sourceCustomerId: z.string().uuid(),
+  targetCustomerId: z.string().uuid(),
+  reason: z.string().trim().min(3).max(1_000),
+});
+
+export type MergeCustomerInput = z.input<typeof mergeCustomerSchema>;
+
+export interface MergeRelationshipCounts {
+  contactPoints: number;
+  identityKeys: number;
+  externalIdentities: number;
+  addresses: number;
+  preferences: number;
+  tags: number;
+  segments: number;
+}
+
+export class CustomerMergeError extends Error {
+  public constructor(message: string) {
+    super(message);
+    this.name = 'CustomerMergeError';
+  }
+}
+
 export class CustomerIdentityConflictError extends Error {
   public constructor(
     public readonly channel: 'EMAIL' | 'PHONE' | 'WHATSAPP',
@@ -299,6 +324,85 @@ export class CustomerService {
     );
   }
 
+  public async merge(
+    context: TenantRequestContext,
+    idempotencyKey: string,
+    input: MergeCustomerInput,
+    approvalId?: string,
+  ): Promise<
+    CommandResult<{
+      sourceCustomerId: string;
+      targetCustomerId: string;
+      movedRelationshipCounts: MergeRelationshipCounts;
+    }>
+  > {
+    const validated = mergeCustomerSchema.parse(input);
+    if (validated.sourceCustomerId === validated.targetCustomerId) {
+      throw new CustomerMergeError('Source and target customers must be different');
+    }
+    return this.commands.execute(
+      {
+        action: 'crm.customer.merge',
+        permission: 'crm.customers.merge',
+        risk: 'HIGH',
+        resource: (commandInput) => ({ type: 'crm.customer', id: commandInput.sourceCustomerId }),
+        event: {
+          type: 'crm.customer.merged',
+          data: (commandInput, result) => ({
+            sourceCustomerId: commandInput.sourceCustomerId,
+            targetCustomerId: commandInput.targetCustomerId,
+            reason: commandInput.reason,
+            movedRelationshipCounts: result.movedRelationshipCounts,
+          }),
+          dedupeKey: (commandInput) =>
+            `crm.customer.merged:${commandInput.sourceCustomerId}:${commandInput.targetCustomerId}`,
+        },
+        audit: {
+          beforeState: (commandInput) => ({
+            sourceCustomerId: commandInput.sourceCustomerId,
+            targetCustomerId: commandInput.targetCustomerId,
+            sourceStatus: 'ACTIVE',
+            targetStatus: 'ACTIVE',
+          }),
+          afterState: (_commandInput, result) => ({
+            sourceCustomerId: result.sourceCustomerId,
+            targetCustomerId: result.targetCustomerId,
+            sourceStatus: 'MERGED',
+            targetStatus: 'ACTIVE',
+          }),
+          metadata: (commandInput, result) => ({
+            reason: commandInput.reason,
+            movedRelationshipCounts: result.movedRelationshipCounts,
+          }),
+        },
+        execute: async (transaction) => {
+          await this.lockMergePair(transaction, validated);
+          const movedRelationshipCounts = await this.reconcileMergeRelationships(
+            transaction,
+            validated.sourceCustomerId,
+            validated.targetCustomerId,
+          );
+          await sql`insert into crm.customer_merge_history (
+            tenant_id, source_customer_id, target_customer_id, reason, actor_id, metadata
+          ) values (
+            ${context.tenantId}::uuid, ${validated.sourceCustomerId}::uuid,
+            ${validated.targetCustomerId}::uuid, ${validated.reason}, ${context.actorId}::uuid,
+            ${JSON.stringify({ movedRelationshipCounts })}::jsonb
+          )`.execute(transaction);
+          await sql`update crm.customers set status = 'MERGED',
+            merged_into_customer_id = ${validated.targetCustomerId}::uuid
+            where id = ${validated.sourceCustomerId}::uuid`.execute(transaction);
+          return {
+            sourceCustomerId: validated.sourceCustomerId,
+            targetCustomerId: validated.targetCustomerId,
+            movedRelationshipCounts,
+          };
+        },
+      },
+      { context, input: validated, idempotencyKey, ...(approvalId ? { approvalId } : {}) },
+    );
+  }
+
   public async detail(
     context: TenantRequestContext,
     customerId: string,
@@ -410,6 +514,194 @@ export class CustomerService {
       ...toListItem(row),
       matchedChannels: row.matched_channels,
     }));
+  }
+
+  private async lockMergePair(
+    transaction: DatabaseTransaction,
+    input: z.infer<typeof mergeCustomerSchema>,
+  ): Promise<void> {
+    const rows = await sql<{ id: string; status: string }>`select id, status from crm.customers
+      where id in (${input.sourceCustomerId}::uuid, ${input.targetCustomerId}::uuid)
+      order by id for update`.execute(transaction);
+    const source = rows.rows.find((row) => row.id === input.sourceCustomerId);
+    const target = rows.rows.find((row) => row.id === input.targetCustomerId);
+    if (!source || !target) throw new CustomerMergeError('Source or target customer was not found');
+    if (source.status === 'MERGED')
+      throw new CustomerMergeError('Source customer is already merged');
+    if (source.status !== 'ACTIVE') throw new CustomerMergeError('Source customer is not active');
+    if (target.status !== 'ACTIVE') throw new CustomerMergeError('Target customer must be active');
+  }
+
+  private async reconcileMergeRelationships(
+    transaction: DatabaseTransaction,
+    sourceCustomerId: string,
+    targetCustomerId: string,
+  ): Promise<MergeRelationshipCounts> {
+    const counts = {
+      contactPoints: await this.countCustomerRows(
+        transaction,
+        'crm.contact_points',
+        sourceCustomerId,
+      ),
+      identityKeys: await this.countCustomerRows(
+        transaction,
+        'crm.identity_keys',
+        sourceCustomerId,
+      ),
+      externalIdentities: await this.countCustomerRows(
+        transaction,
+        'crm.external_identities',
+        sourceCustomerId,
+      ),
+      addresses: await this.countCustomerRows(transaction, 'crm.addresses', sourceCustomerId),
+      preferences: await this.countCustomerRows(
+        transaction,
+        'crm.communication_preferences',
+        sourceCustomerId,
+      ),
+      tags: await this.countCustomerRows(transaction, 'crm.customer_tags', sourceCustomerId),
+      segments: await this.countCustomerRows(
+        transaction,
+        'crm.segment_memberships',
+        sourceCustomerId,
+      ),
+    };
+    await this.reconcileContactPoints(transaction, sourceCustomerId, targetCustomerId);
+    await this.reconcileIdentityKeys(transaction, sourceCustomerId, targetCustomerId);
+    await this.reconcileExternalIdentities(transaction, sourceCustomerId, targetCustomerId);
+    await this.reconcileAddresses(transaction, sourceCustomerId, targetCustomerId);
+    await this.reconcilePreferences(transaction, sourceCustomerId, targetCustomerId);
+    await sql`insert into crm.customer_tags (tenant_id, customer_id, tag_id, assigned_by, source)
+      select tenant_id, ${targetCustomerId}::uuid, tag_id, assigned_by, source
+      from crm.customer_tags where customer_id = ${sourceCustomerId}::uuid
+      on conflict (tenant_id, customer_id, tag_id) do nothing`.execute(transaction);
+    await sql`delete from crm.customer_tags where customer_id = ${sourceCustomerId}::uuid`.execute(
+      transaction,
+    );
+    await sql`insert into crm.segment_memberships (
+      tenant_id, segment_id, customer_id, source, matched_at, expires_at, metadata
+    ) select tenant_id, segment_id, ${targetCustomerId}::uuid, source, matched_at, expires_at, metadata
+      from crm.segment_memberships where customer_id = ${sourceCustomerId}::uuid
+      on conflict (tenant_id, segment_id, customer_id) do nothing`.execute(transaction);
+    await sql`delete from crm.segment_memberships where customer_id = ${sourceCustomerId}::uuid`.execute(
+      transaction,
+    );
+    return counts;
+  }
+
+  private async countCustomerRows(
+    transaction: DatabaseTransaction,
+    table:
+      | 'crm.contact_points'
+      | 'crm.identity_keys'
+      | 'crm.external_identities'
+      | 'crm.addresses'
+      | 'crm.communication_preferences'
+      | 'crm.customer_tags'
+      | 'crm.segment_memberships',
+    customerId: string,
+  ): Promise<number> {
+    const result = await sql<{
+      count: number;
+    }>`select count(*)::int as count from ${sql.table(table)}
+      where customer_id = ${customerId}::uuid`.execute(transaction);
+    return result.rows[0]?.count ?? 0;
+  }
+
+  private async reconcileContactPoints(
+    transaction: DatabaseTransaction,
+    sourceId: string,
+    targetId: string,
+  ): Promise<void> {
+    await sql`update crm.contact_points target set is_verified = true
+      where target.customer_id = ${targetId}::uuid and exists (
+        select 1 from crm.contact_points source where source.customer_id = ${sourceId}::uuid
+          and source.channel = target.channel and source.normalized_value = target.normalized_value
+          and source.is_verified
+      )`.execute(transaction);
+    await sql`delete from crm.contact_points source where source.customer_id = ${sourceId}::uuid
+      and exists (select 1 from crm.contact_points target where target.customer_id = ${targetId}::uuid
+        and target.channel = source.channel and target.normalized_value = source.normalized_value)`.execute(
+      transaction,
+    );
+    await sql`update crm.contact_points source set is_primary = false where source.customer_id = ${sourceId}::uuid
+      and source.is_primary and exists (select 1 from crm.contact_points target
+        where target.customer_id = ${targetId}::uuid and target.channel = source.channel
+          and target.is_primary and target.status = 'ACTIVE')`.execute(transaction);
+    await sql`update crm.contact_points set customer_id = ${targetId}::uuid
+      where customer_id = ${sourceId}::uuid`.execute(transaction);
+  }
+
+  private async reconcileIdentityKeys(
+    transaction: DatabaseTransaction,
+    sourceId: string,
+    targetId: string,
+  ): Promise<void> {
+    await sql`update crm.identity_keys target set verified = true where target.customer_id = ${targetId}::uuid
+      and exists (select 1 from crm.identity_keys source where source.customer_id = ${sourceId}::uuid
+        and source.key_type = target.key_type and source.key_value = target.key_value and source.verified)`.execute(
+      transaction,
+    );
+    await sql`delete from crm.identity_keys source where source.customer_id = ${sourceId}::uuid
+      and exists (select 1 from crm.identity_keys target where target.customer_id = ${targetId}::uuid
+        and target.key_type = source.key_type and target.key_value = source.key_value)`.execute(
+      transaction,
+    );
+    await sql`update crm.identity_keys set customer_id = ${targetId}::uuid
+      where customer_id = ${sourceId}::uuid`.execute(transaction);
+  }
+
+  private async reconcileExternalIdentities(
+    transaction: DatabaseTransaction,
+    sourceId: string,
+    targetId: string,
+  ): Promise<void> {
+    await sql`delete from crm.external_identities source where source.customer_id = ${sourceId}::uuid
+      and exists (select 1 from crm.external_identities target where target.customer_id = ${targetId}::uuid
+        and target.provider = source.provider and target.account_ref = source.account_ref
+        and target.external_id = source.external_id)`.execute(transaction);
+    await sql`update crm.external_identities set customer_id = ${targetId}::uuid
+      where customer_id = ${sourceId}::uuid`.execute(transaction);
+  }
+
+  private async reconcileAddresses(
+    transaction: DatabaseTransaction,
+    sourceId: string,
+    targetId: string,
+  ): Promise<void> {
+    await sql`update crm.addresses source set is_default_shipping = false where source.customer_id = ${sourceId}::uuid
+      and source.is_default_shipping and exists (select 1 from crm.addresses target
+        where target.customer_id = ${targetId}::uuid and target.is_default_shipping and target.status = 'ACTIVE')`.execute(
+      transaction,
+    );
+    await sql`update crm.addresses source set is_default_billing = false where source.customer_id = ${sourceId}::uuid
+      and source.is_default_billing and exists (select 1 from crm.addresses target
+        where target.customer_id = ${targetId}::uuid and target.is_default_billing and target.status = 'ACTIVE')`.execute(
+      transaction,
+    );
+    await sql`update crm.addresses set customer_id = ${targetId}::uuid where customer_id = ${sourceId}::uuid`.execute(
+      transaction,
+    );
+  }
+
+  private async reconcilePreferences(
+    transaction: DatabaseTransaction,
+    sourceId: string,
+    targetId: string,
+  ): Promise<void> {
+    await sql`update crm.communication_preferences target set
+      status = case when target.status = 'OPTED_OUT' or source.status = 'OPTED_OUT' then 'OPTED_OUT'
+        when target.status = 'OPTED_IN' or source.status = 'OPTED_IN' then 'OPTED_IN' else 'UNKNOWN' end,
+      suppressed_until = greatest(target.suppressed_until, source.suppressed_until),
+      captured_at = greatest(target.captured_at, source.captured_at)
+      from crm.communication_preferences source
+      where source.customer_id = ${sourceId}::uuid and target.customer_id = ${targetId}::uuid
+        and target.channel = source.channel`.execute(transaction);
+    await sql`delete from crm.communication_preferences source where source.customer_id = ${sourceId}::uuid
+      and exists (select 1 from crm.communication_preferences target where target.customer_id = ${targetId}::uuid
+        and target.channel = source.channel)`.execute(transaction);
+    await sql`update crm.communication_preferences set customer_id = ${targetId}::uuid
+      where customer_id = ${sourceId}::uuid`.execute(transaction);
   }
 
   private async assertNoIdentityConflict(

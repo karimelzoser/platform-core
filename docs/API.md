@@ -12,6 +12,7 @@ All non-public endpoints require a valid Keycloak access token, an active applic
 | `GET /v1/customers/tags`                        | Implemented | Authenticated, RLS-scoped CRM tag catalog                                                                  |
 | `POST /v1/customers/tags`                       | Implemented | Idempotent, OPA-authorized tag creation                                                                    |
 | `POST /v1/customers/:customerId/tags/:tagId`    | Implemented | Idempotent, OPA-authorized assignment of a tenant tag to a customer                                        |
+| `POST /v1/customers/:customerId/merge`          | Implemented | HIGH-risk, approval-bound, idempotent merge of source into an active canonical target                      |
 | `POST /v1/webhooks/:connectorKey/:connectionId` | Implemented | Bounded raw JSON, connector signature verification, tenant delivery dedupe, and asynchronous event handoff |
 | `POST /v1/approvals/:id/decision`               | Planned     | Digest-bound approval decision                                                                             |
 
@@ -26,3 +27,8 @@ Within one transaction it performs the domain mutation, consumes the approval,
 writes a sanitized append-only audit record, persists the response for safe
 idempotent replay, and writes the transactional outbox event. Controllers must
 not reimplement that sequence.
+
+Customer merge takes `targetCustomerId` and a non-empty `reason` in the JSON
+body; the path customer is always the source. It requires
+`crm.customers.merge`, an exact approved action digest, and `Idempotency-Key`.
+The source becomes historical (`MERGED`) and points at the still-active target.
