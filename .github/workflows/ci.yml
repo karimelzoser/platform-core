@@ -20,9 +20,9 @@ jobs:
         with: { node-version: 22, cache: pnpm }
       - run: pnpm install --frozen-lockfile
       - run: pnpm format:check
-      - run: pnpm lint
       - run: pnpm migration:verify
       - run: pnpm -r --if-present build
+      - run: pnpm lint
       - run: pnpm -r --if-present typecheck
       - run: pnpm -r --if-present test
   integration:
