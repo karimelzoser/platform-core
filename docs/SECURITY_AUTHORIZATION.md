@@ -97,6 +97,12 @@ Bind approval to an immutable/deterministic action digest to prevent TOCTOU subs
 
 The reusable `CommandAuthorizer` enforces permission, tenant match, OPA, approval status, expiry, and action-digest equality before a protected command can enter its domain mutation transaction.
 
+The shared command executor retrieves approvals under tenant RLS and consumes an
+approved action only in the same transaction as its domain mutation. It also
+requires an idempotency key, rejects key reuse with a different request hash,
+stores successful responses for replay, writes sanitized append-only audit data,
+and records the canonical outbox event before commit.
+
 ## Secrets
 
 Never store raw provider secrets in ordinary domain tables.

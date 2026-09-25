@@ -10,3 +10,13 @@ All non-public endpoints require a valid Keycloak access token, an active applic
 | `POST /v1/approvals/:id/decision`                      | Planned     | Digest-bound approval decision                                              |
 
 Responses for operational failures include a correlation ID. Secret values never appear in API responses or logs.
+
+## Protected command contract
+
+New protected write endpoints must require `Idempotency-Key` and use the shared
+`@platform/command-execution` executor. It verifies the authenticated tenant,
+permission, OPA decision, and any digest-bound approval before the transaction.
+Within one transaction it performs the domain mutation, consumes the approval,
+writes a sanitized append-only audit record, persists the response for safe
+idempotent replay, and writes the transactional outbox event. Controllers must
+not reimplement that sequence.

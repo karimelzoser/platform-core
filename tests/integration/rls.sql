@@ -21,6 +21,49 @@ COMMIT;
 
 BEGIN;
 SELECT platform.set_request_context(
+  'aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa',
+  '11111111-1111-1111-1111-111111111111',
+  'test-subject-a',
+  'outbox-rollback'
+);
+INSERT INTO platform.outbox_events (
+  tenant_id, event_type, resource_type, resource_id, actor_type, actor_id, dedupe_key
+) VALUES (
+  'aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa', 'test.rolled_back', 'test',
+  'aaaaaaaa-0000-0000-0000-000000000002', 'USER',
+  '11111111-1111-1111-1111-111111111111', 'rolled-back-event'
+);
+ROLLBACK;
+
+BEGIN;
+SELECT platform.set_request_context(
+  'aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa',
+  '11111111-1111-1111-1111-111111111111',
+  'test-subject-a',
+  'audit-append-only'
+);
+INSERT INTO platform.audit_log (
+  tenant_id, actor_type, actor_id, action, resource_type, resource_id, request_id, correlation_id
+) VALUES (
+  'aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa', 'USER',
+  '11111111-1111-1111-1111-111111111111', 'test.audit.created', 'test',
+  'aaaaaaaa-0000-0000-0000-000000000002', 'audit-test', 'audit-test'
+);
+DO $$
+BEGIN
+  IF EXISTS (SELECT 1 FROM platform.outbox_events WHERE dedupe_key = 'rolled-back-event') THEN
+    RAISE EXCEPTION 'Rolled-back transaction left a publishable outbox event';
+  END IF;
+  IF has_table_privilege(current_user, 'platform.audit_log', 'UPDATE')
+     OR has_table_privilege(current_user, 'platform.audit_log', 'DELETE') THEN
+    RAISE EXCEPTION 'Runtime role can mutate immutable audit records';
+  END IF;
+END;
+$$;
+COMMIT;
+
+BEGIN;
+SELECT platform.set_request_context(
   'bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb',
   '22222222-2222-2222-2222-222222222222',
   'test-subject-b',

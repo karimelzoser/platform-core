@@ -1,5 +1,7 @@
 import { Kysely, PostgresDialect, sql, type Transaction } from 'kysely';
-import { Pool } from 'pg';
+import pg from 'pg';
+
+const { Pool } = pg;
 
 export interface DatabaseContext {
   tenantId: string;

@@ -1,7 +1,7 @@
 # Implementation Status
 
-**Last updated:** 2026-09-24  
-**Branch/workstream:** `main` / repository foundation and immutable production baseline  
+**Last updated:** 2026-09-25
+**Branch/workstream:** `main` / reusable protected-command foundation
 **Release status:** IN PROGRESS — this is not yet a release candidate.
 
 ## Baseline and controls
@@ -17,7 +17,7 @@
 
 | Module                            | Database               | API / worker | UI          | Tests       | Documentation | State       |
 | --------------------------------- | ---------------------- | ------------ | ----------- | ----------- | ------------- | ----------- |
-| Repository tooling / CI           | N/A                    | IN PROGRESS  | N/A         | IN PROGRESS | IN PROGRESS   | IN PROGRESS |
+| Repository tooling / CI           | N/A                    | COMPLETE     | N/A         | TESTING     | IN PROGRESS   | TESTING     |
 | Identity, auth, RBAC, approvals   | Existing `0001`–`0002` | IN PROGRESS  | NOT STARTED | TESTING     | IN PROGRESS   | IN PROGRESS |
 | CRM / Customer 360                | Existing `0003`        | NOT STARTED  | NOT STARTED | NOT STARTED | NOT STARTED   | NOT STARTED |
 | Integrations / connector SDK      | IN PROGRESS (`0004`)   | IN PROGRESS  | IN PROGRESS | IN PROGRESS | IN PROGRESS   | IN PROGRESS |
@@ -37,5 +37,5 @@ No overall completion percentage is recorded: the required release gate is a bin
 
 ## Current blockers
 
-- Docker and Python 3.11+ are absent, so PostgreSQL/RLS, NATS, Temporal, and FastAPI tests remain blocked locally.
+- Docker and Python 3.11+ are absent locally, so PostgreSQL/RLS, NATS, Temporal, and FastAPI tests are validated by the passing GitHub Actions disposable-stack workflow.
 - Production credentials, domains, and provider applications are intentionally unavailable and are not required for repository implementation.
