@@ -7,10 +7,14 @@ import { loadApiConfig } from './config.js';
 
 async function bootstrap(): Promise<void> {
   const config = loadApiConfig();
-  const app = await NestFactory.create<NestFastifyApplication>(
-    AppModule,
-    new FastifyAdapter({ logger: true }),
-  );
+  const adapter = new FastifyAdapter({ logger: true, bodyLimit: 1_048_576 });
+  adapter.getInstance().removeContentTypeParser('application/json');
+  adapter
+    .getInstance()
+    .addContentTypeParser('application/json', { parseAs: 'buffer' }, (_request, body, done) => {
+      done(null, body);
+    });
+  const app = await NestFactory.create<NestFastifyApplication>(AppModule, adapter);
   app
     .getHttpAdapter()
     .getInstance()

@@ -14,6 +14,10 @@ export type WebhookEnvelope = z.infer<typeof webhookEnvelopeSchema>;
 export interface Connector {
   readonly manifest: ConnectorManifest;
   verifyWebhook(input: { headers: Headers; rawBody: Uint8Array }): Promise<boolean>;
+  identifyWebhook(input: { headers: Headers; body: unknown }): {
+    deliveryId: string;
+    eventType: string;
+  };
   normalizeWebhook(input: { headers: Headers; body: unknown }): Promise<WebhookEnvelope>;
   validateConnection(input: {
     settings: Record<string, unknown>;
