@@ -17,7 +17,7 @@
 
 | Module                            | Database               | API / worker | UI          | Tests       | Documentation | State       |
 | --------------------------------- | ---------------------- | ------------ | ----------- | ----------- | ------------- | ----------- |
-| Repository tooling / CI           | N/A                    | N/A          | N/A         | IN PROGRESS | IN PROGRESS   | IN PROGRESS |
+| Repository tooling / CI           | N/A                    | IN PROGRESS  | N/A         | IN PROGRESS | IN PROGRESS   | IN PROGRESS |
 | Identity, auth, RBAC, approvals   | Existing `0001`–`0002` | IN PROGRESS  | NOT STARTED | IN PROGRESS | IN PROGRESS   | IN PROGRESS |
 | CRM / Customer 360                | Existing `0003`        | NOT STARTED  | NOT STARTED | NOT STARTED | NOT STARTED   | NOT STARTED |
 | Integrations / connector SDK      | IN PROGRESS (`0004`)   | IN PROGRESS  | IN PROGRESS | IN PROGRESS | IN PROGRESS   | IN PROGRESS |

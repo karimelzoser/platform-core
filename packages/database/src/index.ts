@@ -41,3 +41,4 @@ export async function destroyDatabase(db: PlatformDatabase): Promise<void> {
 }
 
 export { resolveTenantAccess, type TenantAccess } from './access.js';
+export { sql } from 'kysely';

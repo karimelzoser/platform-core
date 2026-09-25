@@ -2,6 +2,8 @@
 
 All events are versioned envelopes stored in `platform.outbox_events` inside the same transaction as domain changes and audit records. Publication begins only after commit.
 
+The worker claims at most 100 pending events through a narrowly scoped database function using `FOR UPDATE SKIP LOCKED`. A claim is leased, publish acknowledgement requires the same worker ID, and bounded failures use exponential backoff before producing a tenant-attributed dead letter.
+
 | Subject                    | Event                          | Producer            | Consumer behavior                                       |
 | -------------------------- | ------------------------------ | ------------------- | ------------------------------------------------------- |
 | `platform.identity.v1`     | `identity.membership.changed`  | Identity module     | Recompute effective permission projections idempotently |

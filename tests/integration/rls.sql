@@ -48,4 +48,17 @@ BEGIN
   IF affected <> 0 THEN RAISE EXCEPTION 'Tenant B updated Tenant A connection'; END IF;
 END;
 $$;
+
+DO $$
+DECLARE claimed uuid;
+BEGIN
+  SELECT id INTO claimed
+  FROM platform.claim_outbox_events('integration-test-worker', 1, 60)
+  WHERE id = 'aaaaaaaa-0000-0000-0000-000000000003';
+  IF claimed IS NULL THEN RAISE EXCEPTION 'Worker did not claim committed outbox event'; END IF;
+  IF NOT platform.mark_outbox_published(claimed, 'integration-test-worker') THEN
+    RAISE EXCEPTION 'Worker could not acknowledge its own outbox claim';
+  END IF;
+END;
+$$;
 COMMIT;

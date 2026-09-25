@@ -10,3 +10,13 @@ VALUES
 
 INSERT INTO integrations.connector_definitions (key, version, category, display_name, manifest)
 VALUES ('test-connector', '1.0.0', 'GENERIC', 'Test connector', '{}'::jsonb);
+
+INSERT INTO platform.outbox_events (
+  id, tenant_id, event_type, event_version, resource_type, resource_id, data, dedupe_key
+)
+VALUES (
+  'aaaaaaaa-0000-0000-0000-000000000003',
+  'aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa',
+  'integration.connection.created', 1, 'integration_connection',
+  'aaaaaaaa-0000-0000-0000-000000000002', '{}'::jsonb, 'test-outbox-a'
+);
