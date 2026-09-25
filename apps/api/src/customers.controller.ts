@@ -5,6 +5,7 @@ import {
   Controller,
   ForbiddenException,
   Get,
+  Header,
   Headers,
   HttpCode,
   HttpStatus,
@@ -19,6 +20,7 @@ import {
   CustomerIdentityConflictError,
   CustomerMergeError,
   CustomerService,
+  customerExportCsv,
   type CreateCustomerInput,
   type CreateStaticSegmentInput,
   type CreateTagInput,
@@ -90,6 +92,19 @@ export class CustomersController {
     const context = await this.context(authorization, tenantId, correlationId);
     this.assertSegmentReadPermission(context.permissions);
     return this.customers.listSegments(context);
+  }
+
+  @Get('/export.csv')
+  @Header('content-disposition', 'attachment; filename="customers.csv"')
+  @Header('content-type', 'text/csv; charset=utf-8')
+  public async exportCsv(
+    @Headers('authorization') authorization: string | undefined,
+    @Headers('x-tenant-id') tenantId: string | undefined,
+    @Headers('x-correlation-id') correlationId: string | undefined,
+  ): Promise<string> {
+    const context = await this.context(authorization, tenantId, correlationId);
+    this.assertExportPermission(context.permissions);
+    return customerExportCsv(await this.customers.exportCustomers(context));
   }
 
   @Post('/segments')
@@ -249,6 +264,12 @@ export class CustomersController {
   private assertSegmentReadPermission(permissions: readonly string[]): void {
     if (!permissions.includes('crm.segments.read')) {
       throw new ForbiddenException('Customer segment read permission is required');
+    }
+  }
+
+  private assertExportPermission(permissions: readonly string[]): void {
+    if (!permissions.includes('crm.customers.export')) {
+      throw new ForbiddenException('Customer export permission is required');
     }
   }
 

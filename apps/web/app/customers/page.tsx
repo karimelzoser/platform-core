@@ -42,6 +42,9 @@ export default async function CustomersPage({ searchParams }: CustomerPageProps)
         <a className="action" href="/segments">
           Segments
         </a>
+        <a className="action" href="/customers/export">
+          Export CSV
+        </a>
       </header>
 
       <form className="customer-search" action="/customers" method="get" role="search">

@@ -114,6 +114,17 @@ export interface CustomerTimelineItem {
   occurredAt: Date;
 }
 
+export interface CustomerExportRow {
+  id: string;
+  displayName: string | null;
+  firstName: string | null;
+  lastName: string | null;
+  companyName: string | null;
+  preferredLanguage: string | null;
+  timezone: string | null;
+  contactPoints: string;
+}
+
 const createTagSchema = z.object({
   name: z.string().trim().min(1).max(100),
   description: z.string().trim().max(500).optional(),
@@ -358,6 +369,50 @@ export class CustomerService {
         actorType: item.actor_type,
         detail: item.detail,
         occurredAt: item.occurred_at,
+      }));
+    });
+  }
+
+  public async exportCustomers(
+    context: TenantRequestContext,
+  ): Promise<readonly CustomerExportRow[]> {
+    return withTenantTransaction(this.database, context, async (transaction) => {
+      const result = await sql<{
+        id: string;
+        display_name: string | null;
+        first_name: string | null;
+        last_name: string | null;
+        company_name: string | null;
+        preferred_language: string | null;
+        timezone: string | null;
+        contact_points: string;
+      }>`select c.id, c.display_name, c.first_name, c.last_name, c.company_name,
+          c.preferred_language, c.timezone,
+          coalesce(string_agg(cp.channel || ':' || cp.normalized_value, '; ' order by cp.channel, cp.normalized_value), '') as contact_points
+        from crm.customers c
+        left join crm.contact_points cp on cp.tenant_id = c.tenant_id and cp.customer_id = c.id
+          and cp.status = 'ACTIVE'
+        where c.status <> 'MERGED'
+        group by c.id, c.display_name, c.first_name, c.last_name, c.company_name,
+          c.preferred_language, c.timezone, c.updated_at
+        order by c.updated_at desc, c.id desc
+        limit 10000`.execute(transaction);
+      await sql`insert into platform.audit_log (
+        tenant_id, actor_type, actor_id, action, resource_type, request_id, correlation_id, metadata
+      ) values (
+        ${context.tenantId}::uuid, ${context.actorType}, ${context.actorId}::uuid,
+        'crm.customer.export', 'crm.customer.export', ${context.requestId}, ${context.correlationId},
+        ${JSON.stringify({ rowCount: result.rows.length, maximumRows: 10000 })}::jsonb
+      )`.execute(transaction);
+      return result.rows.map((row) => ({
+        id: row.id,
+        displayName: row.display_name,
+        firstName: row.first_name,
+        lastName: row.last_name,
+        companyName: row.company_name,
+        preferredLanguage: row.preferred_language,
+        timezone: row.timezone,
+        contactPoints: row.contact_points,
       }));
     });
   }
@@ -922,6 +977,41 @@ interface NormalizedContactPoint {
   label?: string;
   isPrimary: boolean;
   isVerified: boolean;
+}
+
+/** Produces a spreadsheet-safe UTF-8 CSV from tenant-authorized export rows. */
+export function customerExportCsv(rows: readonly CustomerExportRow[]): string {
+  const headers = [
+    'id',
+    'display_name',
+    'first_name',
+    'last_name',
+    'company_name',
+    'preferred_language',
+    'timezone',
+    'contact_points',
+  ];
+  const data = rows.map((row) =>
+    [
+      row.id,
+      row.displayName,
+      row.firstName,
+      row.lastName,
+      row.companyName,
+      row.preferredLanguage,
+      row.timezone,
+      row.contactPoints,
+    ]
+      .map(csvCell)
+      .join(','),
+  );
+  return `${headers.join(',')}\r\n${data.join('\r\n')}${data.length ? '\r\n' : ''}`;
+}
+
+function csvCell(value: string | null): string {
+  const plain = value ?? '';
+  const safe = /^[=+\-@\t\r]/.test(plain) ? `'${plain}` : plain;
+  return `"${safe.replaceAll('"', '""')}"`;
 }
 
 export function normalizeContactPoint(

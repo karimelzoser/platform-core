@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
-import { normalizeContactPoint } from './index.js';
+import { customerExportCsv, normalizeContactPoint } from './index.js';
 
 void test('customer contact normalization canonicalizes email and E.164 phone identities', () => {
   assert.equal(
@@ -30,5 +30,24 @@ void test('customer contact normalization canonicalizes email and E.164 phone id
         isVerified: false,
       }),
     /E.164/,
+  );
+});
+
+void test('customer CSV exports quote cells and neutralize spreadsheet formulas', () => {
+  assert.equal(
+    customerExportCsv([
+      {
+        id: 'customer-1',
+        displayName: '=SUM(1,1)',
+        firstName: 'Ada',
+        lastName: null,
+        companyName: '"Example"',
+        preferredLanguage: 'en',
+        timezone: 'Africa/Cairo',
+        contactPoints: 'EMAIL:ada@example.test',
+      },
+    ]),
+    'id,display_name,first_name,last_name,company_name,preferred_language,timezone,contact_points\r\n' +
+      '"customer-1","\'=SUM(1,1)","Ada","","""Example""","en","Africa/Cairo","EMAIL:ada@example.test"\r\n',
   );
 });

@@ -9,6 +9,7 @@ All non-public endpoints require a valid Keycloak access token, an active applic
 | `GET /v1/customers`                                            | Implemented | Authenticated, RLS-scoped Customer 360 search and offset pagination                                        |
 | `GET /v1/customers/:customerId`                                | Implemented | Authenticated profile detail with RLS-scoped contact-based duplicate candidates                            |
 | `GET /v1/customers/:customerId/timeline`                       | Implemented | RLS-scoped audit and customer-merge history timeline                                                       |
+| `GET /v1/customers/export.csv`                                 | Implemented | Audited tenant-scoped CSV export, limited to 10,000 active customers and spreadsheet-safe cells            |
 | `POST /v1/customers`                                           | Implemented | Idempotent, audited and event-emitting Customer 360 creation                                               |
 | `GET /v1/customers/tags`                                       | Implemented | Authenticated, RLS-scoped CRM tag catalog                                                                  |
 | `POST /v1/customers/tags`                                      | Implemented | Idempotent, OPA-authorized tag creation                                                                    |

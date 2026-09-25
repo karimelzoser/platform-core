@@ -39,4 +39,4 @@ No overall completion percentage is recorded: the required release gate is a bin
 
 - Docker and Python 3.11+ are absent locally, so PostgreSQL/RLS, NATS, Temporal, and FastAPI tests are validated by the passing GitHub Actions disposable-stack workflow.
 - Production credentials, domains, and provider applications are intentionally unavailable and are not required for repository implementation.
-- Customer merge reconciliation, request/decision APIs, the approval inbox, and approved-merge execution UI are implemented. Static segments can be created and assigned through tenant-scoped APIs and UI; dynamic-rule evaluation, import/export, timelines, and the remaining CRM acceptance tests are still incomplete.
+- Customer merge reconciliation, request/decision APIs, the approval inbox, approved-merge execution UI, static segments, customer timelines, and owner/admin CSV export are implemented. Dynamic-rule evaluation, CSV import, bulk tagging, consent/suppression management, and the remaining CRM acceptance tests are still incomplete.
