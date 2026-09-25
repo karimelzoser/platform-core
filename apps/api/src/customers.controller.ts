@@ -18,6 +18,7 @@ import {
 import { CommandExecutionError } from '@platform/command-execution';
 import {
   type BulkTagAssignmentInput,
+  type CustomerImportInput,
   CustomerIdentityConflictError,
   CustomerMergeError,
   CustomerService,
@@ -82,6 +83,30 @@ export class CustomersController {
     const context = await this.context(authorization, tenantId, correlationId);
     return this.executeTagCommand(() =>
       this.customers.createTag(context, idempotencyKey ?? '', parseTagBody(body), approvalId),
+    );
+  }
+
+  @Post('/import')
+  @HttpCode(HttpStatus.CREATED)
+  public async importCustomers(
+    @Body() body: unknown,
+    @Headers('authorization') authorization: string | undefined,
+    @Headers('x-tenant-id') tenantId: string | undefined,
+    @Headers('x-correlation-id') correlationId: string | undefined,
+    @Headers('idempotency-key') idempotencyKey: string | undefined,
+    @Headers('x-approval-id') approvalId: string | undefined,
+  ) {
+    if (!Buffer.isBuffer(body)) throw new BadRequestException('Import body must be JSON');
+    const context = await this.context(authorization, tenantId, correlationId);
+    if (!context.permissions.includes('crm.customers.import'))
+      throw new ForbiddenException('Customer import permission is required');
+    return this.executeCustomerCommand(() =>
+      this.customers.importCustomers(
+        context,
+        idempotencyKey ?? '',
+        parseImportBody(body),
+        approvalId,
+      ),
     );
   }
 
@@ -350,6 +375,14 @@ function parseTagBody(body: Buffer): CreateTagInput {
     throw new Error('Tag body must be a JSON object');
   }
   return parsed as CreateTagInput;
+}
+
+function parseImportBody(body: Buffer): CustomerImportInput {
+  const parsed: unknown = JSON.parse(body.toString('utf8'));
+  if (parsed === null || Array.isArray(parsed) || typeof parsed !== 'object') {
+    throw new Error('Import body must be a JSON object');
+  }
+  return parsed as CustomerImportInput;
 }
 
 function parseStaticSegmentBody(body: Buffer): CreateStaticSegmentInput {

@@ -48,6 +48,9 @@ export default async function CustomersPage({ searchParams }: CustomerPageProps)
         <a className="action" href="/customers/bulk-tag">
           Bulk tag
         </a>
+        <a className="action" href="/customers/import">
+          Import CSV
+        </a>
       </header>
 
       <form className="customer-search" action="/customers" method="get" role="search">

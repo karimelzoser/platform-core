@@ -57,6 +57,12 @@ const createCustomerSchema = z
 export type CreateCustomerInput = z.input<typeof createCustomerSchema>;
 export type CustomerContactChannel = z.infer<typeof contactChannelSchema>;
 
+const customerImportSchema = z.object({
+  customers: z.array(createCustomerSchema).min(1).max(100),
+});
+
+export type CustomerImportInput = z.input<typeof customerImportSchema>;
+
 export interface CustomerListItem {
   id: string;
   displayName: string | null;
@@ -262,6 +268,61 @@ export class CustomerService {
         idempotencyKey,
         ...(approvalId ? { approvalId } : {}),
       },
+    );
+  }
+
+  public async importCustomers(
+    context: TenantRequestContext,
+    idempotencyKey: string,
+    input: CustomerImportInput,
+    approvalId?: string,
+  ): Promise<CommandResult<{ customerIds: readonly string[] }>> {
+    const validated = customerImportSchema.parse(input);
+    const customers = validated.customers.map((customer) => ({
+      customer,
+      contacts: customer.contactPoints.map(normalizeContactPoint),
+      customerId: randomUUID(),
+    }));
+    for (const imported of customers) validateContactPointSet(imported.contacts);
+    return this.commands.execute(
+      {
+        action: 'crm.customer.import',
+        permission: 'crm.customers.import',
+        risk: 'MEDIUM',
+        resource: () => ({ type: 'crm.customer.import', id: 'batch' }),
+        event: {
+          type: 'crm.customer.imported',
+          data: (_commandInput, result) => ({ customerCount: result.customerIds.length }),
+          dedupeKey: () => `crm.customer.imported:${idempotencyKey.trim()}`,
+        },
+        audit: {
+          afterState: (_commandInput, result) => ({ customerCount: result.customerIds.length }),
+        },
+        execute: async (transaction) => {
+          for (const imported of customers) {
+            await this.assertNoIdentityConflict(transaction, imported.contacts);
+            await sql`insert into crm.customers (
+              id, tenant_id, display_name, first_name, last_name, company_name,
+              preferred_language, timezone, source
+            ) values (
+              ${imported.customerId}::uuid, ${context.tenantId}::uuid,
+              ${customerDisplayName(imported.customer)}, ${imported.customer.firstName ?? null},
+              ${imported.customer.lastName ?? null}, ${imported.customer.companyName ?? null},
+              ${imported.customer.preferredLanguage ?? null}, ${imported.customer.timezone ?? null}, 'csv_import'
+            )`.execute(transaction);
+            for (const contact of imported.contacts)
+              await this.insertContact(
+                transaction,
+                context,
+                imported.customerId,
+                contact,
+                'csv_import',
+              );
+          }
+          return { customerIds: customers.map((customer) => customer.customerId) };
+        },
+      },
+      { context, input: validated, idempotencyKey, ...(approvalId ? { approvalId } : {}) },
     );
   }
 
@@ -1103,19 +1164,20 @@ export class CustomerService {
     context: TenantRequestContext,
     customerId: string,
     contact: NormalizedContactPoint,
+    source = 'platform',
   ): Promise<void> {
     await sql`insert into crm.contact_points (
       tenant_id, customer_id, channel, value_original, normalized_value, label, is_primary, is_verified, source
     ) values (
       ${context.tenantId}::uuid, ${customerId}::uuid, ${contact.channel}, ${contact.value},
-      ${contact.normalizedValue}, ${contact.label ?? null}, ${contact.isPrimary}, ${contact.isVerified}, 'platform'
+      ${contact.normalizedValue}, ${contact.label ?? null}, ${contact.isPrimary}, ${contact.isVerified}, ${source}
     )`.execute(transaction);
     if (isCanonicalIdentityChannel(contact.channel)) {
       await sql`insert into crm.identity_keys (
         tenant_id, customer_id, key_type, key_value, verified, source
       ) values (
         ${context.tenantId}::uuid, ${customerId}::uuid, ${contact.channel},
-        ${contact.normalizedValue}, ${contact.isVerified}, 'platform'
+        ${contact.normalizedValue}, ${contact.isVerified}, ${source}
       )`.execute(transaction);
     }
   }
