@@ -31,6 +31,14 @@ interface CustomerDetail {
     verified: boolean;
   }[];
   tags: readonly { id: string; name: string }[];
+  duplicateCandidates: readonly {
+    id: string;
+    displayName: string | null;
+    firstName: string | null;
+    lastName: string | null;
+    companyName: string | null;
+    matchedChannels: readonly string[];
+  }[];
 }
 
 export default async function CustomerDetailPage({
@@ -123,6 +131,22 @@ export default async function CustomerDetailPage({
             <p className="muted">No canonical identities recorded.</p>
           )}
         </section>
+        <section className="customer-card customer-card-wide" aria-labelledby="duplicates-heading">
+          <h2 id="duplicates-heading">Possible duplicates</h2>
+          {customer.duplicateCandidates.length ? (
+            <ul className="detail-list">
+              {customer.duplicateCandidates.map((candidate) => (
+                <li key={candidate.id}>
+                  <a href={`/customers/${candidate.id}`}>{candidateName(candidate)}</a>
+                  <span>{candidate.companyName ?? 'Individual customer'}</span>
+                  <small>Shared {candidate.matchedChannels.join(', ')} contact point</small>
+                </li>
+              ))}
+            </ul>
+          ) : (
+            <p className="muted">No contact-based duplicate candidates found.</p>
+          )}
+        </section>
       </div>
     </main>
   );
@@ -175,6 +199,13 @@ async function loadCustomer(customerId: string): Promise<CustomerLoadResult> {
 }
 
 function displayName(customer: CustomerDetail): string {
+  return (
+    customer.displayName ??
+    ([customer.firstName, customer.lastName].filter(Boolean).join(' ') || 'Unnamed customer')
+  );
+}
+
+function candidateName(customer: CustomerDetail['duplicateCandidates'][number]): string {
   return (
     customer.displayName ??
     ([customer.firstName, customer.lastName].filter(Boolean).join(' ') || 'Unnamed customer')

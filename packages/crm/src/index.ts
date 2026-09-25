@@ -64,6 +64,11 @@ export interface CustomerDetail extends CustomerListItem {
   contacts: readonly CustomerContactPoint[];
   identities: readonly CustomerIdentity[];
   tags: readonly { id: string; name: string }[];
+  duplicateCandidates: readonly DuplicateCandidate[];
+}
+
+export interface DuplicateCandidate extends CustomerListItem {
+  matchedChannels: readonly CustomerContactChannel[];
 }
 
 export interface CustomerContactPoint {
@@ -313,7 +318,7 @@ export class CustomerService {
         from crm.customers where id = ${customerId}::uuid`.execute(transaction);
       const row = customer.rows[0];
       if (!row) return undefined;
-      const [contacts, identities, tags] = await Promise.all([
+      const [contacts, identities, tags, duplicateCandidates] = await Promise.all([
         sql<{
           id: string;
           channel: CustomerContactChannel;
@@ -339,6 +344,7 @@ export class CustomerService {
         sql<{ id: string; name: string }>`select t.id, t.name from crm.customer_tags ct
           join crm.tags t on t.tenant_id = ct.tenant_id and t.id = ct.tag_id
           where ct.customer_id = ${customerId}::uuid order by t.name`.execute(transaction),
+        this.duplicateCandidates(transaction, customerId),
       ]);
       return {
         ...toListItem(row),
@@ -362,8 +368,48 @@ export class CustomerService {
           verified: identity.verified,
         })),
         tags: tags.rows,
+        duplicateCandidates,
       };
     });
+  }
+
+  private async duplicateCandidates(
+    transaction: DatabaseTransaction,
+    customerId: string,
+  ): Promise<readonly DuplicateCandidate[]> {
+    const result = await sql<{
+      id: string;
+      display_name: string | null;
+      first_name: string | null;
+      last_name: string | null;
+      company_name: string | null;
+      status: string;
+      updated_at: Date;
+      matched_channels: CustomerContactChannel[];
+    }>`select candidate.id, candidate.display_name, candidate.first_name, candidate.last_name,
+        candidate.company_name, candidate.status, candidate.updated_at,
+        array_agg(distinct candidate_contact.channel order by candidate_contact.channel) as matched_channels
+      from crm.contact_points source_contact
+      join crm.contact_points candidate_contact
+        on candidate_contact.tenant_id = source_contact.tenant_id
+       and candidate_contact.channel = source_contact.channel
+       and candidate_contact.normalized_value = source_contact.normalized_value
+       and candidate_contact.status = 'ACTIVE'
+      join crm.customers candidate
+        on candidate.tenant_id = candidate_contact.tenant_id
+       and candidate.id = candidate_contact.customer_id
+       and candidate.status = 'ACTIVE'
+      where source_contact.customer_id = ${customerId}::uuid
+        and source_contact.status = 'ACTIVE'
+        and candidate.id <> ${customerId}::uuid
+      group by candidate.id, candidate.display_name, candidate.first_name, candidate.last_name,
+        candidate.company_name, candidate.status, candidate.updated_at
+      order by count(*) desc, candidate.updated_at desc, candidate.id
+      limit 20`.execute(transaction);
+    return result.rows.map((row) => ({
+      ...toListItem(row),
+      matchedChannels: row.matched_channels,
+    }));
   }
 
   private async assertNoIdentityConflict(
