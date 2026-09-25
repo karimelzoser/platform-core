@@ -1,6 +1,9 @@
 #!/usr/bin/env sh
 set -eu
 compose='docker compose -f docker/integration/compose.yml -f docker/preview/compose.yml'
+if [ ! -x node_modules/.bin/tsc ]; then
+  corepack pnpm install --frozen-lockfile
+fi
 corepack pnpm --filter @platform/api build
 corepack pnpm --filter @platform/worker build
 $compose up --detach --wait

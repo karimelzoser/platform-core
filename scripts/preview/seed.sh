@@ -10,10 +10,17 @@ VALUES ('cccccccc-cccc-cccc-cccc-cccccccccccc', 'Preview Tenant', 'preview-tenan
 ON CONFLICT (slug) DO NOTHING;
 SELECT identity.bootstrap_default_roles('cccccccc-cccc-cccc-cccc-cccccccccccc');
 INSERT INTO identity.memberships (tenant_id, user_id, status)
-VALUES ('cccccccc-cccc-cccc-cccc-cccccccccccc', '33333333-3333-3333-3333-333333333333', 'ACTIVE')
-ON CONFLICT DO NOTHING;
+SELECT 'cccccccc-cccc-cccc-cccc-cccccccccccc', '33333333-3333-3333-3333-333333333333', 'ACTIVE'
+WHERE NOT EXISTS (
+  SELECT 1 FROM identity.memberships
+  WHERE tenant_id = 'cccccccc-cccc-cccc-cccc-cccccccccccc'
+    AND user_id = '33333333-3333-3333-3333-333333333333'
+);
 INSERT INTO identity.membership_roles (tenant_id, membership_id, role_id)
 SELECT m.tenant_id, m.id, r.id FROM identity.memberships m JOIN identity.roles r ON r.tenant_id=m.tenant_id AND r.code='owner'
 WHERE m.tenant_id='cccccccc-cccc-cccc-cccc-cccccccccccc' AND m.user_id='33333333-3333-3333-3333-333333333333'
-ON CONFLICT DO NOTHING;
+  AND NOT EXISTS (
+    SELECT 1 FROM identity.membership_roles existing
+    WHERE existing.tenant_id = m.tenant_id AND existing.membership_id = m.id AND existing.role_id = r.id
+  );
 SQL
