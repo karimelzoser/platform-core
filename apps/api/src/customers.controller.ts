@@ -120,17 +120,18 @@ export class CustomersController {
   ) {
     if (!Buffer.isBuffer(body)) throw new BadRequestException('Customer body must be JSON');
     const context = await this.context(authorization, tenantId, correlationId);
+    return this.executeCustomerCommand(() =>
+      this.customers.create(context, idempotencyKey ?? '', parseCustomerBody(body), approvalId),
+    );
+  }
+
+  private async executeCustomerCommand<T>(operation: () => Promise<T>): Promise<T> {
     try {
-      return await this.customers.create(
-        context,
-        idempotencyKey ?? '',
-        parseCustomerBody(body),
-        approvalId,
-      );
+      return await operation();
     } catch (error) {
       if (error instanceof CustomerIdentityConflictError)
         throw new ConflictException(error.message);
-      if (error instanceof CommandExecutionError) throw new ConflictException(error.message);
+      this.rethrowCommandError(error);
       if (error instanceof Error) throw new BadRequestException(error.message);
       throw error;
     }
@@ -158,10 +159,16 @@ export class CustomersController {
     try {
       return await operation();
     } catch (error) {
-      if (error instanceof CommandExecutionError) throw new ConflictException(error.message);
+      this.rethrowCommandError(error);
       if (error instanceof Error) throw new BadRequestException(error.message);
       throw error;
     }
+  }
+
+  private rethrowCommandError(error: unknown): void {
+    if (!(error instanceof CommandExecutionError)) return;
+    if (error.code === 'authorization_denied') throw new ForbiddenException(error.message);
+    throw new ConflictException(error.message);
   }
 }
 
