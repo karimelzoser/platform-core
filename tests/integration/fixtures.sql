@@ -20,3 +20,31 @@ VALUES (
   'integration.connection.created', 1, 'integration_connection',
   'aaaaaaaa-0000-0000-0000-000000000002', '{}'::jsonb, 'test-outbox-a'
 );
+
+INSERT INTO platform.outbox_events (
+  id, tenant_id, event_type, event_version, resource_type, resource_id, data, dedupe_key
+)
+VALUES (
+  'aaaaaaaa-0000-0000-0000-000000000004',
+  'aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa',
+  'integration.connection.failed', 1, 'integration_connection',
+  'aaaaaaaa-0000-0000-0000-000000000002', '{}'::jsonb, 'test-outbox-poison'
+);
+
+INSERT INTO policy.approval_requests (
+  id, tenant_id, requested_by, action, permission, risk, resource_type, resource_id,
+  action_digest, request_snapshot, policy_reason, status, expires_at
+)
+VALUES
+(
+  'aaaaaaaa-0000-0000-0000-000000000005',
+  'aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa',
+  '11111111-1111-1111-1111-111111111111', 'orders.cancel', 'orders.cancel', 'HIGH', 'order', 'order-a',
+  repeat('a', 64), '{}'::jsonb, 'approval_required', 'APPROVED', now() + interval '1 hour'
+),
+(
+  'bbbbbbbb-0000-0000-0000-000000000005',
+  'bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb',
+  '22222222-2222-2222-2222-222222222222', 'orders.cancel', 'orders.cancel', 'HIGH', 'order', 'order-b',
+  repeat('b', 64), '{}'::jsonb, 'approval_required', 'REQUESTED', now() + interval '1 hour'
+);

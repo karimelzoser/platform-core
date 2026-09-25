@@ -57,4 +57,22 @@ void test('requires approval for high-risk commands and binds its exact action',
     ),
     { kind: 'DENIED', reason: 'approval_digest_mismatch' },
   );
+  assert.deepEqual(
+    await authorizer.authorize(subject, action, {
+      id: 'approval-requested',
+      actionDigest: approvalActionDigest(action),
+      status: 'REQUESTED',
+      expiresAt: new Date('2026-09-26T00:00:00.000Z'),
+    }),
+    { kind: 'DENIED', reason: 'approval_not_approved' },
+  );
+  assert.deepEqual(
+    await authorizer.authorize(subject, action, {
+      id: 'approval-expired',
+      actionDigest: approvalActionDigest(action),
+      status: 'APPROVED',
+      expiresAt: new Date('2026-09-24T00:00:00.000Z'),
+    }),
+    { kind: 'DENIED', reason: 'approval_expired' },
+  );
 });
