@@ -25,6 +25,7 @@ import {
   type CreateStaticSegmentInput,
   type CreateTagInput,
   type MergeCustomerInput,
+  type SuppressCustomerChannelInput,
 } from '@platform/crm';
 import { AuthenticatedContextService } from './authenticated-context.service.js';
 
@@ -214,6 +215,28 @@ export class CustomersController {
     );
   }
 
+  @Post(':customerId/suppressions')
+  public async suppressChannel(
+    @Param('customerId') customerId: string,
+    @Body() body: unknown,
+    @Headers('authorization') authorization: string | undefined,
+    @Headers('x-tenant-id') tenantId: string | undefined,
+    @Headers('x-correlation-id') correlationId: string | undefined,
+    @Headers('idempotency-key') idempotencyKey: string | undefined,
+    @Headers('x-approval-id') approvalId: string | undefined,
+  ) {
+    if (!Buffer.isBuffer(body)) throw new BadRequestException('Suppression body must be JSON');
+    const context = await this.context(authorization, tenantId, correlationId);
+    return this.executeCustomerCommand(() =>
+      this.customers.suppressChannel(
+        context,
+        idempotencyKey ?? '',
+        parseSuppressionBody(body, customerId),
+        approvalId,
+      ),
+    );
+  }
+
   @Post()
   @HttpCode(HttpStatus.CREATED)
   public async create(
@@ -325,6 +348,19 @@ function parseMergeBody(body: Buffer, sourceCustomerId: string): MergeCustomerIn
     targetCustomerId: record.targetCustomerId as string,
     reason: record.reason as string,
   };
+}
+
+function parseSuppressionBody(body: Buffer, customerId: string): SuppressCustomerChannelInput {
+  const parsed: unknown = JSON.parse(body.toString('utf8'));
+  if (parsed === null || Array.isArray(parsed) || typeof parsed !== 'object') {
+    throw new Error('Suppression body must be a JSON object');
+  }
+  const record = parsed as { channel?: unknown; reason?: unknown };
+  return {
+    customerId,
+    channel: record.channel,
+    reason: record.reason,
+  } as SuppressCustomerChannelInput;
 }
 
 function parseOptionalNumber(value: string | undefined): number | undefined {

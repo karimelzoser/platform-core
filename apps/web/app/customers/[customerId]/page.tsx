@@ -2,6 +2,7 @@ import type { Metadata } from 'next';
 import { cookies } from 'next/headers';
 import { notFound } from 'next/navigation';
 import { SegmentAssignmentForm } from './segment-assignment-form';
+import { SuppressionForm } from './suppression-form';
 
 export const metadata: Metadata = { title: 'Customer profile | Platform' };
 
@@ -30,6 +31,13 @@ interface CustomerDetail {
     keyValue: string;
     state: string;
     verified: boolean;
+  }[];
+  preferences: readonly {
+    channel: string;
+    status: 'UNKNOWN' | 'OPTED_IN' | 'OPTED_OUT';
+    reason: string | null;
+    capturedAt: string | null;
+    suppressedUntil: string | null;
   }[];
   tags: readonly { id: string; name: string }[];
   duplicateCandidates: readonly {
@@ -151,6 +159,23 @@ export default async function CustomerDetailPage({
           <p className="muted">
             Dynamic segment rules are under development and cannot be assigned here.
           </p>
+        </section>
+        <section className="customer-card" aria-labelledby="consent-heading">
+          <h2 id="consent-heading">Communication consent</h2>
+          {customer.preferences.length ? (
+            <ul className="detail-list">
+              {customer.preferences.map((preference) => (
+                <li key={preference.channel}>
+                  <strong>{preference.channel}</strong>
+                  <span>{preference.status}</span>
+                  <small>{preference.reason ?? 'No recorded reason'}</small>
+                </li>
+              ))}
+            </ul>
+          ) : (
+            <p className="muted">No communication preferences have been recorded.</p>
+          )}
+          <SuppressionForm customerId={customer.id} />
         </section>
         <section className="customer-card customer-card-wide" aria-labelledby="identity-heading">
           <h2 id="identity-heading">Canonical identities</h2>

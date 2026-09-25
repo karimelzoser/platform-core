@@ -20,6 +20,15 @@ const contactChannelSchema = z.enum([
   'OTHER',
 ]);
 
+const preferenceChannelSchema = z.enum([
+  'EMAIL',
+  'SMS',
+  'WHATSAPP',
+  'MESSENGER',
+  'INSTAGRAM',
+  'PUSH',
+]);
+
 const createCustomerSchema = z
   .object({
     displayName: z.string().trim().min(1).max(300).optional(),
@@ -63,8 +72,17 @@ export interface CustomerDetail extends CustomerListItem {
   timezone: string | null;
   contacts: readonly CustomerContactPoint[];
   identities: readonly CustomerIdentity[];
+  preferences: readonly CustomerCommunicationPreference[];
   tags: readonly { id: string; name: string }[];
   duplicateCandidates: readonly DuplicateCandidate[];
+}
+
+export interface CustomerCommunicationPreference {
+  channel: z.infer<typeof preferenceChannelSchema>;
+  status: 'UNKNOWN' | 'OPTED_IN' | 'OPTED_OUT';
+  reason: string | null;
+  capturedAt: Date | null;
+  suppressedUntil: Date | null;
 }
 
 export interface DuplicateCandidate extends CustomerListItem {
@@ -131,6 +149,14 @@ const createTagSchema = z.object({
 });
 
 export type CreateTagInput = z.input<typeof createTagSchema>;
+
+const suppressCustomerChannelSchema = z.object({
+  customerId: z.string().uuid(),
+  channel: preferenceChannelSchema,
+  reason: z.string().trim().min(3).max(500),
+});
+
+export type SuppressCustomerChannelInput = z.input<typeof suppressCustomerChannelSchema>;
 
 const createStaticSegmentSchema = z.object({
   name: z.string().trim().min(1).max(100),
@@ -553,6 +579,52 @@ export class CustomerService {
     );
   }
 
+  public async suppressChannel(
+    context: TenantRequestContext,
+    idempotencyKey: string,
+    input: SuppressCustomerChannelInput,
+    approvalId?: string,
+  ): Promise<CommandResult<{ customerId: string; channel: string; status: 'OPTED_OUT' }>> {
+    const validated = suppressCustomerChannelSchema.parse(input);
+    return this.commands.execute(
+      {
+        action: 'crm.customer.communication.suppress',
+        permission: 'crm.customers.write',
+        risk: 'MEDIUM',
+        resource: (commandInput) => ({ type: 'crm.customer', id: commandInput.customerId }),
+        event: {
+          type: 'crm.customer.communication.suppressed',
+          data: (_commandInput, result) => result,
+        },
+        audit: {
+          afterState: (_commandInput, result) => result,
+          metadata: (commandInput) => ({ reason: commandInput.reason }),
+        },
+        execute: async (transaction) => {
+          const customer = await sql<{ id: string }>`select id from crm.customers
+            where id = ${validated.customerId}::uuid and status = 'ACTIVE'`.execute(transaction);
+          if (!customer.rows[0]) throw new Error('Active customer not found');
+          await sql`insert into crm.communication_preferences (
+            tenant_id, customer_id, channel, status, source, captured_at, suppressed_until, reason
+          ) values (
+            ${context.tenantId}::uuid, ${validated.customerId}::uuid, ${validated.channel},
+            'OPTED_OUT', 'platform', now(), null, ${validated.reason}
+          ) on conflict (tenant_id, customer_id, channel) do update set
+            status = 'OPTED_OUT', source = 'platform', captured_at = excluded.captured_at,
+            suppressed_until = null, reason = excluded.reason, updated_at = now()`.execute(
+            transaction,
+          );
+          return {
+            customerId: validated.customerId,
+            channel: validated.channel,
+            status: 'OPTED_OUT' as const,
+          };
+        },
+      },
+      { context, input: validated, idempotencyKey, ...(approvalId ? { approvalId } : {}) },
+    );
+  }
+
   public async merge(
     context: TenantRequestContext,
     idempotencyKey: string,
@@ -651,7 +723,7 @@ export class CustomerService {
         from crm.customers where id = ${customerId}::uuid`.execute(transaction);
       const row = customer.rows[0];
       if (!row) return undefined;
-      const [contacts, identities, tags, duplicateCandidates] = await Promise.all([
+      const [contacts, identities, preferences, tags, duplicateCandidates] = await Promise.all([
         sql<{
           id: string;
           channel: CustomerContactChannel;
@@ -674,6 +746,15 @@ export class CustomerService {
         }>`
           select id, key_type, key_value, state, verified from crm.identity_keys
           where customer_id = ${customerId}::uuid order by created_at`.execute(transaction),
+        sql<{
+          channel: CustomerCommunicationPreference['channel'];
+          status: CustomerCommunicationPreference['status'];
+          reason: string | null;
+          captured_at: Date | null;
+          suppressed_until: Date | null;
+        }>`select channel, status, reason, captured_at, suppressed_until
+          from crm.communication_preferences where customer_id = ${customerId}::uuid
+          order by channel`.execute(transaction),
         sql<{ id: string; name: string }>`select t.id, t.name from crm.customer_tags ct
           join crm.tags t on t.tenant_id = ct.tenant_id and t.id = ct.tag_id
           where ct.customer_id = ${customerId}::uuid order by t.name`.execute(transaction),
@@ -699,6 +780,13 @@ export class CustomerService {
           keyValue: identity.key_value,
           state: identity.state,
           verified: identity.verified,
+        })),
+        preferences: preferences.rows.map((preference) => ({
+          channel: preference.channel,
+          status: preference.status,
+          reason: preference.reason,
+          capturedAt: preference.captured_at,
+          suppressedUntil: preference.suppressed_until,
         })),
         tags: tags.rows,
         duplicateCandidates,
