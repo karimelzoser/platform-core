@@ -95,6 +95,8 @@ Store:
 
 Bind approval to an immutable/deterministic action digest to prevent TOCTOU substitution.
 
+The reusable `CommandAuthorizer` enforces permission, tenant match, OPA, approval status, expiry, and action-digest equality before a protected command can enter its domain mutation transaction.
+
 ## Secrets
 
 Never store raw provider secrets in ordinary domain tables.
