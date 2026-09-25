@@ -96,12 +96,28 @@ export interface CustomerTag {
   description: string | null;
 }
 
+export interface CustomerSegment {
+  id: string;
+  name: string;
+  description: string | null;
+  mode: 'STATIC' | 'DYNAMIC';
+  status: 'ACTIVE' | 'PAUSED' | 'ARCHIVED';
+  memberCount: number;
+}
+
 const createTagSchema = z.object({
   name: z.string().trim().min(1).max(100),
   description: z.string().trim().max(500).optional(),
 });
 
 export type CreateTagInput = z.input<typeof createTagSchema>;
+
+const createStaticSegmentSchema = z.object({
+  name: z.string().trim().min(1).max(100),
+  description: z.string().trim().max(500).optional(),
+});
+
+export type CreateStaticSegmentInput = z.input<typeof createStaticSegmentSchema>;
 
 const mergeCustomerSchema = z.object({
   sourceCustomerId: z.string().uuid(),
@@ -267,6 +283,116 @@ export class CustomerService {
             transaction,
           );
           return { tagId };
+        },
+      },
+      { context, input: validated, idempotencyKey, ...(approvalId ? { approvalId } : {}) },
+    );
+  }
+
+  public async listSegments(context: TenantRequestContext): Promise<readonly CustomerSegment[]> {
+    return withTenantTransaction(this.database, context, async (transaction) => {
+      const result = await sql<{
+        id: string;
+        name: string;
+        description: string | null;
+        mode: CustomerSegment['mode'];
+        status: CustomerSegment['status'];
+        member_count: number;
+      }>`select s.id, s.name, s.description, s.mode, s.status, count(sm.customer_id)::integer as member_count
+        from crm.segments s
+        left join crm.segment_memberships sm on sm.tenant_id = s.tenant_id and sm.segment_id = s.id
+        group by s.id, s.name, s.description, s.mode, s.status
+        order by lower(s.name), s.id`.execute(transaction);
+      return result.rows.map((segment) => ({
+        id: segment.id,
+        name: segment.name,
+        description: segment.description,
+        mode: segment.mode,
+        status: segment.status,
+        memberCount: segment.member_count,
+      }));
+    });
+  }
+
+  public async createStaticSegment(
+    context: TenantRequestContext,
+    idempotencyKey: string,
+    input: CreateStaticSegmentInput,
+    approvalId?: string,
+  ): Promise<CommandResult<{ segmentId: string }>> {
+    const validated = createStaticSegmentSchema.parse(input);
+    const segmentId = randomUUID();
+    return this.commands.execute(
+      {
+        action: 'crm.segment.create',
+        permission: 'crm.segments.manage',
+        risk: 'MEDIUM',
+        resource: () => ({ type: 'crm.segment', id: segmentId }),
+        event: {
+          type: 'crm.segment.created',
+          data: (_commandInput, result) => ({ segmentId: result.segmentId, mode: 'STATIC' }),
+          dedupeKey: () => `crm.segment.created:${segmentId}`,
+        },
+        audit: {
+          afterState: () => ({ segmentId, name: validated.name, mode: 'STATIC' }),
+        },
+        execute: async (transaction) => {
+          await sql`insert into crm.segments (id, tenant_id, name, description, mode)
+            values (${segmentId}::uuid, ${context.tenantId}::uuid, ${validated.name},
+              ${validated.description ?? null}, 'STATIC')`.execute(transaction);
+          return { segmentId };
+        },
+      },
+      { context, input: validated, idempotencyKey, ...(approvalId ? { approvalId } : {}) },
+    );
+  }
+
+  public async assignSegmentMember(
+    context: TenantRequestContext,
+    idempotencyKey: string,
+    input: { segmentId: string; customerId: string },
+    approvalId?: string,
+  ): Promise<CommandResult<{ segmentId: string; customerId: string; assigned: boolean }>> {
+    const validated = z
+      .object({ segmentId: z.string().uuid(), customerId: z.string().uuid() })
+      .parse(input);
+    return this.commands.execute(
+      {
+        action: 'crm.segment.member.assign',
+        permission: 'crm.segments.manage',
+        risk: 'MEDIUM',
+        resource: (commandInput) => ({ type: 'crm.segment', id: commandInput.segmentId }),
+        event: {
+          type: 'crm.segment.member.assigned',
+          data: (_commandInput, result) => result,
+        },
+        audit: {
+          metadata: (_commandInput, result) => result,
+        },
+        execute: async (transaction) => {
+          const [segment, customer] = await Promise.all([
+            sql<{ id: string }>`select id from crm.segments
+              where id = ${validated.segmentId}::uuid and mode = 'STATIC' and status = 'ACTIVE'`.execute(
+              transaction,
+            ),
+            sql<{ id: string }>`select id from crm.customers
+              where id = ${validated.customerId}::uuid and status = 'ACTIVE'`.execute(transaction),
+          ]);
+          if (!segment.rows[0]) throw new Error('Active static segment not found');
+          if (!customer.rows[0]) throw new Error('Active customer not found');
+          const assigned = await sql<{ tenant_id: string }>`insert into crm.segment_memberships (
+            tenant_id, segment_id, customer_id, source
+          ) values (
+            ${context.tenantId}::uuid, ${validated.segmentId}::uuid,
+            ${validated.customerId}::uuid, 'MANUAL'
+          ) on conflict (tenant_id, segment_id, customer_id) do nothing returning tenant_id`.execute(
+            transaction,
+          );
+          return {
+            segmentId: validated.segmentId,
+            customerId: validated.customerId,
+            assigned: assigned.rows.length === 1,
+          };
         },
       },
       { context, input: validated, idempotencyKey, ...(approvalId ? { approvalId } : {}) },

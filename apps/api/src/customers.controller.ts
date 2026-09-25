@@ -20,6 +20,7 @@ import {
   CustomerMergeError,
   CustomerService,
   type CreateCustomerInput,
+  type CreateStaticSegmentInput,
   type CreateTagInput,
   type MergeCustomerInput,
 } from '@platform/crm';
@@ -77,6 +78,60 @@ export class CustomersController {
     const context = await this.context(authorization, tenantId, correlationId);
     return this.executeTagCommand(() =>
       this.customers.createTag(context, idempotencyKey ?? '', parseTagBody(body), approvalId),
+    );
+  }
+
+  @Get('/segments')
+  public async listSegments(
+    @Headers('authorization') authorization: string | undefined,
+    @Headers('x-tenant-id') tenantId: string | undefined,
+    @Headers('x-correlation-id') correlationId: string | undefined,
+  ) {
+    const context = await this.context(authorization, tenantId, correlationId);
+    this.assertSegmentReadPermission(context.permissions);
+    return this.customers.listSegments(context);
+  }
+
+  @Post('/segments')
+  @HttpCode(HttpStatus.CREATED)
+  public async createStaticSegment(
+    @Body() body: unknown,
+    @Headers('authorization') authorization: string | undefined,
+    @Headers('x-tenant-id') tenantId: string | undefined,
+    @Headers('x-correlation-id') correlationId: string | undefined,
+    @Headers('idempotency-key') idempotencyKey: string | undefined,
+    @Headers('x-approval-id') approvalId: string | undefined,
+  ) {
+    if (!Buffer.isBuffer(body)) throw new BadRequestException('Segment body must be JSON');
+    const context = await this.context(authorization, tenantId, correlationId);
+    return this.executeTagCommand(() =>
+      this.customers.createStaticSegment(
+        context,
+        idempotencyKey ?? '',
+        parseStaticSegmentBody(body),
+        approvalId,
+      ),
+    );
+  }
+
+  @Post('/segments/:segmentId/customers/:customerId')
+  public async assignSegmentMember(
+    @Param('segmentId') segmentId: string,
+    @Param('customerId') customerId: string,
+    @Headers('authorization') authorization: string | undefined,
+    @Headers('x-tenant-id') tenantId: string | undefined,
+    @Headers('x-correlation-id') correlationId: string | undefined,
+    @Headers('idempotency-key') idempotencyKey: string | undefined,
+    @Headers('x-approval-id') approvalId: string | undefined,
+  ) {
+    const context = await this.context(authorization, tenantId, correlationId);
+    return this.executeTagCommand(() =>
+      this.customers.assignSegmentMember(
+        context,
+        idempotencyKey ?? '',
+        { segmentId, customerId },
+        approvalId,
+      ),
     );
   }
 
@@ -179,6 +234,12 @@ export class CustomersController {
     }
   }
 
+  private assertSegmentReadPermission(permissions: readonly string[]): void {
+    if (!permissions.includes('crm.segments.read')) {
+      throw new ForbiddenException('Customer segment read permission is required');
+    }
+  }
+
   private async executeTagCommand<T>(operation: () => Promise<T>): Promise<T> {
     try {
       return await operation();
@@ -210,6 +271,14 @@ function parseTagBody(body: Buffer): CreateTagInput {
     throw new Error('Tag body must be a JSON object');
   }
   return parsed as CreateTagInput;
+}
+
+function parseStaticSegmentBody(body: Buffer): CreateStaticSegmentInput {
+  const parsed: unknown = JSON.parse(body.toString('utf8'));
+  if (parsed === null || Array.isArray(parsed) || typeof parsed !== 'object') {
+    throw new Error('Segment body must be a JSON object');
+  }
+  return parsed as CreateStaticSegmentInput;
 }
 
 function parseMergeBody(body: Buffer, sourceCustomerId: string): MergeCustomerInput {

@@ -39,6 +39,9 @@ export default async function CustomersPage({ searchParams }: CustomerPageProps)
         <a className="action" href="/customers/new">
           Create customer
         </a>
+        <a className="action" href="/segments">
+          Segments
+        </a>
       </header>
 
       <form className="customer-search" action="/customers" method="get" role="search">

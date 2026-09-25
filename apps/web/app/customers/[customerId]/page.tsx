@@ -1,6 +1,7 @@
 import type { Metadata } from 'next';
 import { cookies } from 'next/headers';
 import { notFound } from 'next/navigation';
+import { SegmentAssignmentForm } from './segment-assignment-form';
 
 export const metadata: Metadata = { title: 'Customer profile | Platform' };
 
@@ -41,13 +42,20 @@ interface CustomerDetail {
   }[];
 }
 
+interface CustomerSegment {
+  id: string;
+  name: string;
+  mode: 'STATIC' | 'DYNAMIC';
+  status: 'ACTIVE' | 'PAUSED' | 'ARCHIVED';
+}
+
 export default async function CustomerDetailPage({
   params,
 }: {
   params: Promise<{ customerId: string }>;
 }) {
   const { customerId } = await params;
-  const result = await loadCustomer(customerId);
+  const [result, segmentResult] = await Promise.all([loadCustomer(customerId), loadSegments()]);
   if (result.kind === 'not_found') notFound();
   if (result.kind !== 'success') {
     return (
@@ -114,6 +122,22 @@ export default async function CustomerDetailPage({
               </dd>
             </div>
           </dl>
+        </section>
+        <section className="customer-card" aria-labelledby="segments-heading">
+          <h2 id="segments-heading">Static segments</h2>
+          {segmentResult.kind === 'success' ? (
+            <SegmentAssignmentForm
+              customerId={customer.id}
+              segments={segmentResult.data.filter(
+                (segment) => segment.mode === 'STATIC' && segment.status === 'ACTIVE',
+              )}
+            />
+          ) : (
+            <p className="muted">Static segments are currently unavailable.</p>
+          )}
+          <p className="muted">
+            Dynamic segment rules are under development and cannot be assigned here.
+          </p>
         </section>
         <section className="customer-card customer-card-wide" aria-labelledby="identity-heading">
           <h2 id="identity-heading">Canonical identities</h2>
@@ -198,6 +222,25 @@ async function loadCustomer(customerId: string): Promise<CustomerLoadResult> {
       title: 'Customer could not be loaded',
       detail: 'The customer API is currently unavailable.',
     };
+  }
+}
+
+async function loadSegments(): Promise<
+  { kind: 'success'; data: readonly CustomerSegment[] } | { kind: 'error' }
+> {
+  const cookieStore = await cookies();
+  const token = cookieStore.get('platform_access_token')?.value;
+  const tenantId = cookieStore.get('platform_tenant_id')?.value;
+  const baseUrl = process.env.API_INTERNAL_URL;
+  if (!token || !tenantId || !baseUrl) return { kind: 'error' };
+  try {
+    const response = await fetch(new URL('/v1/customers/segments', baseUrl), {
+      headers: { authorization: `Bearer ${token}`, 'x-tenant-id': tenantId },
+    });
+    if (!response.ok) return { kind: 'error' };
+    return { kind: 'success', data: (await response.json()) as CustomerSegment[] };
+  } catch {
+    return { kind: 'error' };
   }
 }
 

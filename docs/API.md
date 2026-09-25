@@ -2,21 +2,24 @@
 
 All non-public endpoints require a valid Keycloak access token, an active application membership, an organization context, required permission, OPA decision, and PostgreSQL RLS transaction context. Protected writes fail closed when OPA is unavailable.
 
-| Endpoint                                        | Status      | Purpose                                                                                                    |
-| ----------------------------------------------- | ----------- | ---------------------------------------------------------------------------------------------------------- |
-| `GET /health`                                   | Implemented | Liveness response; excludes dependencies and tenant data                                                   |
-| `GET /v1/session`                               | Implemented | JWT-verified active membership and effective-permission context                                            |
-| `GET /v1/customers`                             | Implemented | Authenticated, RLS-scoped Customer 360 search and offset pagination                                        |
-| `GET /v1/customers/:customerId`                 | Implemented | Authenticated profile detail with RLS-scoped contact-based duplicate candidates                            |
-| `POST /v1/customers`                            | Implemented | Idempotent, audited and event-emitting Customer 360 creation                                               |
-| `GET /v1/customers/tags`                        | Implemented | Authenticated, RLS-scoped CRM tag catalog                                                                  |
-| `POST /v1/customers/tags`                       | Implemented | Idempotent, OPA-authorized tag creation                                                                    |
-| `POST /v1/customers/:customerId/tags/:tagId`    | Implemented | Idempotent, OPA-authorized assignment of a tenant tag to a customer                                        |
-| `POST /v1/customers/:customerId/merge`          | Implemented | HIGH-risk, approval-bound, idempotent merge of source into an active canonical target                      |
-| `GET /v1/approvals`                             | Implemented | Tenant-scoped approval inbox                                                                               |
-| `POST /v1/approvals/:id/decision`               | Implemented | Independent approve/reject decision                                                                        |
-| `POST /v1/approvals/:id/execute`                | Implemented | Executes the exact approved CRM merge snapshot with an idempotency key                                     |
-| `POST /v1/webhooks/:connectorKey/:connectionId` | Implemented | Bounded raw JSON, connector signature verification, tenant delivery dedupe, and asynchronous event handoff |
+| Endpoint                                                       | Status      | Purpose                                                                                                    |
+| -------------------------------------------------------------- | ----------- | ---------------------------------------------------------------------------------------------------------- |
+| `GET /health`                                                  | Implemented | Liveness response; excludes dependencies and tenant data                                                   |
+| `GET /v1/session`                                              | Implemented | JWT-verified active membership and effective-permission context                                            |
+| `GET /v1/customers`                                            | Implemented | Authenticated, RLS-scoped Customer 360 search and offset pagination                                        |
+| `GET /v1/customers/:customerId`                                | Implemented | Authenticated profile detail with RLS-scoped contact-based duplicate candidates                            |
+| `POST /v1/customers`                                           | Implemented | Idempotent, audited and event-emitting Customer 360 creation                                               |
+| `GET /v1/customers/tags`                                       | Implemented | Authenticated, RLS-scoped CRM tag catalog                                                                  |
+| `POST /v1/customers/tags`                                      | Implemented | Idempotent, OPA-authorized tag creation                                                                    |
+| `POST /v1/customers/:customerId/tags/:tagId`                   | Implemented | Idempotent, OPA-authorized assignment of a tenant tag to a customer                                        |
+| `GET /v1/customers/segments`                                   | Implemented | Authenticated, RLS-scoped static and dynamic segment catalog                                               |
+| `POST /v1/customers/segments`                                  | Implemented | Idempotent, OPA-authorized creation of a static customer segment                                           |
+| `POST /v1/customers/segments/:segmentId/customers/:customerId` | Implemented | Idempotent, OPA-authorized membership assignment to an active static segment                               |
+| `POST /v1/customers/:customerId/merge`                         | Implemented | HIGH-risk, approval-bound, idempotent merge of source into an active canonical target                      |
+| `GET /v1/approvals`                                            | Implemented | Tenant-scoped approval inbox                                                                               |
+| `POST /v1/approvals/:id/decision`                              | Implemented | Independent approve/reject decision                                                                        |
+| `POST /v1/approvals/:id/execute`                               | Implemented | Executes the exact approved CRM merge snapshot with an idempotency key                                     |
+| `POST /v1/webhooks/:connectorKey/:connectionId`                | Implemented | Bounded raw JSON, connector signature verification, tenant delivery dedupe, and asynchronous event handoff |
 
 Responses for operational failures include a correlation ID. Secret values never appear in API responses or logs.
 

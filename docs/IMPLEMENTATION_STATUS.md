@@ -1,7 +1,7 @@
 # Implementation Status
 
 **Last updated:** 2026-09-25
-**Branch/workstream:** `main` / Customer 360 merge workflow
+**Branch/workstream:** `main` / Customer 360 workflow completion
 **Release status:** IN PROGRESS — this is not yet a release candidate.
 
 ## Baseline and controls
@@ -18,7 +18,7 @@
 | Module                            | Database                            | API / worker | UI          | Tests       | Documentation | State       |
 | --------------------------------- | ----------------------------------- | ------------ | ----------- | ----------- | ------------- | ----------- |
 | Repository tooling / CI           | N/A                                 | COMPLETE     | N/A         | TESTING     | IN PROGRESS   | TESTING     |
-| Identity, auth, RBAC, approvals   | Existing `0001`–`0002`              | IN PROGRESS  | NOT STARTED | TESTING     | IN PROGRESS   | IN PROGRESS |
+| Identity, auth, RBAC, approvals   | Existing `0001`–`0002`              | IN PROGRESS  | IN PROGRESS | TESTING     | IN PROGRESS   | IN PROGRESS |
 | CRM / Customer 360                | Existing `0003`, permissions `0007` | IN PROGRESS  | IN PROGRESS | IN PROGRESS | IN PROGRESS   | IN PROGRESS |
 | Integrations / connector SDK      | IN PROGRESS (`0004`–`0006`)         | IN PROGRESS  | IN PROGRESS | IN PROGRESS | IN PROGRESS   | IN PROGRESS |
 | Messaging / tickets               | NOT STARTED                         | NOT STARTED  | NOT STARTED | NOT STARTED | NOT STARTED   | NOT STARTED |
@@ -39,4 +39,4 @@ No overall completion percentage is recorded: the required release gate is a bin
 
 - Docker and Python 3.11+ are absent locally, so PostgreSQL/RLS, NATS, Temporal, and FastAPI tests are validated by the passing GitHub Actions disposable-stack workflow.
 - Production credentials, domains, and provider applications are intentionally unavailable and are not required for repository implementation.
-- Customer merge command reconciliation is implemented, but reusable approval-request decision APIs and approval-aware merge UI remain in progress; CRM is not complete.
+- Customer merge reconciliation, request/decision APIs, the approval inbox, and approved-merge execution UI are implemented. Static segments can be created and assigned through tenant-scoped APIs and UI; dynamic-rule evaluation, import/export, timelines, and the remaining CRM acceptance tests are still incomplete.
