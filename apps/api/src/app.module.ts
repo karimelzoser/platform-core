@@ -3,6 +3,8 @@ import { CommandAuthorizer, OpaClient } from '@platform/authorization';
 import { CommandExecutor } from '@platform/command-execution';
 import { ConnectorRegistry } from '@platform/connectors';
 import { CustomerService } from '@platform/crm';
+import { ApprovalService } from './approval.service.js';
+import { ApprovalsController } from './approvals.controller.js';
 import { ApiDatabaseService } from './api-database.service.js';
 import { AuthenticatedContextService } from './authenticated-context.service.js';
 import { loadApiConfig } from './config.js';
@@ -20,10 +22,17 @@ class HealthController {
 }
 
 @Module({
-  controllers: [HealthController, SessionController, WebhookController, CustomersController],
+  controllers: [
+    HealthController,
+    SessionController,
+    WebhookController,
+    CustomersController,
+    ApprovalsController,
+  ],
   providers: [
     ApiDatabaseService,
     AuthenticatedContextService,
+    ApprovalService,
     WebhookIngressService,
     { provide: ConnectorRegistry, useValue: new ConnectorRegistry() },
     {

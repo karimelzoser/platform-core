@@ -17,6 +17,7 @@
     "@platform/authorization": "workspace:*",
     "@platform/command-execution": "workspace:*",
     "@platform/connectors": "workspace:*",
+    "@platform/contracts": "workspace:*",
     "@platform/crm": "workspace:*",
     "@platform/database": "workspace:*",
     "fastify": "5.1.0",
