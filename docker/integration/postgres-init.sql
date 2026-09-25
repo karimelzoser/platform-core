@@ -10,6 +10,8 @@ CREATE DATABASE temporal OWNER temporal;
 CREATE DATABASE temporal_visibility OWNER temporal;
 CREATE DATABASE keycloak OWNER keycloak;
 
+GRANT CREATE ON DATABASE platform TO platform_migrator;
+
 CREATE SCHEMA platform AUTHORIZATION platform_migrator;
 CREATE SCHEMA identity AUTHORIZATION platform_migrator;
 CREATE SCHEMA crm AUTHORIZATION platform_migrator;
