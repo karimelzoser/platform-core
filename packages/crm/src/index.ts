@@ -85,6 +85,19 @@ export interface CustomerIdentity {
   verified: boolean;
 }
 
+export interface CustomerTag {
+  id: string;
+  name: string;
+  description: string | null;
+}
+
+const createTagSchema = z.object({
+  name: z.string().trim().min(1).max(100),
+  description: z.string().trim().max(500).optional(),
+});
+
+export type CreateTagInput = z.input<typeof createTagSchema>;
+
 export class CustomerIdentityConflictError extends Error {
   public constructor(
     public readonly channel: 'EMAIL' | 'PHONE' | 'WHATSAPP',
@@ -185,6 +198,100 @@ export class CustomerService {
         nextOffset: hasMore ? offset + limit : undefined,
       };
     });
+  }
+
+  public async listTags(context: TenantRequestContext): Promise<readonly CustomerTag[]> {
+    return withTenantTransaction(this.database, context, async (transaction) => {
+      const result = await sql<{ id: string; name: string; description: string | null }>`
+        select id, name, description from crm.tags order by lower(name), id
+      `.execute(transaction);
+      return result.rows;
+    });
+  }
+
+  public async createTag(
+    context: TenantRequestContext,
+    idempotencyKey: string,
+    input: CreateTagInput,
+    approvalId?: string,
+  ): Promise<CommandResult<{ tagId: string }>> {
+    const validated = createTagSchema.parse(input);
+    const tagId = randomUUID();
+    return this.commands.execute(
+      {
+        action: 'crm.tag.create',
+        permission: 'crm.tags.manage',
+        risk: 'MEDIUM',
+        resource: () => ({ type: 'crm.tag', id: tagId }),
+        event: {
+          type: 'crm.tag.created',
+          data: (_commandInput, result) => ({ tagId: result.tagId }),
+          dedupeKey: () => `crm.tag.created:${tagId}`,
+        },
+        audit: {
+          afterState: () => ({ tagId, name: validated.name }),
+        },
+        execute: async (transaction) => {
+          await sql`insert into crm.tags (id, tenant_id, name, description)
+            values (${tagId}::uuid, ${context.tenantId}::uuid, ${validated.name}, ${validated.description ?? null})`.execute(
+            transaction,
+          );
+          return { tagId };
+        },
+      },
+      { context, input: validated, idempotencyKey, ...(approvalId ? { approvalId } : {}) },
+    );
+  }
+
+  public async assignTag(
+    context: TenantRequestContext,
+    idempotencyKey: string,
+    input: { customerId: string; tagId: string },
+    approvalId?: string,
+  ): Promise<CommandResult<{ customerId: string; tagId: string; assigned: boolean }>> {
+    const validated = z
+      .object({ customerId: z.string().uuid(), tagId: z.string().uuid() })
+      .parse(input);
+    return this.commands.execute(
+      {
+        action: 'crm.customer.tag.assign',
+        permission: 'crm.tags.manage',
+        risk: 'MEDIUM',
+        resource: (commandInput) => ({ type: 'crm.customer', id: commandInput.customerId }),
+        event: {
+          type: 'crm.customer.tag.assigned',
+          data: (_commandInput, result) => result,
+        },
+        audit: {
+          metadata: (commandInput, result) => ({ ...commandInput, assigned: result.assigned }),
+        },
+        execute: async (transaction) => {
+          const [customer, tag] = await Promise.all([
+            sql<{ id: string }>`select id from crm.customers
+              where id = ${validated.customerId}::uuid and status <> 'MERGED'`.execute(transaction),
+            sql<{
+              id: string;
+            }>`select id from crm.tags where id = ${validated.tagId}::uuid`.execute(transaction),
+          ]);
+          if (!customer.rows[0]) throw new Error('Customer not found');
+          if (!tag.rows[0]) throw new Error('Tag not found');
+          const assigned = await sql<{ tenant_id: string }>`insert into crm.customer_tags (
+            tenant_id, customer_id, tag_id, assigned_by
+          ) values (
+            ${context.tenantId}::uuid, ${validated.customerId}::uuid, ${validated.tagId}::uuid,
+            ${context.actorId}::uuid
+          ) on conflict (tenant_id, customer_id, tag_id) do nothing returning tenant_id`.execute(
+            transaction,
+          );
+          return {
+            customerId: validated.customerId,
+            tagId: validated.tagId,
+            assigned: assigned.rows.length === 1,
+          };
+        },
+      },
+      { context, input: validated, idempotencyKey, ...(approvalId ? { approvalId } : {}) },
+    );
   }
 
   public async detail(

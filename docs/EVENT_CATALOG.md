@@ -8,6 +8,8 @@ The worker claims at most 100 pending events through a narrowly scoped database 
 | -------------------------- | ------------------------------ | ------------------- | ------------------------------------------------------- |
 | `platform.identity.v1`     | `identity.membership.changed`  | Identity module     | Recompute effective permission projections idempotently |
 | `platform.crm.v1`          | `crm.customer.created`         | Customer 360        | Refresh search, segments, and timeline projections      |
+| `platform.crm.v1`          | `crm.tag.created`              | Customer 360        | Refresh tenant tag catalog                              |
+| `platform.crm.v1`          | `crm.customer.tag.assigned`    | Customer 360        | Refresh customer profile and segment projections        |
 | `platform.crm.v1`          | `crm.customer.changed`         | Customer 360        | Refresh search, segments, and timeline projections      |
 | `platform.integrations.v1` | `integration.webhook.received` | Webhook ingress     | Normalize asynchronously from persisted delivery        |
 | `platform.integrations.v1` | `integration.sync.requested`   | Integration command | Start deterministic Temporal sync workflow              |
