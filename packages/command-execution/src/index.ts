@@ -131,6 +131,20 @@ export class CommandExecutor {
       permissions: request.context.permissions,
       authenticated: true,
     };
+    const requestHash = requestFingerprint(request.input);
+    const initialAuthorization = await this.authorizer.authorize(subject, action);
+    if (initialAuthorization.kind === 'DENIED') {
+      throw new CommandExecutionError('authorization_denied', initialAuthorization.reason);
+    }
+    if (initialAuthorization.kind === 'APPROVAL_REQUIRED') {
+      const replay = await this.findCompletedIdempotency(
+        request.context,
+        definition.action,
+        idempotencyKey,
+        requestHash,
+      );
+      if (replay) return replay as CommandResult<Result>;
+    }
     const approval = request.approvalId
       ? await this.findApproval(request.context, request.approvalId)
       : undefined;
@@ -142,7 +156,6 @@ export class CommandExecutor {
       throw new CommandExecutionError('authorization_denied', authorization.reason);
     }
 
-    const requestHash = requestFingerprint(request.input);
     return withTenantTransaction(this.database, request.context, async (transaction) => {
       const reservation = await this.reserveIdempotency(
         transaction,
@@ -210,6 +223,37 @@ export class CommandExecutor {
         status: row.status,
         expiresAt: row.expires_at,
       };
+    });
+  }
+
+  /**
+   * A consumed HIGH-risk approval must not break a safe retry. Only a subject
+   * that has already passed permission and current OPA evaluation reaches this
+   * lookup; a changed request fingerprint still fails closed.
+   */
+  private async findCompletedIdempotency(
+    context: TenantRequestContext,
+    scope: string,
+    key: string,
+    requestHash: string,
+  ): Promise<CommandResult<JsonRecord> | undefined> {
+    return withTenantTransaction(this.database, context, async (transaction) => {
+      const response =
+        await sql<IdempotencyRow>`select request_hash, state, response_status, response_body
+        from platform.idempotency_keys
+        where tenant_id = ${context.tenantId}::uuid and scope = ${scope} and idempotency_key = ${key}`.execute(
+          transaction,
+        );
+      const row = response.rows[0];
+      if (!row) return undefined;
+      if (row.request_hash !== requestHash) {
+        throw new CommandExecutionError(
+          'idempotency_conflict',
+          'Idempotency key was used with another request',
+        );
+      }
+      if (row.state !== 'COMPLETED' || !row.response_body || !row.response_status) return undefined;
+      return { result: row.response_body, status: row.response_status, replayed: true };
     });
   }
 
