@@ -12,6 +12,7 @@ Suggested variables:
 - ADMIN_PUBLIC_URL
 - API_PUBLIC_URL
 - LOG_LEVEL
+- API*INTERNAL_URL (server-only URL used by the Next.js workspace to call the API; never expose it as `NEXT_PUBLIC*\*`)
 
 ## PostgreSQL
 

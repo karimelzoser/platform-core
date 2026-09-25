@@ -1,7 +1,7 @@
 # Implementation Status
 
 **Last updated:** 2026-09-25
-**Branch/workstream:** `main` / reusable protected-command foundation
+**Branch/workstream:** `main` / Customer 360 live workspace
 **Release status:** IN PROGRESS — this is not yet a release candidate.
 
 ## Baseline and controls
@@ -19,7 +19,7 @@
 | --------------------------------- | ----------------------------------- | ------------ | ----------- | ----------- | ------------- | ----------- |
 | Repository tooling / CI           | N/A                                 | COMPLETE     | N/A         | TESTING     | IN PROGRESS   | TESTING     |
 | Identity, auth, RBAC, approvals   | Existing `0001`–`0002`              | IN PROGRESS  | NOT STARTED | TESTING     | IN PROGRESS   | IN PROGRESS |
-| CRM / Customer 360                | Existing `0003`, permissions `0007` | IN PROGRESS  | NOT STARTED | IN PROGRESS | IN PROGRESS   | IN PROGRESS |
+| CRM / Customer 360                | Existing `0003`, permissions `0007` | IN PROGRESS  | IN PROGRESS | IN PROGRESS | IN PROGRESS   | IN PROGRESS |
 | Integrations / connector SDK      | IN PROGRESS (`0004`–`0006`)         | IN PROGRESS  | IN PROGRESS | IN PROGRESS | IN PROGRESS   | IN PROGRESS |
 | Messaging / tickets               | NOT STARTED                         | NOT STARTED  | NOT STARTED | NOT STARTED | NOT STARTED   | NOT STARTED |
 | Commerce / order operations       | NOT STARTED                         | NOT STARTED  | NOT STARTED | NOT STARTED | NOT STARTED   | NOT STARTED |
