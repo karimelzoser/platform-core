@@ -102,6 +102,24 @@ export class ApprovalService {
     });
   }
 
+  public async executableMerge(context: TenantRequestContext, approvalId: string) {
+    this.require(context, 'crm.customers.merge');
+    return withTenantTransaction(this.database.database, context, async (transaction) => {
+      const result = await sql<{
+        request_snapshot: unknown;
+        status: string;
+      }>`select request_snapshot, status
+        from policy.approval_requests where id = ${approvalId}::uuid and action = 'crm.customer.merge'`.execute(
+        transaction,
+      );
+      const approval = result.rows[0];
+      if (!approval || approval.status !== 'APPROVED')
+        throw new ApprovalError('Merge approval is not executable');
+      const snapshot = approval.request_snapshot as { input?: unknown };
+      return mergeRequestSchema.parse(snapshot.input);
+    });
+  }
+
   private require(context: TenantRequestContext, permission: string): void {
     if (!context.permissions.includes(permission)) throw new ApprovalError('Permission denied');
   }

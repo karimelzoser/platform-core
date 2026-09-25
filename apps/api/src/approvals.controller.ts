@@ -10,12 +10,14 @@ import {
 } from '@nestjs/common';
 import { ApprovalError, ApprovalService } from './approval.service.js';
 import { AuthenticatedContextService } from './authenticated-context.service.js';
+import { CustomerService } from '@platform/crm';
 
 @Controller('v1/approvals')
 export class ApprovalsController {
   public constructor(
     private readonly authentication: AuthenticatedContextService,
     private readonly approvals: ApprovalService,
+    private readonly customers: CustomerService,
   ) {}
 
   @Get()
@@ -27,6 +29,21 @@ export class ApprovalsController {
     return this.invoke(async () =>
       this.approvals.list(await this.context(authorization, tenantId, correlationId)),
     );
+  }
+
+  @Post(':approvalId/execute')
+  public async execute(
+    @Param('approvalId') approvalId: string,
+    @Headers('authorization') authorization: string | undefined,
+    @Headers('x-tenant-id') tenantId: string | undefined,
+    @Headers('x-correlation-id') correlationId: string | undefined,
+    @Headers('idempotency-key') idempotencyKey: string | undefined,
+  ) {
+    return this.invoke(async () => {
+      const context = await this.context(authorization, tenantId, correlationId);
+      const merge = await this.approvals.executableMerge(context, approvalId);
+      return this.customers.merge(context, idempotencyKey ?? '', merge, approvalId);
+    });
   }
 
   @Post(':approvalId/decision')

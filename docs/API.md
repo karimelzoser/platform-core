@@ -13,8 +13,10 @@ All non-public endpoints require a valid Keycloak access token, an active applic
 | `POST /v1/customers/tags`                       | Implemented | Idempotent, OPA-authorized tag creation                                                                    |
 | `POST /v1/customers/:customerId/tags/:tagId`    | Implemented | Idempotent, OPA-authorized assignment of a tenant tag to a customer                                        |
 | `POST /v1/customers/:customerId/merge`          | Implemented | HIGH-risk, approval-bound, idempotent merge of source into an active canonical target                      |
+| `GET /v1/approvals`                             | Implemented | Tenant-scoped approval inbox                                                                               |
+| `POST /v1/approvals/:id/decision`               | Implemented | Independent approve/reject decision                                                                        |
+| `POST /v1/approvals/:id/execute`                | Implemented | Executes the exact approved CRM merge snapshot with an idempotency key                                     |
 | `POST /v1/webhooks/:connectorKey/:connectionId` | Implemented | Bounded raw JSON, connector signature verification, tenant delivery dedupe, and asynchronous event handoff |
-| `POST /v1/approvals/:id/decision`               | Planned     | Digest-bound approval decision                                                                             |
 
 Responses for operational failures include a correlation ID. Secret values never appear in API responses or logs.
 
