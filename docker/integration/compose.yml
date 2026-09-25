@@ -1,0 +1,83 @@
+name: platform-integration
+
+services:
+  postgres:
+    image: pgvector/pgvector:0.8.0-pg16
+    environment:
+      POSTGRES_DB: platform
+      POSTGRES_USER: platform_admin
+      POSTGRES_PASSWORD: platform-test-admin-password
+    volumes:
+      - ./postgres-init.sql:/docker-entrypoint-initdb.d/001-init.sql:ro
+    healthcheck:
+      test: ['CMD-SHELL', 'pg_isready -U platform_admin -d platform']
+      interval: 3s
+      timeout: 3s
+      retries: 20
+    tmpfs: [/var/lib/postgresql/data]
+
+  valkey:
+    image: valkey/valkey:8.0.1-alpine
+    command:
+      ['valkey-server', '--save', '', '--appendonly', 'no', '--maxmemory-policy', 'noeviction']
+    healthcheck:
+      test: ['CMD', 'valkey-cli', 'ping']
+      interval: 3s
+      timeout: 3s
+      retries: 20
+
+  nats:
+    image: nats:2.10.24-alpine
+    command: ['-js', '-sd', '/data', '-m', '8222']
+    healthcheck:
+      test: ['CMD', 'wget', '--spider', '-q', 'http://localhost:8222/healthz']
+      interval: 3s
+      timeout: 3s
+      retries: 20
+    tmpfs: [/data]
+
+  temporal:
+    image: temporalio/auto-setup:1.32.0
+    depends_on:
+      postgres: { condition: service_healthy }
+    environment:
+      DB: postgres12
+      DB_PORT: 5432
+      POSTGRES_SEEDS: postgres
+      POSTGRES_USER: temporal
+      POSTGRES_PWD: temporal-test-password
+      DYNAMIC_CONFIG_FILE_PATH: config/dynamicconfig/development-sql.yaml
+    volumes:
+      - ../../docs/production-reference/temporal-dynamicconfig.yaml:/etc/temporal/config/dynamicconfig/development-sql.yaml:ro
+
+  keycloak:
+    image: quay.io/keycloak/keycloak:26.7.4
+    command: ['start-dev', '--import-realm']
+    depends_on:
+      postgres: { condition: service_healthy }
+    environment:
+      KC_DB: postgres
+      KC_DB_URL_HOST: postgres
+      KC_DB_URL_DATABASE: keycloak
+      KC_DB_USERNAME: keycloak
+      KC_DB_PASSWORD: keycloak-test-password
+      KC_BOOTSTRAP_ADMIN_USERNAME: test-admin
+      KC_BOOTSTRAP_ADMIN_PASSWORD: test-admin-password
+      KC_HEALTH_ENABLED: 'true'
+    volumes:
+      - ./keycloak-realm.json:/opt/keycloak/data/import/platform-realm.json:ro
+    healthcheck:
+      test: ['CMD-SHELL', 'exec 3<>/dev/tcp/127.0.0.1/9000']
+      interval: 5s
+      timeout: 3s
+      retries: 30
+
+  opa:
+    image: openpolicyagent/opa:1.20.2-static
+    command: ['run', '--server', '--addr=0.0.0.0:8181', '/policies/authorization.rego']
+    volumes:
+      - ../../docs/production-reference/authorization.rego:/policies/authorization.rego:ro
+
+networks:
+  default:
+    name: platform_integration_isolated

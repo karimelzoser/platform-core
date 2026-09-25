@@ -1,0 +1,8 @@
+#!/usr/bin/env sh
+set -eu
+compose='docker compose -f docker/integration/compose.yml'
+
+$compose exec -T postgres psql -U platform_migrator -d platform -v ON_ERROR_STOP=1 -f - < tests/integration/fixtures.sql
+PGPASSWORD=platform-test-app-password $compose exec -T --env PGPASSWORD postgres psql -U platform_app -d platform -v ON_ERROR_STOP=1 -f - < tests/integration/rls.sql
+
+$compose exec -T postgres psql -U platform_migrator -d platform -Atqc "SELECT to_regclass('integrations.connections'), to_regclass('policy.approval_requests');" | grep -qx 'integrations.connections|policy.approval_requests'

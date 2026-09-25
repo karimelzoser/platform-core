@@ -1,0 +1,13 @@
+{
+  "realm": "platform",
+  "enabled": true,
+  "clients": [
+    {
+      "clientId": "platform-web",
+      "enabled": true,
+      "publicClient": true,
+      "directAccessGrantsEnabled": true,
+      "redirectUris": ["http://localhost:3000/*"]
+    }
+  ]
+}

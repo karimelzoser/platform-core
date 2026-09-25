@@ -11,7 +11,7 @@
 | Production migrations `0001`–`0003` | COMPLETE    | Root copies match the supplied `SHA256SUMS`; Git attributes prevent line-ending conversion and CI will byte-lock historical files. |
 | Secret safety                       | IN PROGRESS | Local credential file is ignored and excluded from Git; CI secret scanning is being added.                                         |
 | Architecture / ADRs                 | IN PROGRESS | Record foundation decisions before implementation changes.                                                                         |
-| Local integration environment       | NOT STARTED | Add disposable PostgreSQL, NATS, Temporal, Keycloak, and OPA test services.                                                        |
+| Local integration environment       | TESTING     | Isolated Compose stack and CI migration/RLS test path added; not executable on this Docker-less workstation.                       |
 
 ## Platform workstreams
 
