@@ -1,6 +1,8 @@
 #!/usr/bin/env sh
 set -eu
 compose='docker compose -f docker/integration/compose.yml -f docker/preview/compose.yml'
+corepack pnpm --filter @platform/api build
+corepack pnpm --filter @platform/worker build
 $compose up --detach --wait
 scripts/integration/migrate.sh
 scripts/preview/seed.sh
