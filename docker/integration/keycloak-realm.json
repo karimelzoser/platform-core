@@ -1,6 +1,15 @@
 {
   "realm": "platform",
   "enabled": true,
+  "users": [
+    {
+      "id": "33333333-3333-3333-3333-333333333333",
+      "username": "preview-owner",
+      "enabled": true,
+      "emailVerified": true,
+      "credentials": [{ "type": "password", "value": "preview-owner-password", "temporary": false }]
+    }
+  ],
   "clients": [
     {
       "clientId": "platform-web",

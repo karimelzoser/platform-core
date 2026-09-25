@@ -1,0 +1,15 @@
+{
+  "name": "platform-core preview",
+  "image": "mcr.microsoft.com/devcontainers/javascript-node:1-22-bookworm",
+  "features": { "ghcr.io/devcontainers/features/docker-in-docker:2": {} },
+  "postCreateCommand": "corepack enable && corepack pnpm install --frozen-lockfile && python -m pip install './apps/ai-gateway[dev]'",
+  "forwardPorts": [3000, 3001, 4000],
+  "portsAttributes": {
+    "3000": { "label": "Platform Web", "onAutoForward": "openBrowser", "visibility": "private" },
+    "3001": { "label": "Platform Admin", "onAutoForward": "silent", "visibility": "private" },
+    "4000": { "label": "Platform API", "onAutoForward": "silent", "visibility": "private" }
+  },
+  "customizations": {
+    "vscode": { "extensions": ["dbaeumer.vscode-eslint", "esbenp.prettier-vscode"] }
+  }
+}

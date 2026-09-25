@@ -14,6 +14,10 @@
     "test": "pnpm -r --if-present test",
     "format:check": "prettier --check .",
     "migration:verify": "tsx scripts/verify-migrations.ts",
+    "preview:up": "sh scripts/preview/up.sh",
+    "preview:down": "sh scripts/preview/down.sh",
+    "preview:reset": "sh scripts/preview/reset.sh",
+    "preview:health": "sh scripts/preview/health.sh",
     "prepare": "husky"
   },
   "devDependencies": {
