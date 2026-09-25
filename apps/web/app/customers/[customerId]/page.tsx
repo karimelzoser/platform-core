@@ -139,7 +139,10 @@ export default async function CustomerDetailPage({
                 <li key={candidate.id}>
                   <a href={`/customers/${candidate.id}`}>{candidateName(candidate)}</a>
                   <span>{candidate.companyName ?? 'Individual customer'}</span>
-                  <small>Shared {candidate.matchedChannels.join(', ')} contact point</small>
+                  <small>
+                    Shared {candidate.matchedChannels.join(', ')} contact point ·{' '}
+                    <a href={`/customers/${customer.id}/merge/${candidate.id}`}>Review merge</a>
+                  </small>
                 </li>
               ))}
             </ul>

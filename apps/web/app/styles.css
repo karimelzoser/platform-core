@@ -236,6 +236,15 @@ a {
   color: #aa2c2c;
   font-weight: 700;
 }
+.customer-form textarea {
+  min-height: 7rem;
+  resize: vertical;
+}
+.merge-success {
+  margin: 0;
+  color: #0e604b;
+  font-weight: 700;
+}
 .customer-search {
   margin: 2rem 0 1rem;
 }
