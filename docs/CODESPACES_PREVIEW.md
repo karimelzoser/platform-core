@@ -13,7 +13,8 @@ or provider accounts.
    corepack pnpm preview:health
    ```
 
-3. Open the automatically forwarded **Platform Web** port (3000). Admin is on
+3. Open the automatically forwarded **Platform Web** port (3000), then open
+   `/preview-login` and sign in. Admin is on
    port 3001 and API health is on port 4000. All are private forwarded ports.
    PostgreSQL, Valkey, NATS, Temporal, Keycloak, and OPA are bound only to the
    Codespace loopback and are not forwarded.
@@ -28,9 +29,9 @@ Keycloak imports one development-only user:
 
 It owns `Preview Tenant` and uses normal Keycloak JWT, membership, effective
 permission, OPA, and PostgreSQL RLS paths. There is no authentication bypass.
-The current Web authentication handoff is still under development; use the
-Keycloak direct-grant endpoint from the Codespace terminal to inspect a real
-token while that UI is completed:
+The development-only `/preview-login` page exchanges these credentials with
+Keycloak and writes secure HTTP-only session cookies for the selected tenant.
+You can also inspect a real token from the terminal:
 
 ```sh
 curl -s http://localhost:8080/realms/platform/protocol/openid-connect/token \
