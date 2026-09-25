@@ -14,10 +14,10 @@ jobs:
     runs-on: ubuntu-24.04
     steps:
       - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
-        with: { node-version: 24, cache: pnpm }
       - uses: pnpm/action-setup@v4
         with: { version: 9.15.5 }
+      - uses: actions/setup-node@v4
+        with: { node-version: 24, cache: pnpm }
       - run: pnpm install --frozen-lockfile
       - run: pnpm format:check
       - run: pnpm lint
@@ -45,7 +45,7 @@ jobs:
       - uses: actions/setup-python@v5
         with: { python-version: '3.12' }
       - run: python -m pip install --upgrade pip
-      - run: python -m pip install 'apps/ai-gateway[dev]'
+      - run: python -m pip install './apps/ai-gateway[dev]'
       - run: python -m ruff check apps/ai-gateway/app apps/ai-gateway/tests
       - run: PYTHONPATH=apps/ai-gateway pytest -q apps/ai-gateway/tests
   secret-scan:
