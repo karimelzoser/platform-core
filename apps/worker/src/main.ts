@@ -15,6 +15,7 @@ async function main(): Promise<void> {
   const nats = await connect({ servers: environment.NATS_URL, name: 'platform-worker' });
   const db = createDatabase(environment.DATABASE_URL);
   const publisher = new OutboxPublisher(db, nats, `${hostname()}-${String(process.pid)}`);
+  await publisher.ensureEventStream();
   console.log(
     JSON.stringify({ level: 'info', message: 'worker_started', natsServer: nats.getServer() }),
   );

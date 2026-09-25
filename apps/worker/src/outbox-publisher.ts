@@ -1,5 +1,5 @@
 import { sql, type PlatformDatabase } from '@platform/database';
-import { StringCodec, type NatsConnection } from 'nats';
+import { RetentionPolicy, StorageType, StringCodec, type NatsConnection } from 'nats';
 
 const codec = StringCodec();
 
@@ -15,6 +15,7 @@ interface ClaimedOutboxEvent {
   actor_id: string | null;
   resource_type: string;
   resource_id: string;
+  occurred_at: Date;
   data: Record<string, unknown>;
 }
 
@@ -24,6 +25,20 @@ export class OutboxPublisher {
     private readonly nats: NatsConnection,
     private readonly workerId: string,
   ) {}
+
+  public async ensureEventStream(): Promise<void> {
+    const manager = await this.nats.jetstreamManager();
+    try {
+      await manager.streams.info('PLATFORM_EVENTS');
+    } catch {
+      await manager.streams.add({
+        name: 'PLATFORM_EVENTS',
+        subjects: ['platform.>'],
+        retention: RetentionPolicy.Limits,
+        storage: StorageType.File,
+      });
+    }
+  }
 
   public async publishBatch(batchSize = 25): Promise<number> {
     const claimed = await sql<ClaimedOutboxEvent>`
@@ -38,7 +53,7 @@ export class OutboxPublisher {
           type: event.event_type,
           version: event.event_version,
           tenantId: event.tenant_id,
-          occurredAt: new Date().toISOString(),
+          occurredAt: event.occurred_at.toISOString(),
           source: event.source,
           correlationId: event.correlation_id ?? undefined,
           causationId: event.causation_id ?? undefined,
