@@ -144,7 +144,7 @@ export class CustomerService {
       },
       {
         context,
-        input: { ...validated, customerId },
+        input: validated,
         idempotencyKey,
         ...(approvalId ? { approvalId } : {}),
       },
