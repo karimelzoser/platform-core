@@ -19,12 +19,13 @@ const subject = {
 };
 const authorizer = new CommandAuthorizer(
   {
-    decide: async () => ({
-      allow: false,
-      requires_approval: true,
-      reason: 'approval_required',
-      policy_version: 'test',
-    }),
+    decide: () =>
+      Promise.resolve({
+        allow: false,
+        requires_approval: true,
+        reason: 'approval_required',
+        policy_version: 'test',
+      }),
   },
   () => new Date('2026-09-25T00:00:00.000Z'),
 );

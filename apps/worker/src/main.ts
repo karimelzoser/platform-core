@@ -18,15 +18,15 @@ async function main(): Promise<void> {
   console.log(
     JSON.stringify({ level: 'info', message: 'worker_started', natsServer: nats.getServer() }),
   );
-  let stopped = false;
+  const shutdown = new AbortController();
   const close = async (): Promise<void> => {
-    stopped = true;
+    shutdown.abort();
     await Promise.all([nats.drain(), destroyDatabase(db)]);
   };
   process.once('SIGTERM', () => void close());
   process.once('SIGINT', () => void close());
 
-  while (!stopped) {
+  while (!shutdown.signal.aborted) {
     const published = await publisher.publishBatch();
     if (published === 0) await new Promise<void>((resolve) => setTimeout(resolve, 250));
   }
