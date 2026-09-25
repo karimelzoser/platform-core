@@ -46,6 +46,7 @@ services:
       POSTGRES_SEEDS: postgres
       POSTGRES_USER: temporal
       POSTGRES_PWD: temporal-test-password
+      SKIP_DB_CREATE: 'true'
       DYNAMIC_CONFIG_FILE_PATH: config/dynamicconfig/development-sql.yaml
     volumes:
       - ../../docs/production-reference/temporal-dynamicconfig.yaml:/etc/temporal/config/dynamicconfig/development-sql.yaml:ro
