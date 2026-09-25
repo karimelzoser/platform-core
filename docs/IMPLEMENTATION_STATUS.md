@@ -15,21 +15,21 @@
 
 ## Platform workstreams
 
-| Module                            | Database                    | API / worker | UI          | Tests       | Documentation | State       |
-| --------------------------------- | --------------------------- | ------------ | ----------- | ----------- | ------------- | ----------- |
-| Repository tooling / CI           | N/A                         | COMPLETE     | N/A         | TESTING     | IN PROGRESS   | TESTING     |
-| Identity, auth, RBAC, approvals   | Existing `0001`–`0002`      | IN PROGRESS  | NOT STARTED | TESTING     | IN PROGRESS   | IN PROGRESS |
-| CRM / Customer 360                | Existing `0003`             | NOT STARTED  | NOT STARTED | NOT STARTED | NOT STARTED   | NOT STARTED |
-| Integrations / connector SDK      | IN PROGRESS (`0004`–`0006`) | IN PROGRESS  | IN PROGRESS | IN PROGRESS | IN PROGRESS   | IN PROGRESS |
-| Messaging / tickets               | NOT STARTED                 | NOT STARTED  | NOT STARTED | NOT STARTED | NOT STARTED   | NOT STARTED |
-| Commerce / order operations       | NOT STARTED                 | NOT STARTED  | NOT STARTED | NOT STARTED | NOT STARTED   | NOT STARTED |
-| Shipping / returns / recovery     | NOT STARTED                 | NOT STARTED  | NOT STARTED | NOT STARTED | NOT STARTED   | NOT STARTED |
-| Sales / campaigns                 | NOT STARTED                 | NOT STARTED  | NOT STARTED | NOT STARTED | NOT STARTED   | NOT STARTED |
-| Temporal / automation             | NOT STARTED                 | NOT STARTED  | NOT STARTED | NOT STARTED | NOT STARTED   | NOT STARTED |
-| AI gateway / operators / RAG      | NOT STARTED                 | IN PROGRESS  | IN PROGRESS | IN PROGRESS | NOT STARTED   | IN PROGRESS |
-| Custom data / analytics / billing | NOT STARTED                 | NOT STARTED  | NOT STARTED | NOT STARTED | NOT STARTED   | NOT STARTED |
-| Developer platform / admin center | NOT STARTED                 | NOT STARTED  | NOT STARTED | NOT STARTED | NOT STARTED   | NOT STARTED |
-| Deployment / operations           | NOT STARTED                 | NOT STARTED  | N/A         | NOT STARTED | NOT STARTED   | NOT STARTED |
+| Module                            | Database                            | API / worker | UI          | Tests       | Documentation | State       |
+| --------------------------------- | ----------------------------------- | ------------ | ----------- | ----------- | ------------- | ----------- |
+| Repository tooling / CI           | N/A                                 | COMPLETE     | N/A         | TESTING     | IN PROGRESS   | TESTING     |
+| Identity, auth, RBAC, approvals   | Existing `0001`–`0002`              | IN PROGRESS  | NOT STARTED | TESTING     | IN PROGRESS   | IN PROGRESS |
+| CRM / Customer 360                | Existing `0003`, permissions `0007` | IN PROGRESS  | NOT STARTED | IN PROGRESS | IN PROGRESS   | IN PROGRESS |
+| Integrations / connector SDK      | IN PROGRESS (`0004`–`0006`)         | IN PROGRESS  | IN PROGRESS | IN PROGRESS | IN PROGRESS   | IN PROGRESS |
+| Messaging / tickets               | NOT STARTED                         | NOT STARTED  | NOT STARTED | NOT STARTED | NOT STARTED   | NOT STARTED |
+| Commerce / order operations       | NOT STARTED                         | NOT STARTED  | NOT STARTED | NOT STARTED | NOT STARTED   | NOT STARTED |
+| Shipping / returns / recovery     | NOT STARTED                         | NOT STARTED  | NOT STARTED | NOT STARTED | NOT STARTED   | NOT STARTED |
+| Sales / campaigns                 | NOT STARTED                         | NOT STARTED  | NOT STARTED | NOT STARTED | NOT STARTED   | NOT STARTED |
+| Temporal / automation             | NOT STARTED                         | NOT STARTED  | NOT STARTED | NOT STARTED | NOT STARTED   | NOT STARTED |
+| AI gateway / operators / RAG      | NOT STARTED                         | IN PROGRESS  | IN PROGRESS | IN PROGRESS | NOT STARTED   | IN PROGRESS |
+| Custom data / analytics / billing | NOT STARTED                         | NOT STARTED  | NOT STARTED | NOT STARTED | NOT STARTED   | NOT STARTED |
+| Developer platform / admin center | NOT STARTED                         | NOT STARTED  | NOT STARTED | NOT STARTED | NOT STARTED   | NOT STARTED |
+| Deployment / operations           | NOT STARTED                         | NOT STARTED  | N/A         | NOT STARTED | NOT STARTED   | NOT STARTED |
 
 ## Objective release gates
 

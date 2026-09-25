@@ -6,6 +6,9 @@ All non-public endpoints require a valid Keycloak access token, an active applic
 | ----------------------------------------------- | ----------- | ---------------------------------------------------------------------------------------------------------- |
 | `GET /health`                                   | Implemented | Liveness response; excludes dependencies and tenant data                                                   |
 | `GET /v1/session`                               | Implemented | JWT-verified active membership and effective-permission context                                            |
+| `GET /v1/customers`                             | Implemented | Authenticated, RLS-scoped Customer 360 search and offset pagination                                        |
+| `GET /v1/customers/:customerId`                 | Implemented | Authenticated Customer 360 profile detail                                                                  |
+| `POST /v1/customers`                            | Implemented | Idempotent, audited and event-emitting Customer 360 creation                                               |
 | `POST /v1/webhooks/:connectorKey/:connectionId` | Implemented | Bounded raw JSON, connector signature verification, tenant delivery dedupe, and asynchronous event handoff |
 | `POST /v1/approvals/:id/decision`               | Planned     | Digest-bound approval decision                                                                             |
 

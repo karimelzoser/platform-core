@@ -1,14 +1,8 @@
 import { createHash, randomUUID } from 'node:crypto';
-import { Injectable, OnModuleDestroy } from '@nestjs/common';
+import { Injectable } from '@nestjs/common';
 import { ConnectorRegistry } from '@platform/connectors';
-import {
-  createDatabase,
-  destroyDatabase,
-  sql,
-  withTenantTransaction,
-  type PlatformDatabase,
-} from '@platform/database';
-import { loadApiConfig } from './config.js';
+import { sql, withTenantTransaction } from '@platform/database';
+import { ApiDatabaseService } from './api-database.service.js';
 
 export type WebhookIngressResult =
   | { kind: 'accepted'; deliveryId: string }
@@ -26,10 +20,11 @@ interface ResolvedConnection {
 }
 
 @Injectable()
-export class WebhookIngressService implements OnModuleDestroy {
-  private readonly database: PlatformDatabase = createDatabase(loadApiConfig().DATABASE_URL);
-
-  public constructor(private readonly connectors: ConnectorRegistry) {}
+export class WebhookIngressService {
+  public constructor(
+    private readonly connectors: ConnectorRegistry,
+    private readonly database: ApiDatabaseService,
+  ) {}
 
   public async ingest(input: {
     connectorKey: string;
@@ -57,7 +52,7 @@ export class WebhookIngressService implements OnModuleDestroy {
       .update(`${connection.connection_id}:${identified.deliveryId}`)
       .digest('hex');
     return withTenantTransaction(
-      this.database,
+      this.database.database,
       {
         tenantId: connection.tenant_id,
         actorId: null,
@@ -92,10 +87,6 @@ export class WebhookIngressService implements OnModuleDestroy {
     );
   }
 
-  public async onModuleDestroy(): Promise<void> {
-    await destroyDatabase(this.database);
-  }
-
   private async resolveConnection(
     connectorKey: string,
     connectionId: string,
@@ -103,7 +94,7 @@ export class WebhookIngressService implements OnModuleDestroy {
     const result =
       await sql<ResolvedConnection>`select * from integrations.resolve_webhook_connection(
       ${connectorKey}, ${connectionId}::uuid
-    )`.execute(this.database);
+    )`.execute(this.database.database);
     return result.rows[0];
   }
 }
