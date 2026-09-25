@@ -245,6 +245,17 @@ a {
   color: #0e604b;
   font-weight: 700;
 }
+.approval-actions {
+  display: flex;
+  gap: 0.5rem;
+}
+.approval-actions button {
+  border: 1px solid var(--line);
+  border-radius: 0.4rem;
+  padding: 0.35rem 0.6rem;
+  cursor: pointer;
+  font: inherit;
+}
 .customer-search {
   margin: 2rem 0 1rem;
 }
