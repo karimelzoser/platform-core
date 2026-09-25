@@ -17,7 +17,7 @@ jobs:
       - uses: pnpm/action-setup@v4
         with: { version: 9.15.5 }
       - uses: actions/setup-node@v4
-        with: { node-version: 24, cache: pnpm }
+        with: { node-version: 22, cache: pnpm }
       - run: pnpm install --frozen-lockfile
       - run: pnpm format:check
       - run: pnpm lint
@@ -35,6 +35,11 @@ jobs:
         run: scripts/integration/migrate.sh
       - name: Verify migration and tenant-RLS behavior
         run: scripts/integration/test-migrations.sh
+      - name: Collect integration diagnostics
+        if: failure()
+        run: |
+          docker compose -f docker/integration/compose.yml ps
+          docker compose -f docker/integration/compose.yml logs --no-color
       - name: Stop isolated integration stack
         if: always()
         run: scripts/integration/down.sh
