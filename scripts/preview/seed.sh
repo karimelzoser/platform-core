@@ -12,6 +12,13 @@ SELECT 'cccccccc-cccc-cccc-cccc-cccccccccccc', 'Preview Tenant', 'preview-tenant
 WHERE NOT EXISTS (
   SELECT 1 FROM identity.organizations WHERE id = 'cccccccc-cccc-cccc-cccc-cccccccccccc'
 );
+BEGIN;
+SELECT platform.set_request_context(
+  'cccccccc-cccc-cccc-cccc-cccccccccccc',
+  '33333333-3333-3333-3333-333333333333',
+  '33333333-3333-3333-3333-333333333333',
+  'preview-bootstrap'
+);
 SELECT identity.bootstrap_default_roles('cccccccc-cccc-cccc-cccc-cccccccccccc');
 INSERT INTO identity.memberships (tenant_id, user_id, status)
 SELECT 'cccccccc-cccc-cccc-cccc-cccccccccccc', '33333333-3333-3333-3333-333333333333', 'ACTIVE'
@@ -27,4 +34,5 @@ WHERE m.tenant_id='cccccccc-cccc-cccc-cccc-cccccccccccc' AND m.user_id='33333333
     SELECT 1 FROM identity.membership_roles existing
     WHERE existing.tenant_id = m.tenant_id AND existing.membership_id = m.id AND existing.role_id = r.id
   );
+COMMIT;
 SQL
