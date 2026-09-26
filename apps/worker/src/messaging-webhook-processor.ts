@@ -11,7 +11,6 @@ interface ClaimedWebhookDelivery {
   id: string;
   tenant_id: string;
   connection_id: string;
-  connector_key: string;
   headers: Record<string, string>;
   payload: Record<string, unknown>;
   attempts: number;
@@ -32,10 +31,7 @@ export class MessagingWebhookProcessor {
 
   public async processBatch(batchSize = 25): Promise<number> {
     const claimed = await sql<ClaimedWebhookDelivery>`
-      select delivery.*, connection.connector_key
-      from integrations.claim_webhook_deliveries(${this.workerId}, ${batchSize}, 60) as delivery
-      join integrations.connections as connection
-        on connection.tenant_id = delivery.tenant_id and connection.id = delivery.connection_id
+      select * from integrations.claim_webhook_deliveries(${this.workerId}, ${batchSize}, 60)
     `.execute(this.database);
 
     for (const delivery of claimed.rows) {
@@ -49,14 +45,15 @@ export class MessagingWebhookProcessor {
   }
 
   private async processDelivery(delivery: ClaimedWebhookDelivery): Promise<void> {
-    const connector = this.connectors.get(delivery.connector_key);
+    const connectorKey = await this.resolveConnectorKey(delivery);
+    const connector = this.connectors.get(connectorKey);
     const envelope = await connector.normalizeWebhook({
       headers: new Headers(Object.entries(delivery.headers)),
       body: delivery.payload,
     });
     const inbound = parseInboundMessagingWebhook(envelope);
     if (!inbound) {
-      await this.reject(delivery, envelope);
+      await this.reject(delivery, connectorKey, envelope);
       return;
     }
 
@@ -65,7 +62,7 @@ export class MessagingWebhookProcessor {
       {
         tenantId: delivery.tenant_id,
         actorId: null,
-        subject: `worker:webhook:${delivery.connector_key}`,
+        subject: `worker:webhook:${connectorKey}`,
         requestId: delivery.id,
       },
       async (transaction) => {
@@ -125,8 +122,39 @@ export class MessagingWebhookProcessor {
     );
   }
 
-  private async reject(delivery: ClaimedWebhookDelivery, envelope: WebhookEnvelope): Promise<void> {
-    await this.finishWithoutMessage(delivery, 'REJECTED', envelope, 'Unsupported webhook event');
+  private async resolveConnectorKey(delivery: ClaimedWebhookDelivery): Promise<string> {
+    return withTenantTransaction(
+      this.database,
+      {
+        tenantId: delivery.tenant_id,
+        actorId: null,
+        subject: 'worker:webhook',
+        requestId: delivery.id,
+      },
+      async (transaction) => {
+        const connection = await sql<{ connector_key: string }>`select connector_key
+          from integrations.connections where id = ${delivery.connection_id}::uuid`.execute(
+          transaction,
+        );
+        const connectorKey = connection.rows[0]?.connector_key;
+        if (!connectorKey) throw new Error('Webhook connection was not found for claimed delivery');
+        return connectorKey;
+      },
+    );
+  }
+
+  private async reject(
+    delivery: ClaimedWebhookDelivery,
+    connectorKey: string,
+    envelope: WebhookEnvelope,
+  ): Promise<void> {
+    await this.finishWithoutMessage(
+      delivery,
+      connectorKey,
+      'REJECTED',
+      envelope,
+      'Unsupported webhook event',
+    );
   }
 
   private async recordFailure(delivery: ClaimedWebhookDelivery, error: unknown): Promise<void> {
@@ -136,7 +164,7 @@ export class MessagingWebhookProcessor {
       {
         tenantId: delivery.tenant_id,
         actorId: null,
-        subject: `worker:webhook:${delivery.connector_key}`,
+        subject: 'worker:webhook',
         requestId: delivery.id,
       },
       async (transaction) => {
@@ -165,6 +193,7 @@ export class MessagingWebhookProcessor {
 
   private async finishWithoutMessage(
     delivery: ClaimedWebhookDelivery,
+    connectorKey: string,
     state: 'REJECTED',
     envelope: WebhookEnvelope,
     error: string,
@@ -174,7 +203,7 @@ export class MessagingWebhookProcessor {
       {
         tenantId: delivery.tenant_id,
         actorId: null,
-        subject: `worker:webhook:${delivery.connector_key}`,
+        subject: `worker:webhook:${connectorKey}`,
         requestId: delivery.id,
       },
       async (transaction) => {

@@ -34,6 +34,19 @@ VALUES (
   'aaaaaaaa-0000-0000-0000-000000000001',
   'Connection A'
 );
+
+INSERT INTO integrations.webhook_deliveries (
+  id, tenant_id, connection_id, provider_delivery_id, event_type, signature_valid, payload, dedupe_key
+) VALUES (
+  'aaaaaaaa-0000-0000-0000-000000000104',
+  'aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa',
+  'aaaaaaaa-0000-0000-0000-000000000002',
+  'provider-delivery-a',
+  'message.created',
+  true,
+  '{"event":"message.created"}'::jsonb,
+  'webhook-delivery-a'
+);
 COMMIT;
 
 BEGIN;
@@ -109,6 +122,9 @@ BEGIN
   END IF;
   IF EXISTS (SELECT 1 FROM tickets.comments WHERE ticket_id = 'aaaaaaaa-0000-0000-0000-000000000103') THEN
     RAISE EXCEPTION 'Tenant B can read Tenant A ticket comment';
+  END IF;
+  IF EXISTS (SELECT 1 FROM integrations.webhook_deliveries WHERE id = 'aaaaaaaa-0000-0000-0000-000000000104') THEN
+    RAISE EXCEPTION 'Tenant B can read Tenant A webhook delivery';
   END IF;
   IF NOT EXISTS (SELECT 1 FROM policy.approval_requests WHERE id = 'bbbbbbbb-0000-0000-0000-000000000005' AND status = 'REQUESTED') THEN
     RAISE EXCEPTION 'Tenant B cannot read own approval';
@@ -188,6 +204,31 @@ BEGIN
   IF claimed IS NULL THEN RAISE EXCEPTION 'Worker did not claim committed outbox event'; END IF;
   IF NOT platform.mark_outbox_published(claimed, 'integration-test-worker') THEN
     RAISE EXCEPTION 'Worker could not acknowledge its own outbox claim';
+  END IF;
+END;
+$$;
+COMMIT;
+
+BEGIN;
+SELECT platform.set_request_context(
+  'aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa',
+  '11111111-1111-1111-1111-111111111111',
+  'test-subject-a',
+  'webhook-worker-claim'
+);
+
+DO $$
+DECLARE claimed uuid;
+BEGIN
+  SELECT id INTO claimed
+  FROM integrations.claim_webhook_deliveries('integration-test-worker', 1, 60)
+  WHERE id = 'aaaaaaaa-0000-0000-0000-000000000104';
+  IF claimed IS NULL THEN RAISE EXCEPTION 'Worker did not claim inbound webhook delivery'; END IF;
+  IF NOT EXISTS (
+    SELECT 1 FROM integrations.webhook_deliveries
+    WHERE id = claimed AND state = 'PROCESSING' AND attempts = 1 AND claimed_by = 'integration-test-worker'
+  ) THEN
+    RAISE EXCEPTION 'Webhook delivery claim did not record a processing lease';
   END IF;
 END;
 $$;
