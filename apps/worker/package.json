@@ -9,6 +9,7 @@
     "start": "node dist/main.js"
   },
   "dependencies": {
+    "@platform/connectors": "workspace:*",
     "@platform/database": "workspace:*",
     "nats": "2.29.2",
     "pino": "9.6.0",

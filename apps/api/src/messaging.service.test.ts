@@ -30,16 +30,16 @@ void test('conversation handover declares an audited, idempotent outbox command'
         request: CommandRequest<HandoverInput>;
       }
     | undefined;
-  const execute = async (
+  const execute = (
     definition: CommandDefinition<HandoverInput, HandoverResult>,
     request: CommandRequest<HandoverInput>,
   ): Promise<CommandResult<HandoverResult>> => {
     captured = { definition, request };
-    return {
+    return Promise.resolve({
       result: { conversationId: request.input.conversationId, mode: request.input.mode },
       status: 200,
       replayed: false,
-    };
+    });
   };
   const service = new MessagingService(
     {} as ApiDatabaseService,

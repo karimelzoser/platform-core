@@ -10,15 +10,16 @@ const conversationId = 'aaaaaaaa-0000-0000-0000-000000000101';
 void test('conversation handover rejects a reader without handover permission', async () => {
   const controller = new MessagingController(
     {
-      resolve: async () => ({
-        tenantId: 'aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa',
-        actorId: '11111111-1111-1111-1111-111111111111',
-        subject: 'test-subject-a',
-        requestId: 'handover-auth-test',
-        correlationId: 'handover-auth-test',
-        actorType: 'USER',
-        permissions: ['messaging.conversations.read'],
-      }),
+      resolve: () =>
+        Promise.resolve({
+          tenantId: 'aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa',
+          actorId: '11111111-1111-1111-1111-111111111111',
+          subject: 'test-subject-a',
+          requestId: 'handover-auth-test',
+          correlationId: 'handover-auth-test',
+          actorType: 'USER',
+          permissions: ['messaging.conversations.read'],
+        }),
     } as unknown as AuthenticatedContextService,
     {} as MessagingService,
   );

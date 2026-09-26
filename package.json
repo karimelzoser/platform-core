@@ -8,10 +8,10 @@
     "pnpm": ">=9.0.0"
   },
   "scripts": {
-    "build": "pnpm -r --if-present build",
+    "build": "corepack pnpm -r --if-present build",
     "typecheck": "corepack pnpm -r --if-present build && corepack pnpm -r --if-present typecheck",
     "lint": "corepack pnpm exec eslint .",
-    "test": "pnpm -r --if-present test",
+    "test": "corepack pnpm -r --if-present test",
     "format:check": "prettier --check .",
     "migration:verify": "tsx scripts/verify-migrations.ts",
     "preview:up": "sh scripts/preview/up.sh",

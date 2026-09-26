@@ -55,20 +55,30 @@ function parseCsv(text: string): { customers: unknown[] } | ImportState {
       error: 'CSV header must be: display_name,first_name,last_name,company_name,email,phone',
     };
   if (!data.length || data.length > 100) return { error: 'CSV must contain one to 100 data rows.' };
-  const customers = data.map((row) => ({
-    displayName: row[0] || undefined,
-    firstName: row[1] || undefined,
-    lastName: row[2] || undefined,
-    companyName: row[3] || undefined,
-    contactPoints: [
-      row[4]
-        ? { channel: 'EMAIL', value: row[4], label: 'Imported email', isPrimary: true }
-        : undefined,
-      row[5]
-        ? { channel: 'PHONE', value: row[5], label: 'Imported phone', isPrimary: !row[4] }
-        : undefined,
-    ].filter(Boolean),
-  }));
+  const customers = data.map((row) => {
+    const [
+      displayName = '',
+      firstName = '',
+      lastName = '',
+      companyName = '',
+      email = '',
+      phone = '',
+    ] = row;
+    return {
+      displayName: displayName || undefined,
+      firstName: firstName || undefined,
+      lastName: lastName || undefined,
+      companyName: companyName || undefined,
+      contactPoints: [
+        email
+          ? { channel: 'EMAIL', value: email, label: 'Imported email', isPrimary: true }
+          : undefined,
+        phone
+          ? { channel: 'PHONE', value: phone, label: 'Imported phone', isPrimary: !email }
+          : undefined,
+      ].filter(Boolean),
+    };
+  });
   if (
     customers.some(
       (customer) =>
@@ -85,9 +95,9 @@ function parseCsvRows(text: string): string[][] | undefined {
   let cell = '';
   let quoted = false;
   for (let index = 0; index < text.length; index += 1) {
-    const character = text[index];
+    const character = text[index] ?? '';
     if (quoted) {
-      if (character === '"' && text[index + 1] === '"') {
+      if (character === '"' && (text[index + 1] ?? '') === '"') {
         cell += '"';
         index += 1;
       } else if (character === '"') quoted = false;

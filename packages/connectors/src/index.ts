@@ -11,6 +11,29 @@ export const webhookEnvelopeSchema = z.object({
 
 export type WebhookEnvelope = z.infer<typeof webhookEnvelopeSchema>;
 
+/**
+ * The canonical payload an inbound messaging connector may emit. Raw provider
+ * payloads stay in the delivery ledger; only this bounded shape reaches the
+ * tenant messaging tables.
+ */
+export const inboundMessagingWebhookSchema = z.object({
+  kind: z.literal('messaging.inbound_message'),
+  channel: z.enum(['EMAIL', 'WHATSAPP', 'INSTAGRAM', 'MESSENGER', 'WEB_CHAT', 'API']),
+  providerConversationId: z.string().min(1).max(500),
+  providerMessageId: z.string().min(1).max(500),
+  body: z.string().min(1).max(20_000),
+  sentAt: z.string().datetime().optional(),
+  customerId: z.string().uuid().optional(),
+});
+
+export type InboundMessagingWebhook = z.infer<typeof inboundMessagingWebhookSchema>;
+
+export function parseInboundMessagingWebhook(
+  envelope: WebhookEnvelope,
+): InboundMessagingWebhook | undefined {
+  return inboundMessagingWebhookSchema.safeParse(envelope.payload).data;
+}
+
 export interface Connector {
   readonly manifest: ConnectorManifest;
   verifyWebhook(input: { headers: Headers; rawBody: Uint8Array }): Promise<boolean>;

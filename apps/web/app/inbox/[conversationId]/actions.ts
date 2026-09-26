@@ -8,7 +8,8 @@ export async function handoverConversation(formData: FormData): Promise<void> {
   const mode = formData.get('mode');
   if (
     typeof conversationId !== 'string' ||
-    !['AI', 'COPILOT', 'HUMAN', 'PAUSED'].includes(String(mode))
+    typeof mode !== 'string' ||
+    !['AI', 'COPILOT', 'HUMAN', 'PAUSED'].includes(mode)
   )
     return;
   const store = await cookies();
