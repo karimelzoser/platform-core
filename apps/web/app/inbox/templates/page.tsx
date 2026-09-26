@@ -1,4 +1,5 @@
 import { cookies } from 'next/headers';
+import { TemplateForm } from './template-form';
 
 export const dynamic = 'force-dynamic';
 
@@ -24,6 +25,7 @@ export default async function TemplatesPage() {
           <p>Reusable tenant-scoped replies. Template creation is being completed next.</p>
         </div>
       </header>
+      <TemplateForm />
       {result.kind === 'success' ? (
         result.items.length ? (
           <section className="customer-card customer-card-wide">
