@@ -43,11 +43,9 @@ export async function importCustomers(
 }
 
 function parseCsv(text: string): { customers: unknown[] } | ImportState {
-  const rows = text
-    .replace(/^\uFEFF/, '')
-    .trim()
-    .split(/\r?\n/)
-    .map((line) => line.split(',').map((cell) => cell.trim()));
+  const parsedRows = parseCsvRows(text.replace(/^\uFEFF/, ''));
+  if (!parsedRows) return { error: 'CSV contains an unterminated quoted field.' };
+  const rows = parsedRows.filter((row) => row.some((cell) => cell.trim()));
   const [header, ...data] = rows;
   if (
     !header ||
@@ -79,4 +77,34 @@ function parseCsv(text: string): { customers: unknown[] } | ImportState {
   )
     return { error: 'Every row requires a display name, personal name, or company name.' };
   return { customers };
+}
+
+function parseCsvRows(text: string): string[][] | undefined {
+  const rows: string[][] = [];
+  let row: string[] = [];
+  let cell = '';
+  let quoted = false;
+  for (let index = 0; index < text.length; index += 1) {
+    const character = text[index];
+    if (quoted) {
+      if (character === '"' && text[index + 1] === '"') {
+        cell += '"';
+        index += 1;
+      } else if (character === '"') quoted = false;
+      else cell += character;
+    } else if (character === '"' && !cell) quoted = true;
+    else if (character === ',') {
+      row.push(cell.trim());
+      cell = '';
+    } else if (character === '\n') {
+      row.push(cell.trim().replace(/\r$/, ''));
+      rows.push(row);
+      row = [];
+      cell = '';
+    } else cell += character;
+  }
+  if (quoted) return undefined;
+  row.push(cell.trim());
+  rows.push(row);
+  return rows;
 }
