@@ -18,7 +18,7 @@ export function CreateSegmentForm() {
         Description (optional)
         <textarea name="description" maxLength={500} />
       </label>
-      <Submit />
+      <Submit label="Create static segment" />
       {state.error ? (
         <p className="form-error" role="alert">
           {state.error}
@@ -50,7 +50,7 @@ export function CreateDynamicSegmentForm() {
         <input name="allTagIds" required />
       </label>
       <p className="muted">A customer qualifies only when it has every listed tenant tag.</p>
-      <Submit />
+      <Submit label="Create dynamic segment" />
       {state.error ? (
         <p className="form-error" role="alert">
           {state.error}
@@ -66,11 +66,11 @@ export function CreateDynamicSegmentForm() {
   );
 }
 
-function Submit() {
+function Submit({ label }: { label: string }) {
   const { pending } = useFormStatus();
   return (
     <button className="action" type="submit" disabled={pending}>
-      {pending ? 'Creating…' : 'Create static segment'}
+      {pending ? 'Creating…' : label}
     </button>
   );
 }
