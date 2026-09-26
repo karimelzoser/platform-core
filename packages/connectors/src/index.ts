@@ -34,6 +34,23 @@ export function parseInboundMessagingWebhook(
   return inboundMessagingWebhookSchema.safeParse(envelope.payload).data;
 }
 
+/** A provider acknowledgement for a previously dispatched outbound message. */
+export const messagingDeliveryReceiptSchema = z.object({
+  kind: z.literal('messaging.delivery_receipt'),
+  providerMessageId: z.string().min(1).max(500),
+  status: z.enum(['SENT', 'DELIVERED', 'READ', 'FAILED']),
+  occurredAt: z.string().datetime().optional(),
+  error: z.string().min(1).max(2000).optional(),
+});
+
+export type MessagingDeliveryReceipt = z.infer<typeof messagingDeliveryReceiptSchema>;
+
+export function parseMessagingDeliveryReceipt(
+  envelope: WebhookEnvelope,
+): MessagingDeliveryReceipt | undefined {
+  return messagingDeliveryReceiptSchema.safeParse(envelope.payload).data;
+}
+
 export const outboundMessageRequestSchema = z.object({
   connectionId: z.string().uuid(),
   providerConversationId: z.string().min(1).max(500),

@@ -1,6 +1,7 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
 import {
+  parseMessagingDeliveryReceipt,
   outboundMessageResultSchema,
   parseInboundMessagingWebhook,
   type WebhookEnvelope,
@@ -27,6 +28,30 @@ void test('parses a bounded canonical inbound messaging payload', () => {
     providerMessageId: 'provider-message-1',
     body: 'Hello from the customer',
   });
+});
+
+void test('parses a bounded canonical outbound delivery receipt', () => {
+  assert.deepEqual(
+    parseMessagingDeliveryReceipt({
+      ...envelope,
+      payload: {
+        kind: 'messaging.delivery_receipt',
+        providerMessageId: 'provider-message-2',
+        status: 'DELIVERED',
+        occurredAt: '2026-09-26T12:00:00.000Z',
+      },
+    }),
+    {
+      kind: 'messaging.delivery_receipt',
+      providerMessageId: 'provider-message-2',
+      status: 'DELIVERED',
+      occurredAt: '2026-09-26T12:00:00.000Z',
+    },
+  );
+  assert.equal(
+    parseMessagingDeliveryReceipt({ ...envelope, payload: { kind: 'messaging.delivery_receipt' } }),
+    undefined,
+  );
 });
 
 void test('does not treat unrelated webhook payloads as inbound messages', () => {

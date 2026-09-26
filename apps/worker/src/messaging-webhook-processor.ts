@@ -1,6 +1,7 @@
 import {
   ConnectorRegistry,
   parseInboundMessagingWebhook,
+  parseMessagingDeliveryReceipt,
   type WebhookEnvelope,
 } from '@platform/connectors';
 import { sql, withTenantTransaction, type PlatformDatabase } from '@platform/database';
@@ -52,11 +53,18 @@ export class MessagingWebhookProcessor {
       body: delivery.payload,
     });
     const inbound = parseInboundMessagingWebhook(envelope);
-    if (!inbound) {
-      await this.reject(delivery, connectorKey, envelope);
-      return;
-    }
+    if (inbound) return this.persistInbound(delivery, connectorKey, envelope, inbound);
+    const receipt = parseMessagingDeliveryReceipt(envelope);
+    if (receipt) return this.persistDeliveryReceipt(delivery, connectorKey, envelope, receipt);
+    await this.reject(delivery, connectorKey, envelope);
+  }
 
+  private async persistInbound(
+    delivery: ClaimedWebhookDelivery,
+    connectorKey: string,
+    envelope: WebhookEnvelope,
+    inbound: NonNullable<ReturnType<typeof parseInboundMessagingWebhook>>,
+  ): Promise<void> {
     await withTenantTransaction(
       this.database,
       {
@@ -117,6 +125,74 @@ export class MessagingWebhookProcessor {
           ${delivery.id}, ${delivery.id}, 'INTEGRATION', 'messaging.message', ${messageId},
           ${JSON.stringify({ conversationId, messageId, webhookDeliveryId: delivery.id })}::jsonb,
           ${`messaging:inbound:${messageId}`}
+        )`.execute(transaction);
+      },
+    );
+  }
+
+  private async persistDeliveryReceipt(
+    delivery: ClaimedWebhookDelivery,
+    connectorKey: string,
+    envelope: WebhookEnvelope,
+    receipt: NonNullable<ReturnType<typeof parseMessagingDeliveryReceipt>>,
+  ): Promise<void> {
+    await withTenantTransaction(
+      this.database,
+      {
+        tenantId: delivery.tenant_id,
+        actorId: null,
+        subject: `worker:webhook:${connectorKey}`,
+        requestId: delivery.id,
+      },
+      async (transaction) => {
+        const lease = await sql<{ id: string }>`select id from integrations.webhook_deliveries
+          where id = ${delivery.id}::uuid and state = 'PROCESSING' and claimed_by = ${this.workerId}
+          for update`.execute(transaction);
+        if (!lease.rows[0]) return;
+
+        const occurredAt = receipt.occurredAt ?? delivery.received_at.toISOString();
+        const updated = await sql<{ id: string; delivery_status: string }>`update messaging.messages
+          set delivery_status = case
+                when delivery_status = 'READ' then 'READ'
+                when ${receipt.status} = 'READ' then 'READ'
+                when delivery_status = 'DELIVERED' then 'DELIVERED'
+                when ${receipt.status} = 'DELIVERED' then 'DELIVERED'
+                when ${receipt.status} = 'SENT' then 'SENT'
+                when ${receipt.status} = 'FAILED' then 'FAILED'
+                else delivery_status
+              end,
+              delivered_at = case
+                when ${receipt.status} in ('DELIVERED', 'READ')
+                  then coalesce(delivered_at, ${occurredAt}::timestamptz)
+                else delivered_at
+              end,
+              last_delivery_error = case
+                when ${receipt.status} = 'FAILED' then ${receipt.error ?? 'Provider delivery failed'}
+                else last_delivery_error
+              end,
+              next_delivery_attempt_at = case
+                when ${receipt.status} = 'FAILED' then null
+                else next_delivery_attempt_at
+              end
+          where connection_id = ${delivery.connection_id}::uuid
+            and provider_message_id = ${receipt.providerMessageId}
+          returning id, delivery_status`.execute(transaction);
+        await sql`update integrations.webhook_deliveries
+          set state = 'PROCESSED', processed_at = now(), normalized_event = ${JSON.stringify(envelope)}::jsonb,
+              last_error = null, claimed_at = null, claimed_by = null
+          where id = ${delivery.id}::uuid and state = 'PROCESSING' and claimed_by = ${this.workerId}`.execute(
+          transaction,
+        );
+        const message = updated.rows[0];
+        if (!message) return;
+        await sql`insert into platform.outbox_events (
+          tenant_id, event_type, source, correlation_id, causation_id, actor_type,
+          resource_type, resource_id, data, dedupe_key
+        ) values (
+          ${delivery.tenant_id}::uuid, 'messaging.message.delivery_updated', 'messaging-webhook-worker',
+          ${delivery.id}, ${delivery.id}, 'INTEGRATION', 'messaging.message', ${message.id},
+          ${JSON.stringify({ status: message.delivery_status, providerMessageId: receipt.providerMessageId })}::jsonb,
+          ${`messaging:receipt:${delivery.id}`}
         )`.execute(transaction);
       },
     );

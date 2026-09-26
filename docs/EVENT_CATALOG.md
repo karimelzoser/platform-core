@@ -19,6 +19,7 @@ The worker claims at most 100 pending events through a narrowly scoped database 
 | `platform.messaging.v1`    | `messaging.message.received`            | Inbound worker      | Refresh tenant inbox after normalized delivery commit          |
 | `platform.messaging.v1`    | `messaging.message.dispatch_requested`  | Messaging command   | Claim a committed outbound message for provider dispatch       |
 | `platform.messaging.v1`    | `messaging.message.sent`                | Outbound worker     | Refresh inbox after provider accepts an idempotent send        |
+| `platform.messaging.v1`    | `messaging.message.delivery_updated`    | Webhook worker      | Apply a monotonic provider delivery/read receipt               |
 | `platform.messaging.v1`    | `messaging.message.dead_lettered`       | Outbound worker     | Surface a bounded, exhausted provider delivery failure         |
 | `platform.messaging.v1`    | `messaging.conversation.assigned`       | Messaging command   | Refresh assignee work queues idempotently                      |
 | `platform.messaging.v1`    | `messaging.conversation.handed_over`    | Messaging command   | Refresh AI/human ownership projections                         |
