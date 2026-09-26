@@ -194,6 +194,7 @@ export class MessagingService {
           ) select ${messageId}::uuid, tenant_id, connection_id, id, 'OUTBOUND', 'USER', ${body},
             'PENDING', now() from messaging.conversations where id = ${conversationId}::uuid
               and connection_id is not null
+              and provider_conversation_id is not null
           returning id`.execute(transaction);
           if (!inserted.rows[0])
             throw new Error('Conversation has no dispatchable provider connection');

@@ -43,10 +43,12 @@ export const outboundMessageRequestSchema = z.object({
 
 export type OutboundMessageRequest = z.infer<typeof outboundMessageRequestSchema>;
 
-export interface OutboundMessageResult {
-  providerMessageId: string;
-  acceptedAt: string;
-}
+export const outboundMessageResultSchema = z.object({
+  providerMessageId: z.string().min(1).max(500),
+  acceptedAt: z.string().datetime(),
+});
+
+export type OutboundMessageResult = z.infer<typeof outboundMessageResultSchema>;
 
 export interface Connector {
   readonly manifest: ConnectorManifest;

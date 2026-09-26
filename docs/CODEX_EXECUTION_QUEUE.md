@@ -5,10 +5,11 @@ release-gate result, not a feature-level result.
 
 ## CURRENT
 
-- **Messaging outbound delivery pipeline:** add a typed connector dispatch
-  boundary that runs after commit; persist outbound messages and provider
-  delivery identifiers; implement delivery state transitions, retries/dead
-  letters, templates, bounded media, tenant tests, and a real compose/send UI.
+- **Messaging outbound delivery pipeline:** validate the committed-message
+  claim and typed post-commit dispatch path in the disposable Docker gate;
+  then add delivery-receipt transitions, templates, bounded media, tenant
+  tests, and a real compose/send UI. Provider-specific adapters remain in the
+  Integration SDK workstream and must not be faked.
 
 ## VERIFICATION PENDING
 
@@ -97,10 +98,11 @@ release-gate result, not a feature-level result.
 - CRM customer profiles, merge approval flow, tags, static/tag-rule segments,
   timeline, bounded CSV import/export, bulk tags, and opt-out foundation.
 - Codespaces development preview with isolated services and real Keycloak login.
-- Messaging/ticket schemas through migration `0014`, schema/RLS integration
+- Messaging/ticket schemas through migration `0016`, schema/RLS integration
   harness, conversation/message read API, inbound worker, protected handover,
-  assignment, close/reopen API/UI controls, and initial protected ticket
-  list/create/comment API/UI foundations.
+  assignment, close/reopen API/UI controls, durable outbound command/claim and
+  post-commit dispatch/retry/dead-letter foundation, and initial protected
+  ticket list/create/comment API/UI foundations.
 
 ## Release evidence
 
