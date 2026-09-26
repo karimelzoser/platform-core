@@ -19,6 +19,7 @@ import { CommandExecutionError } from '@platform/command-execution';
 import {
   type BulkTagAssignmentInput,
   type CustomerImportInput,
+  type CreateDynamicSegmentInput,
   CustomerIdentityConflictError,
   CustomerMergeError,
   CustomerService,
@@ -153,6 +154,40 @@ export class CustomersController {
         parseStaticSegmentBody(body),
         approvalId,
       ),
+    );
+  }
+
+  @Post('/segments/dynamic')
+  @HttpCode(HttpStatus.CREATED)
+  public async createDynamicSegment(
+    @Body() body: unknown,
+    @Headers('authorization') authorization: string | undefined,
+    @Headers('x-tenant-id') tenantId: string | undefined,
+    @Headers('x-correlation-id') correlationId: string | undefined,
+    @Headers('idempotency-key') idempotencyKey: string | undefined,
+  ) {
+    if (!Buffer.isBuffer(body)) throw new BadRequestException('Dynamic segment body must be JSON');
+    const context = await this.context(authorization, tenantId, correlationId);
+    return this.executeTagCommand(() =>
+      this.customers.createDynamicSegment(
+        context,
+        idempotencyKey ?? '',
+        parseDynamicSegmentBody(body),
+      ),
+    );
+  }
+
+  @Post('/segments/:segmentId/evaluate')
+  public async evaluateDynamicSegment(
+    @Param('segmentId') segmentId: string,
+    @Headers('authorization') authorization: string | undefined,
+    @Headers('x-tenant-id') tenantId: string | undefined,
+    @Headers('x-correlation-id') correlationId: string | undefined,
+    @Headers('idempotency-key') idempotencyKey: string | undefined,
+  ) {
+    const context = await this.context(authorization, tenantId, correlationId);
+    return this.executeTagCommand(() =>
+      this.customers.evaluateDynamicSegment(context, idempotencyKey ?? '', segmentId),
     );
   }
 
@@ -391,6 +426,13 @@ function parseStaticSegmentBody(body: Buffer): CreateStaticSegmentInput {
     throw new Error('Segment body must be a JSON object');
   }
   return parsed as CreateStaticSegmentInput;
+}
+
+function parseDynamicSegmentBody(body: Buffer): CreateDynamicSegmentInput {
+  const parsed: unknown = JSON.parse(body.toString('utf8'));
+  if (parsed === null || Array.isArray(parsed) || typeof parsed !== 'object')
+    throw new Error('Dynamic segment body must be a JSON object');
+  return parsed as CreateDynamicSegmentInput;
 }
 
 function parseBulkTagBody(body: Buffer, tagId: string): BulkTagAssignmentInput {

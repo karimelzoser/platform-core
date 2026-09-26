@@ -180,6 +180,18 @@ const createStaticSegmentSchema = z.object({
 
 export type CreateStaticSegmentInput = z.input<typeof createStaticSegmentSchema>;
 
+const createDynamicSegmentSchema = z.object({
+  name: z.string().trim().min(1).max(100),
+  description: z.string().trim().max(500).optional(),
+  allTagIds: z
+    .array(z.string().uuid())
+    .min(1)
+    .max(20)
+    .transform((ids) => [...new Set(ids)].toSorted()),
+});
+
+export type CreateDynamicSegmentInput = z.input<typeof createDynamicSegmentSchema>;
+
 const mergeCustomerSchema = z.object({
   sourceCustomerId: z.string().uuid(),
   targetCustomerId: z.string().uuid(),
@@ -543,6 +555,97 @@ export class CustomerService {
         },
       },
       { context, input: validated, idempotencyKey, ...(approvalId ? { approvalId } : {}) },
+    );
+  }
+
+  public async createDynamicSegment(
+    context: TenantRequestContext,
+    idempotencyKey: string,
+    input: CreateDynamicSegmentInput,
+    approvalId?: string,
+  ): Promise<CommandResult<{ segmentId: string }>> {
+    const validated = createDynamicSegmentSchema.parse(input);
+    const segmentId = randomUUID();
+    return this.commands.execute(
+      {
+        action: 'crm.segment.create_dynamic',
+        permission: 'crm.segments.manage',
+        risk: 'MEDIUM',
+        resource: () => ({ type: 'crm.segment', id: segmentId }),
+        event: {
+          type: 'crm.segment.dynamic.created',
+          data: (_input, result) => result,
+          dedupeKey: () => `crm.segment.dynamic.created:${segmentId}`,
+        },
+        audit: {
+          afterState: () => ({ segmentId, mode: 'DYNAMIC', allTagIds: validated.allTagIds }),
+        },
+        execute: async (transaction) => {
+          const tags = await sql<{
+            id: string;
+          }>`select id from crm.tags where id in (${sql.join(validated.allTagIds.map((id) => sql`${id}::uuid`))})`.execute(
+            transaction,
+          );
+          if (tags.rows.length !== validated.allTagIds.length)
+            throw new Error('One or more segment tags were not found');
+          await sql`insert into crm.segments (id, tenant_id, name, description, mode, definition)
+            values (${segmentId}::uuid, ${context.tenantId}::uuid, ${validated.name}, ${validated.description ?? null}, 'DYNAMIC',
+              ${JSON.stringify({ version: 1, allTagIds: validated.allTagIds })}::jsonb)`.execute(
+            transaction,
+          );
+          return { segmentId };
+        },
+      },
+      { context, input: validated, idempotencyKey, ...(approvalId ? { approvalId } : {}) },
+    );
+  }
+
+  public async evaluateDynamicSegment(
+    context: TenantRequestContext,
+    idempotencyKey: string,
+    segmentId: string,
+    approvalId?: string,
+  ): Promise<CommandResult<{ segmentId: string; memberCount: number }>> {
+    const validatedSegmentId = z.string().uuid().parse(segmentId);
+    return this.commands.execute(
+      {
+        action: 'crm.segment.evaluate',
+        permission: 'crm.segments.manage',
+        risk: 'MEDIUM',
+        resource: () => ({ type: 'crm.segment', id: validatedSegmentId }),
+        event: { type: 'crm.segment.evaluated', data: (_input, result) => result },
+        audit: { afterState: (_input, result) => result },
+        execute: async (transaction) => {
+          const segment = await sql<{ definition: unknown }>`select definition from crm.segments
+            where id = ${validatedSegmentId}::uuid and mode = 'DYNAMIC' and status = 'ACTIVE' for update`.execute(
+            transaction,
+          );
+          const definition = segment.rows[0]?.definition as { allTagIds?: unknown } | undefined;
+          const tagIds = z.array(z.string().uuid()).min(1).max(20).safeParse(definition?.allTagIds);
+          if (!tagIds.success) throw new Error('Dynamic segment definition is invalid');
+          await sql`delete from crm.segment_memberships where segment_id = ${validatedSegmentId}::uuid and source = 'RULE'`.execute(
+            transaction,
+          );
+          const tagValues = sql.join(tagIds.data.map((id) => sql`${id}::uuid`));
+          const inserted = await sql<{ customer_id: string }>`insert into crm.segment_memberships (
+            tenant_id, segment_id, customer_id, source
+          ) select ${context.tenantId}::uuid, ${validatedSegmentId}::uuid, c.id, 'RULE'
+            from crm.customers c
+            where c.status = 'ACTIVE' and (select count(distinct ct.tag_id) from crm.customer_tags ct
+              where ct.customer_id = c.id and ct.tag_id in (${tagValues})) = ${tagIds.data.length}
+          returning customer_id`.execute(transaction);
+          await sql`update crm.segments set last_evaluated_at = now() where id = ${validatedSegmentId}::uuid`.execute(
+            transaction,
+          );
+          return { segmentId: validatedSegmentId, memberCount: inserted.rows.length };
+        },
+      },
+      {
+        context,
+        input: { segmentId: validatedSegmentId },
+        idempotencyKey,
+        ...(approvalId ? { approvalId } : {}),
+      },
     );
   }
 
