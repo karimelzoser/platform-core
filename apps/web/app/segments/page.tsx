@@ -1,5 +1,5 @@
 import { cookies } from 'next/headers';
-import { CreateSegmentForm } from './create-segment-form';
+import { CreateDynamicSegmentForm, CreateSegmentForm } from './create-segment-form';
 
 export const dynamic = 'force-dynamic';
 
@@ -20,13 +20,17 @@ export default async function SegmentsPage() {
         <div>
           <p className="eyebrow">CUSTOMER 360</p>
           <h1>Segments</h1>
-          <p>Static segments are live. Dynamic rule evaluation is under development.</p>
+          <p>Static and tag-rule dynamic segments are live.</p>
         </div>
       </header>
       <div className="customer-detail-grid">
         <section className="customer-card" aria-labelledby="create-segment-heading">
           <h2 id="create-segment-heading">Create static segment</h2>
           <CreateSegmentForm />
+        </section>
+        <section className="customer-card" aria-labelledby="create-dynamic-segment-heading">
+          <h2 id="create-dynamic-segment-heading">Create dynamic segment</h2>
+          <CreateDynamicSegmentForm />
         </section>
         <section className="customer-card" aria-labelledby="segment-list-heading">
           <h2 id="segment-list-heading">Tenant segments</h2>
