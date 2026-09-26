@@ -7,10 +7,10 @@ release-gate result, not a feature-level result.
 
 - **Messaging outbound delivery pipeline:** validate the committed-message
   claim, typed post-commit dispatch path, and canonical monotonic delivery
-  receipts in the disposable Docker gate; then add templates, bounded media,
-  and tenant tests. The protected compose/send UI is implemented; provider-
-  specific adapters remain in the Integration SDK workstream and must not be
-  faked.
+  receipts in the disposable Docker gate; then add template-management UI,
+  bounded media, and tenant tests. Protected compose/send and tenant template
+  selection are implemented; provider-specific adapters remain in the
+  Integration SDK workstream and must not be faked.
 
 ## VERIFICATION PENDING
 

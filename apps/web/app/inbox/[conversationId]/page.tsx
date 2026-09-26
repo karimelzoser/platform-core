@@ -1,6 +1,6 @@
 import { cookies } from 'next/headers';
 import { assignConversation, handoverConversation, updateConversationStatus } from './actions';
-import { MessageComposeForm } from './message-compose-form';
+import { MessageComposeForm, type MessageTemplate } from './message-compose-form';
 
 export const dynamic = 'force-dynamic';
 
@@ -30,10 +30,11 @@ export default async function ConversationPage({
   params: Promise<{ conversationId: string }>;
 }) {
   const { conversationId } = await params;
-  const [result, assignees, access] = await Promise.all([
+  const [result, assignees, access, templates] = await Promise.all([
     loadMessages(conversationId),
     loadAssignees(),
     loadAccess(),
+    loadTemplates(),
   ]);
   const permissions =
     access.kind === 'success' ? new Set(access.access.permissions) : new Set<string>();
@@ -114,7 +115,10 @@ export default async function ConversationPage({
         <p className="muted">Closing or reopening requires the conversation close permission.</p>
       )}
       {permissions.has('messaging.conversations.reply') && result.kind === 'success' ? (
-        <MessageComposeForm conversationId={conversationId} />
+        <MessageComposeForm
+          conversationId={conversationId}
+          templates={templates.kind === 'success' ? templates.items : []}
+        />
       ) : (
         <p className="muted">Sending requires the conversation reply permission.</p>
       )}
@@ -196,6 +200,26 @@ async function loadAssignees(): Promise<
       : { kind: 'error', detail: 'You may not assign conversations in this organization.' };
   } catch {
     return { kind: 'error', detail: 'The assignment API is unavailable.' };
+  }
+}
+
+async function loadTemplates(): Promise<
+  { kind: 'success'; items: MessageTemplate[] } | { kind: 'error' }
+> {
+  const store = await cookies();
+  const token = store.get('platform_access_token')?.value;
+  const tenantId = store.get('platform_tenant_id')?.value;
+  const baseUrl = process.env.API_INTERNAL_URL;
+  if (!token || !tenantId || !baseUrl) return { kind: 'error' };
+  try {
+    const response = await fetch(new URL('/v1/conversations/templates', baseUrl), {
+      headers: { authorization: `Bearer ${token}`, 'x-tenant-id': tenantId },
+    });
+    return response.ok
+      ? { kind: 'success', items: (await response.json()) as MessageTemplate[] }
+      : { kind: 'error' };
+  } catch {
+    return { kind: 'error' };
   }
 }
 
