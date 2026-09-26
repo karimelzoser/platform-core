@@ -41,6 +41,51 @@ export class MessagingController {
     return this.messaging.listAssignees(context);
   }
 
+  @Get('templates')
+  public async templates(
+    @Headers('authorization') authorization: string | undefined,
+    @Headers('x-tenant-id') tenantId: string | undefined,
+    @Headers('x-correlation-id') correlationId: string | undefined,
+  ) {
+    const context = await this.context(authorization, tenantId, correlationId);
+    if (!context.permissions.includes('messaging.templates.read'))
+      throw new ForbiddenException('Message template read permission is required');
+    return this.messaging.listTemplates(context);
+  }
+
+  @Post('templates')
+  public async createTemplate(
+    @Body() body: unknown,
+    @Headers('authorization') authorization: string | undefined,
+    @Headers('x-tenant-id') tenantId: string | undefined,
+    @Headers('x-correlation-id') correlationId: string | undefined,
+    @Headers('idempotency-key') idempotencyKey: string | undefined,
+  ) {
+    const parsed = this.parseJsonBody(body);
+    const channels = ['EMAIL', 'WHATSAPP', 'INSTAGRAM', 'MESSENGER', 'WEB_CHAT', 'API'];
+    if (
+      typeof parsed.name !== 'string' ||
+      !parsed.name.trim() ||
+      parsed.name.length > 100 ||
+      typeof parsed.body !== 'string' ||
+      !parsed.body.trim() ||
+      parsed.body.length > 20_000 ||
+      (parsed.locale !== 'en' && parsed.locale !== 'ar') ||
+      (parsed.channel !== undefined &&
+        (typeof parsed.channel !== 'string' || !channels.includes(parsed.channel)))
+    )
+      throw new BadRequestException('Invalid message template');
+    const context = await this.context(authorization, tenantId, correlationId);
+    if (!context.permissions.includes('messaging.templates.manage'))
+      throw new ForbiddenException('Message template manage permission is required');
+    return this.messaging.createTemplate(context, idempotencyKey ?? '', {
+      name: parsed.name.trim(),
+      locale: parsed.locale,
+      channel: parsed.channel,
+      body: parsed.body.trim(),
+    });
+  }
+
   @Get(':conversationId/messages')
   public async messages(
     @Param('conversationId') conversationId: string,

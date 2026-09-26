@@ -37,6 +37,57 @@ export class MessagingService {
     });
   }
 
+  public async listTemplates(context: TenantRequestContext) {
+    return withTenantTransaction(this.database.database, context, async (transaction) => {
+      const response = await sql<{
+        id: string;
+        name: string;
+        locale: 'en' | 'ar';
+        channel: string | null;
+        body: string;
+        status: string;
+      }>`select id, name, locale, channel, body, status from messaging.templates
+        where status = 'ACTIVE' order by locale, name, id limit 200`.execute(transaction);
+      return response.rows.map((template) => ({
+        id: template.id,
+        name: template.name,
+        locale: template.locale,
+        channel: template.channel,
+        body: template.body,
+        status: template.status,
+      }));
+    });
+  }
+
+  public async createTemplate(
+    context: TenantRequestContext,
+    idempotencyKey: string,
+    input: { name: string; locale: 'en' | 'ar'; channel: string | undefined; body: string },
+  ): Promise<CommandResult<{ templateId: string }>> {
+    const templateId = randomUUID();
+    return this.commands.execute(
+      {
+        action: 'messaging.template.create',
+        permission: 'messaging.templates.manage',
+        risk: 'MEDIUM',
+        resource: () => ({ type: 'messaging.template', id: templateId }),
+        event: { type: 'messaging.template.created', data: (_input, result) => result },
+        audit: { afterState: (_input, result) => result },
+        execute: async (transaction) => {
+          const inserted = await sql<{ id: string }>`insert into messaging.templates (
+            id, tenant_id, name, locale, channel, body, created_by
+          ) values (
+            ${templateId}::uuid, ${context.tenantId}::uuid, ${input.name}, ${input.locale},
+            ${input.channel ?? null}, ${input.body}, ${context.actorId}::uuid
+          ) returning id`.execute(transaction);
+          if (!inserted.rows[0]) throw new Error('Message template could not be created');
+          return { templateId };
+        },
+      },
+      { context, input, idempotencyKey },
+    );
+  }
+
   public async messages(context: TenantRequestContext, conversationId: string) {
     return withTenantTransaction(this.database.database, context, async (transaction) => {
       const response = await sql<{

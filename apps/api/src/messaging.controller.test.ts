@@ -77,3 +77,40 @@ void test('conversation operations reject a reader without write permissions', a
     ForbiddenException,
   );
 });
+
+void test('message templates require their dedicated permissions', async () => {
+  const controller = new MessagingController(
+    {
+      resolve: () =>
+        Promise.resolve({
+          tenantId: 'aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa',
+          actorId: '11111111-1111-1111-1111-111111111111',
+          subject: 'test-subject-a',
+          requestId: 'template-auth-test',
+          correlationId: 'template-auth-test',
+          actorType: 'USER',
+          permissions: ['messaging.conversations.read'],
+        }),
+    } as unknown as AuthenticatedContextService,
+    {} as MessagingService,
+  );
+
+  await assert.rejects(
+    controller.templates(
+      'Bearer test-token',
+      'aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa',
+      'template-auth-test',
+    ),
+    ForbiddenException,
+  );
+  await assert.rejects(
+    controller.createTemplate(
+      Buffer.from('{"name":"Welcome","locale":"en","body":"Hello"}'),
+      'Bearer test-token',
+      'aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa',
+      'template-auth-test',
+      'template-idempotency-key',
+    ),
+    ForbiddenException,
+  );
+});
