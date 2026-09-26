@@ -6,6 +6,23 @@ SELECT platform.set_request_context(
   'rls-a-create'
 );
 
+DO $$
+BEGIN
+  IF NOT EXISTS (SELECT 1 FROM messaging.conversations WHERE id = 'aaaaaaaa-0000-0000-0000-000000000101') THEN
+    RAISE EXCEPTION 'Tenant A cannot read own conversation';
+  END IF;
+  IF NOT EXISTS (SELECT 1 FROM messaging.messages WHERE id = 'aaaaaaaa-0000-0000-0000-000000000102') THEN
+    RAISE EXCEPTION 'Tenant A cannot read own message';
+  END IF;
+  IF NOT EXISTS (SELECT 1 FROM tickets.records WHERE id = 'aaaaaaaa-0000-0000-0000-000000000103') THEN
+    RAISE EXCEPTION 'Tenant A cannot read own ticket';
+  END IF;
+  IF NOT EXISTS (SELECT 1 FROM tickets.comments WHERE ticket_id = 'aaaaaaaa-0000-0000-0000-000000000103') THEN
+    RAISE EXCEPTION 'Tenant A cannot read own ticket comment';
+  END IF;
+END;
+$$;
+
 INSERT INTO integrations.secret_references (id, tenant_id, provider, reference, key_version)
 VALUES ('aaaaaaaa-0000-0000-0000-000000000001', 'aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa', 'test', 'secret-a', 'v1');
 
@@ -81,8 +98,32 @@ BEGIN
   IF EXISTS (SELECT 1 FROM policy.approval_requests WHERE id = 'aaaaaaaa-0000-0000-0000-000000000005') THEN
     RAISE EXCEPTION 'Tenant B can read Tenant A approval';
   END IF;
+  IF EXISTS (SELECT 1 FROM messaging.conversations WHERE id = 'aaaaaaaa-0000-0000-0000-000000000101') THEN
+    RAISE EXCEPTION 'Tenant B can read Tenant A conversation';
+  END IF;
+  IF EXISTS (SELECT 1 FROM messaging.messages WHERE id = 'aaaaaaaa-0000-0000-0000-000000000102') THEN
+    RAISE EXCEPTION 'Tenant B can read Tenant A message';
+  END IF;
+  IF EXISTS (SELECT 1 FROM tickets.records WHERE id = 'aaaaaaaa-0000-0000-0000-000000000103') THEN
+    RAISE EXCEPTION 'Tenant B can read Tenant A ticket';
+  END IF;
+  IF EXISTS (SELECT 1 FROM tickets.comments WHERE ticket_id = 'aaaaaaaa-0000-0000-0000-000000000103') THEN
+    RAISE EXCEPTION 'Tenant B can read Tenant A ticket comment';
+  END IF;
   IF NOT EXISTS (SELECT 1 FROM policy.approval_requests WHERE id = 'bbbbbbbb-0000-0000-0000-000000000005' AND status = 'REQUESTED') THEN
     RAISE EXCEPTION 'Tenant B cannot read own approval';
+  END IF;
+  IF NOT EXISTS (SELECT 1 FROM messaging.conversations WHERE id = 'bbbbbbbb-0000-0000-0000-000000000101') THEN
+    RAISE EXCEPTION 'Tenant B cannot read own conversation';
+  END IF;
+  IF NOT EXISTS (SELECT 1 FROM messaging.messages WHERE id = 'bbbbbbbb-0000-0000-0000-000000000102') THEN
+    RAISE EXCEPTION 'Tenant B cannot read own message';
+  END IF;
+  IF NOT EXISTS (SELECT 1 FROM tickets.records WHERE id = 'bbbbbbbb-0000-0000-0000-000000000103') THEN
+    RAISE EXCEPTION 'Tenant B cannot read own ticket';
+  END IF;
+  IF NOT EXISTS (SELECT 1 FROM tickets.comments WHERE ticket_id = 'bbbbbbbb-0000-0000-0000-000000000103') THEN
+    RAISE EXCEPTION 'Tenant B cannot read own ticket comment';
   END IF;
 END;
 $$;
@@ -95,6 +136,35 @@ BEGIN
   WHERE id = 'aaaaaaaa-0000-0000-0000-000000000005';
   GET DIAGNOSTICS affected = ROW_COUNT;
   IF affected <> 0 THEN RAISE EXCEPTION 'Tenant B updated Tenant A approval'; END IF;
+END;
+$$;
+
+DO $$
+DECLARE affected integer;
+BEGIN
+  UPDATE messaging.conversations
+  SET mode = 'PAUSED'
+  WHERE id = 'aaaaaaaa-0000-0000-0000-000000000101';
+  GET DIAGNOSTICS affected = ROW_COUNT;
+  IF affected <> 0 THEN RAISE EXCEPTION 'Tenant B updated Tenant A conversation'; END IF;
+
+  UPDATE messaging.messages
+  SET body = 'Cross-tenant update'
+  WHERE id = 'aaaaaaaa-0000-0000-0000-000000000102';
+  GET DIAGNOSTICS affected = ROW_COUNT;
+  IF affected <> 0 THEN RAISE EXCEPTION 'Tenant B updated Tenant A message'; END IF;
+
+  UPDATE tickets.records
+  SET status = 'CLOSED'
+  WHERE id = 'aaaaaaaa-0000-0000-0000-000000000103';
+  GET DIAGNOSTICS affected = ROW_COUNT;
+  IF affected <> 0 THEN RAISE EXCEPTION 'Tenant B updated Tenant A ticket'; END IF;
+
+  UPDATE tickets.comments
+  SET body = 'Cross-tenant update'
+  WHERE ticket_id = 'aaaaaaaa-0000-0000-0000-000000000103';
+  GET DIAGNOSTICS affected = ROW_COUNT;
+  IF affected <> 0 THEN RAISE EXCEPTION 'Tenant B updated Tenant A ticket comment'; END IF;
 END;
 $$;
 

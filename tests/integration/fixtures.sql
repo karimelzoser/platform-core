@@ -8,6 +8,26 @@ VALUES
   ('aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa', 'Tenant A', 'tenant-a', '11111111-1111-1111-1111-111111111111'),
   ('bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb', 'Tenant B', 'tenant-b', '22222222-2222-2222-2222-222222222222');
 
+INSERT INTO messaging.conversations (id, tenant_id, channel, provider_conversation_id)
+VALUES
+  ('aaaaaaaa-0000-0000-0000-000000000101', 'aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa', 'WEB_CHAT', 'conversation-a'),
+  ('bbbbbbbb-0000-0000-0000-000000000101', 'bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb', 'WEB_CHAT', 'conversation-b');
+
+INSERT INTO messaging.messages (id, tenant_id, conversation_id, direction, sender_type, body)
+VALUES
+  ('aaaaaaaa-0000-0000-0000-000000000102', 'aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa', 'aaaaaaaa-0000-0000-0000-000000000101', 'INBOUND', 'CUSTOMER', 'Tenant A message'),
+  ('bbbbbbbb-0000-0000-0000-000000000102', 'bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb', 'bbbbbbbb-0000-0000-0000-000000000101', 'INBOUND', 'CUSTOMER', 'Tenant B message');
+
+INSERT INTO tickets.records (id, tenant_id, conversation_id, title)
+VALUES
+  ('aaaaaaaa-0000-0000-0000-000000000103', 'aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa', 'aaaaaaaa-0000-0000-0000-000000000101', 'Tenant A ticket'),
+  ('bbbbbbbb-0000-0000-0000-000000000103', 'bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb', 'bbbbbbbb-0000-0000-0000-000000000101', 'Tenant B ticket');
+
+INSERT INTO tickets.comments (tenant_id, ticket_id, author_id, body)
+VALUES
+  ('aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa', 'aaaaaaaa-0000-0000-0000-000000000103', '11111111-1111-1111-1111-111111111111', 'Tenant A comment'),
+  ('bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb', 'bbbbbbbb-0000-0000-0000-000000000103', '22222222-2222-2222-2222-222222222222', 'Tenant B comment');
+
 INSERT INTO integrations.connector_definitions (key, version, category, display_name, manifest)
 VALUES ('test-connector', '1.0.0', 'GENERIC', 'Test connector', '{}'::jsonb);
 
