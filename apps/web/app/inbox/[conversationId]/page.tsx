@@ -1,4 +1,5 @@
 import { cookies } from 'next/headers';
+import { handoverConversation } from './actions';
 
 export const dynamic = 'force-dynamic';
 
@@ -29,6 +30,21 @@ export default async function ConversationPage({
           <p>Tenant-scoped message history.</p>
         </div>
       </header>
+      <form action={handoverConversation} className="customer-form">
+        <input type="hidden" name="conversationId" value={conversationId} />
+        <label>
+          Conversation mode
+          <select name="mode" defaultValue="HUMAN">
+            <option>HUMAN</option>
+            <option>COPILOT</option>
+            <option>AI</option>
+            <option>PAUSED</option>
+          </select>
+        </label>
+        <button className="action" type="submit">
+          Update handover
+        </button>
+      </form>
       {result.kind === 'success' ? (
         result.items.length ? (
           <section className="customer-card customer-card-wide">
