@@ -1,9 +1,12 @@
 import {
+  BadRequestException,
+  Body,
   Controller,
   ForbiddenException,
   Get,
   Headers,
   Param,
+  Post,
   UnauthorizedException,
 } from '@nestjs/common';
 import { AuthenticatedContextService } from './authenticated-context.service.js';
@@ -35,6 +38,30 @@ export class MessagingController {
   ) {
     const context = await this.context(authorization, tenantId, correlationId);
     return this.messaging.messages(context, conversationId);
+  }
+
+  @Post(':conversationId/handover')
+  public async handover(
+    @Param('conversationId') conversationId: string,
+    @Body() body: unknown,
+    @Headers('authorization') authorization: string | undefined,
+    @Headers('x-tenant-id') tenantId: string | undefined,
+    @Headers('x-correlation-id') correlationId: string | undefined,
+    @Headers('idempotency-key') idempotencyKey: string | undefined,
+  ) {
+    if (!Buffer.isBuffer(body)) throw new BadRequestException('Handover body must be JSON');
+    const parsed = JSON.parse(body.toString('utf8')) as { mode?: unknown };
+    if (!['AI', 'COPILOT', 'HUMAN', 'PAUSED'].includes(String(parsed.mode)))
+      throw new BadRequestException('Invalid conversation mode');
+    const context = await this.context(authorization, tenantId, correlationId);
+    if (!context.permissions.includes('messaging.conversations.handover'))
+      throw new ForbiddenException('Conversation handover permission is required');
+    return this.messaging.handover(
+      context,
+      idempotencyKey ?? '',
+      conversationId,
+      parsed.mode as 'AI' | 'COPILOT' | 'HUMAN' | 'PAUSED',
+    );
   }
 
   private async context(

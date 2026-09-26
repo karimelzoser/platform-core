@@ -1,11 +1,18 @@
-import type { TenantRequestContext } from '@platform/command-execution';
+import {
+  CommandExecutor,
+  type CommandResult,
+  type TenantRequestContext,
+} from '@platform/command-execution';
 import { sql, withTenantTransaction } from '@platform/database';
 import { Injectable } from '@nestjs/common';
 import { ApiDatabaseService } from './api-database.service.js';
 
 @Injectable()
 export class MessagingService {
-  public constructor(private readonly database: ApiDatabaseService) {}
+  public constructor(
+    private readonly database: ApiDatabaseService,
+    private readonly commands: CommandExecutor,
+  ) {}
 
   public async listConversations(context: TenantRequestContext) {
     return withTenantTransaction(this.database.database, context, async (transaction) => {
@@ -49,5 +56,59 @@ export class MessagingService {
         sentAt: row.sent_at,
       }));
     });
+  }
+
+  public async assign(
+    context: TenantRequestContext,
+    idempotencyKey: string,
+    conversationId: string,
+    assigneeId: string,
+  ): Promise<CommandResult<{ conversationId: string; assigneeId: string }>> {
+    return this.commands.execute(
+      {
+        action: 'messaging.conversation.assign',
+        permission: 'messaging.conversations.assign',
+        risk: 'LOW',
+        resource: () => ({ type: 'messaging.conversation', id: conversationId }),
+        event: { type: 'messaging.conversation.assigned', data: (_input, result) => result },
+        audit: { afterState: (_input, result) => result },
+        execute: async (transaction) => {
+          const updated = await sql<{
+            id: string;
+          }>`update messaging.conversations set assigned_to = ${assigneeId}::uuid
+          where id = ${conversationId}::uuid returning id`.execute(transaction);
+          if (!updated.rows[0]) throw new Error('Conversation not found');
+          return { conversationId, assigneeId };
+        },
+      },
+      { context, input: { conversationId, assigneeId }, idempotencyKey },
+    );
+  }
+
+  public async handover(
+    context: TenantRequestContext,
+    idempotencyKey: string,
+    conversationId: string,
+    mode: 'AI' | 'COPILOT' | 'HUMAN' | 'PAUSED',
+  ): Promise<CommandResult<{ conversationId: string; mode: string }>> {
+    return this.commands.execute(
+      {
+        action: 'messaging.conversation.handover',
+        permission: 'messaging.conversations.handover',
+        risk: 'MEDIUM',
+        resource: () => ({ type: 'messaging.conversation', id: conversationId }),
+        event: { type: 'messaging.conversation.handed_over', data: (_input, result) => result },
+        audit: { afterState: (_input, result) => result },
+        execute: async (transaction) => {
+          const updated = await sql<{
+            id: string;
+          }>`update messaging.conversations set mode = ${mode}
+          where id = ${conversationId}::uuid returning id`.execute(transaction);
+          if (!updated.rows[0]) throw new Error('Conversation not found');
+          return { conversationId, mode };
+        },
+      },
+      { context, input: { conversationId, mode }, idempotencyKey },
+    );
   }
 }
