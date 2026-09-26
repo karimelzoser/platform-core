@@ -34,6 +34,20 @@ export function parseInboundMessagingWebhook(
   return inboundMessagingWebhookSchema.safeParse(envelope.payload).data;
 }
 
+export const outboundMessageRequestSchema = z.object({
+  connectionId: z.string().uuid(),
+  providerConversationId: z.string().min(1).max(500),
+  idempotencyKey: z.string().min(1).max(256),
+  body: z.string().min(1).max(20_000),
+});
+
+export type OutboundMessageRequest = z.infer<typeof outboundMessageRequestSchema>;
+
+export interface OutboundMessageResult {
+  providerMessageId: string;
+  acceptedAt: string;
+}
+
 export interface Connector {
   readonly manifest: ConnectorManifest;
   verifyWebhook(input: { headers: Headers; rawBody: Uint8Array }): Promise<boolean>;
@@ -50,6 +64,11 @@ export interface Connector {
     settings: Record<string, unknown>;
     secretReference: string;
   }): Promise<{ latencyMs: number }>;
+}
+
+/** Provider adapters that can dispatch a persisted outbound inbox message. */
+export interface MessagingConnector extends Connector {
+  sendMessage(input: OutboundMessageRequest): Promise<OutboundMessageResult>;
 }
 
 /** Connector registration performs schema validation before a provider adapter can run. */

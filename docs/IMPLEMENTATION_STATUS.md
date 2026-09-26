@@ -1,7 +1,7 @@
 # Implementation Status
 
 **Last updated:** 2026-09-26
-**Branch/workstream:** `main` / Messaging inbound delivery processing
+**Branch/workstream:** `main` / Messaging outbound delivery pipeline
 **Release status:** IN PROGRESS — this is not yet a release candidate.
 
 ## Baseline and controls
@@ -21,7 +21,7 @@
 | Identity, auth, RBAC, approvals   | Existing `0001`–`0002`              | IN PROGRESS  | IN PROGRESS | TESTING     | IN PROGRESS   | IN PROGRESS |
 | CRM / Customer 360                | Existing `0003`, permissions `0007` | IN PROGRESS  | IN PROGRESS | IN PROGRESS | IN PROGRESS   | IN PROGRESS |
 | Integrations / connector SDK      | IN PROGRESS (`0004`–`0006`)         | IN PROGRESS  | IN PROGRESS | IN PROGRESS | IN PROGRESS   | IN PROGRESS |
-| Messaging / tickets               | IN PROGRESS (`0011`–`0013`)         | IN PROGRESS  | IN PROGRESS | IN PROGRESS | IN PROGRESS   | IN PROGRESS |
+| Messaging / tickets               | IN PROGRESS (`0011`–`0014`)         | IN PROGRESS  | IN PROGRESS | IN PROGRESS | IN PROGRESS   | IN PROGRESS |
 | Commerce / order operations       | NOT STARTED                         | NOT STARTED  | NOT STARTED | NOT STARTED | NOT STARTED   | NOT STARTED |
 | Shipping / returns / recovery     | NOT STARTED                         | NOT STARTED  | NOT STARTED | NOT STARTED | NOT STARTED   | NOT STARTED |
 | Sales / campaigns                 | NOT STARTED                         | NOT STARTED  | NOT STARTED | NOT STARTED | NOT STARTED   | NOT STARTED |
@@ -39,4 +39,4 @@ No overall completion percentage is recorded: the required release gate is a bin
 
 - Docker and Python 3.11+ are absent locally, so PostgreSQL/RLS, NATS, Temporal, and FastAPI integration checks require the disposable GitHub Actions workflow for objective verification.
 - Production credentials, domains, and provider applications are intentionally unavailable and are not required for repository implementation.
-- Messaging has tenant-scoped conversations/messages, a read inbox, protected handover, a canonical inbound-delivery contract, and a worker that persists normalized inbound messages through the outbox. Provider adapters, outbound delivery, assignment/close operations, ticket APIs, SLA workflows, and their full acceptance suites remain incomplete.
+- Messaging has tenant-scoped conversations/messages, a read inbox, protected handover, assignment, and close/reopen controls; its canonical inbound-delivery worker persists normalized messages through the outbox. Tickets have tenant-scoped schema, list/create/comment APIs, authorization tests, and an initial list UI. Outbound delivery, provider adapters, ticket assignment/resolve/reopen and comment UI, SLA workflows, RTL/visual/E2E coverage, and full acceptance suites remain incomplete.

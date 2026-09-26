@@ -5,23 +5,26 @@ release-gate result, not a feature-level result.
 
 ## CURRENT
 
-- **Messaging operations:** add protected conversation assignment and
-  close/reopen controls, tenant/member selection, explicit permission states,
-  Arabic RTL/LTR visual checks, and inbox E2E coverage.
+- **Messaging outbound delivery pipeline:** add a typed connector dispatch
+  boundary that runs after commit; persist outbound messages and provider
+  delivery identifiers; implement delivery state transitions, retries/dead
+  letters, templates, bounded media, tenant tests, and a real compose/send UI.
 
 ## VERIFICATION PENDING
 
-- **Messaging and ticket integration acceptance harness:** two-tenant RLS read
+- **Messaging/ticket delivery and RLS acceptance:** two-tenant RLS read
   and cross-tenant write assertions, protected-handover authorization/idempotency
   command-contract tests, audit/outbox coverage, and schema probes were pushed
-  in `af31eab`. Local migration/API/type/format checks pass. Its Docker-backed
-  disposable-stack CI result is still required before it can move to `DONE`.
+  in `af31eab`, with the schema-usage repair in `53a7a3d`. Run #72 passed all
+  CI jobs, including the disposable Docker integration gate. Broader feature
+  acceptance remains outstanding, so this is not a completion claim.
 - **Messaging inbound worker:** the reusable canonical payload contract,
   delivery-claim lease, tenant-bound persistence, provider-message deduplication,
   retry/dead-letter state handling, and post-commit inbox event path were pushed
   in `3d71e02` and `732bd86`. Provider-specific adapters intentionally remain
   part of the integration SDK workstream; the generic worker is pending the
-  Docker-backed integration result before any completion decision.
+  Docker-backed integration result before any completion decision; Run #72
+  verifies the schema/RLS path but not provider-specific delivery adapters.
 
 ## NEXT
 
@@ -94,8 +97,10 @@ release-gate result, not a feature-level result.
 - CRM customer profiles, merge approval flow, tags, static/tag-rule segments,
   timeline, bounded CSV import/export, bulk tags, and opt-out foundation.
 - Codespaces development preview with isolated services and real Keycloak login.
-- Messaging/ticket schemas; conversation/message read API and initial inbox UI;
-  protected conversation handover API/UI.
+- Messaging/ticket schemas through migration `0014`, schema/RLS integration
+  harness, conversation/message read API, inbound worker, protected handover,
+  assignment, close/reopen API/UI controls, and initial protected ticket
+  list/create/comment API/UI foundations.
 
 ## Release evidence
 
