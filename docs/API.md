@@ -22,6 +22,8 @@ All non-public endpoints require a valid Keycloak access token, an active applic
 | `POST /v1/customers/segments/:segmentId/customers/:customerId` | Implemented | Idempotent, OPA-authorized membership assignment to an active static segment                               |
 | `POST /v1/customers/:customerId/merge`                         | Implemented | HIGH-risk, approval-bound, idempotent merge of source into an active canonical target                      |
 | `GET /v1/approvals`                                            | Implemented | Tenant-scoped approval inbox                                                                               |
+| `GET /v1/conversations`                                        | Implemented | Tenant-scoped messaging inbox read model                                                                   |
+| `GET /v1/conversations/:conversationId/messages`               | Implemented | Tenant-scoped conversation message timeline                                                                |
 | `POST /v1/approvals/:id/decision`                              | Implemented | Independent approve/reject decision                                                                        |
 | `POST /v1/approvals/:id/execute`                               | Implemented | Executes the exact approved CRM merge snapshot with an idempotency key                                     |
 | `POST /v1/webhooks/:connectorKey/:connectionId`                | Implemented | Bounded raw JSON, connector signature verification, tenant delivery dedupe, and asynchronous event handoff |
