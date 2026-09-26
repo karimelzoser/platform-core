@@ -45,7 +45,8 @@ export class MessagingService {
         sender_type: string;
         body: string;
         sent_at: Date;
-      }>`select id, direction, sender_type, body, sent_at from messaging.messages
+        delivery_status: string | null;
+      }>`select id, direction, sender_type, body, sent_at, delivery_status from messaging.messages
         where conversation_id = ${conversationId}::uuid order by sent_at asc, id asc limit 500`.execute(
         transaction,
       );
@@ -55,6 +56,7 @@ export class MessagingService {
         senderType: row.sender_type,
         body: row.body,
         sentAt: row.sent_at,
+        deliveryStatus: row.delivery_status,
       }));
     });
   }

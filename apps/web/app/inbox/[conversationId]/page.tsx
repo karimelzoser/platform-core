@@ -1,5 +1,6 @@
 import { cookies } from 'next/headers';
 import { assignConversation, handoverConversation, updateConversationStatus } from './actions';
+import { MessageComposeForm } from './message-compose-form';
 
 export const dynamic = 'force-dynamic';
 
@@ -9,6 +10,7 @@ interface Message {
   senderType: string;
   body: string;
   sentAt: string;
+  deliveryStatus: string | null;
 }
 
 interface Assignee {
@@ -111,6 +113,11 @@ export default async function ConversationPage({
       ) : (
         <p className="muted">Closing or reopening requires the conversation close permission.</p>
       )}
+      {permissions.has('messaging.conversations.reply') && result.kind === 'success' ? (
+        <MessageComposeForm conversationId={conversationId} />
+      ) : (
+        <p className="muted">Sending requires the conversation reply permission.</p>
+      )}
       {result.kind === 'success' ? (
         result.items.length ? (
           <section className="customer-card customer-card-wide">
@@ -121,7 +128,12 @@ export default async function ConversationPage({
                     {message.direction} · {message.senderType}
                   </strong>
                   <span>{message.body}</span>
-                  <small>{new Date(message.sentAt).toLocaleString()}</small>
+                  <small>
+                    {new Date(message.sentAt).toLocaleString()}
+                    {message.direction === 'OUTBOUND' && message.deliveryStatus
+                      ? ` · ${message.deliveryStatus}`
+                      : ''}
+                  </small>
                 </li>
               ))}
             </ul>
