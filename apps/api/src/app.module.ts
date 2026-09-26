@@ -14,6 +14,8 @@ import { WebhookController } from './webhook.controller.js';
 import { WebhookIngressService } from './webhook-ingress.service.js';
 import { MessagingController } from './messaging.controller.js';
 import { MessagingService } from './messaging.service.js';
+import { TicketsController } from './tickets.controller.js';
+import { TicketsService } from './tickets.service.js';
 
 @Controller('health')
 class HealthController {
@@ -31,6 +33,7 @@ class HealthController {
     CustomersController,
     ApprovalsController,
     MessagingController,
+    TicketsController,
   ],
   providers: [
     ApiDatabaseService,
@@ -38,6 +41,7 @@ class HealthController {
     ApprovalService,
     WebhookIngressService,
     MessagingService,
+    TicketsService,
     { provide: ConnectorRegistry, useValue: new ConnectorRegistry() },
     {
       provide: CommandExecutor,
