@@ -16,6 +16,13 @@ The worker claims at most 100 pending events through a narrowly scoped database 
 | `platform.crm.v1`          | `crm.customer.changed`                  | Customer 360        | Refresh search, segments, and timeline projections             |
 | `platform.integrations.v1` | `integration.webhook.received`          | Webhook ingress     | Normalize asynchronously from persisted delivery               |
 | `platform.integrations.v1` | `integration.sync.requested`            | Integration command | Start deterministic Temporal sync workflow                     |
+| `platform.messaging.v1`    | `messaging.message.received`            | Inbound worker      | Refresh tenant inbox after normalized delivery commit          |
+| `platform.messaging.v1`    | `messaging.conversation.assigned`       | Messaging command   | Refresh assignee work queues idempotently                      |
+| `platform.messaging.v1`    | `messaging.conversation.handed_over`    | Messaging command   | Refresh AI/human ownership projections                         |
+| `platform.messaging.v1`    | `messaging.conversation.closed`         | Messaging command   | Stop active handling and refresh the inbox                     |
+| `platform.messaging.v1`    | `messaging.conversation.reopened`       | Messaging command   | Resume active handling and refresh the inbox                   |
+| `platform.tickets.v1`      | `tickets.record.created`                | Ticket command      | Create tenant ticket projections                               |
+| `platform.tickets.v1`      | `tickets.comment.created`               | Ticket command      | Refresh the ticket timeline idempotently                       |
 | `platform.policy.v1`       | `policy.approval.decided`               | Approval service    | Verify digest then execute once or record failure              |
 
 The canonical wire format is defined by `@platform/contracts`. Consumers must use event ID/dedupe keys and retain tenant, correlation, and causation identifiers.
