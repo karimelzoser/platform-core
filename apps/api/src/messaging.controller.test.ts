@@ -36,3 +36,44 @@ void test('conversation handover rejects a reader without handover permission', 
     ForbiddenException,
   );
 });
+
+void test('conversation operations reject a reader without write permissions', async () => {
+  const controller = new MessagingController(
+    {
+      resolve: () =>
+        Promise.resolve({
+          tenantId: 'aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa',
+          actorId: '11111111-1111-1111-1111-111111111111',
+          subject: 'test-subject-a',
+          requestId: 'conversation-operation-auth-test',
+          correlationId: 'conversation-operation-auth-test',
+          actorType: 'USER',
+          permissions: ['messaging.conversations.read'],
+        }),
+    } as unknown as AuthenticatedContextService,
+    {} as MessagingService,
+  );
+
+  await assert.rejects(
+    controller.assign(
+      conversationId,
+      Buffer.from('{"assigneeId":"11111111-1111-1111-1111-111111111111"}'),
+      'Bearer test-token',
+      'aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa',
+      'conversation-operation-auth-test',
+      'assignment-idempotency-key',
+    ),
+    ForbiddenException,
+  );
+  await assert.rejects(
+    controller.status(
+      conversationId,
+      Buffer.from('{"status":"CLOSED"}'),
+      'Bearer test-token',
+      'aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa',
+      'conversation-operation-auth-test',
+      'status-idempotency-key',
+    ),
+    ForbiddenException,
+  );
+});

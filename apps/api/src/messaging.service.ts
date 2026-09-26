@@ -58,6 +58,28 @@ export class MessagingService {
     });
   }
 
+  public async listAssignees(context: TenantRequestContext) {
+    return withTenantTransaction(this.database.database, context, async (transaction) => {
+      const response = await sql<{
+        id: string;
+        email: string | null;
+        first_name: string | null;
+        last_name: string | null;
+      }>`select user_record.id, user_record.email, user_record.first_name, user_record.last_name
+        from identity.memberships as membership
+        join identity.users as user_record on user_record.id = membership.user_id
+        where membership.status = 'ACTIVE' and user_record.status = 'ACTIVE'
+        order by coalesce(user_record.first_name, ''), coalesce(user_record.last_name, ''), user_record.id
+        limit 100`.execute(transaction);
+      return response.rows.map((row) => ({
+        id: row.id,
+        email: row.email,
+        firstName: row.first_name,
+        lastName: row.last_name,
+      }));
+    });
+  }
+
   public async assign(
     context: TenantRequestContext,
     idempotencyKey: string,
@@ -76,12 +98,49 @@ export class MessagingService {
           const updated = await sql<{
             id: string;
           }>`update messaging.conversations set assigned_to = ${assigneeId}::uuid
-          where id = ${conversationId}::uuid returning id`.execute(transaction);
-          if (!updated.rows[0]) throw new Error('Conversation not found');
+          where id = ${conversationId}::uuid
+            and exists (
+              select 1 from identity.memberships
+              where user_id = ${assigneeId}::uuid and status = 'ACTIVE'
+            )
+          returning id`.execute(transaction);
+          if (!updated.rows[0])
+            throw new Error('Conversation or active tenant assignee was not found');
           return { conversationId, assigneeId };
         },
       },
       { context, input: { conversationId, assigneeId }, idempotencyKey },
+    );
+  }
+
+  public async setStatus(
+    context: TenantRequestContext,
+    idempotencyKey: string,
+    conversationId: string,
+    status: 'OPEN' | 'CLOSED',
+  ): Promise<CommandResult<{ conversationId: string; status: string }>> {
+    const action =
+      status === 'CLOSED' ? 'messaging.conversation.close' : 'messaging.conversation.reopen';
+    const eventType =
+      status === 'CLOSED' ? 'messaging.conversation.closed' : 'messaging.conversation.reopened';
+    return this.commands.execute(
+      {
+        action,
+        permission: 'messaging.conversations.close',
+        risk: 'MEDIUM',
+        resource: () => ({ type: 'messaging.conversation', id: conversationId }),
+        event: { type: eventType, data: (_input, result) => result },
+        audit: { afterState: (_input, result) => result },
+        execute: async (transaction) => {
+          const updated = await sql<{
+            id: string;
+          }>`update messaging.conversations set status = ${status}
+          where id = ${conversationId}::uuid returning id`.execute(transaction);
+          if (!updated.rows[0]) throw new Error('Conversation not found');
+          return { conversationId, status };
+        },
+      },
+      { context, input: { conversationId, status }, idempotencyKey },
     );
   }
 

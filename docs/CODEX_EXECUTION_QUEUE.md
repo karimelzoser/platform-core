@@ -5,10 +5,9 @@ release-gate result, not a feature-level result.
 
 ## CURRENT
 
-- **Messaging inbound worker:** normalize persisted webhook deliveries into
-  tenant-bound conversations/messages, dedupe provider messages, and publish
-  post-commit inbox events. Finish reusable connector registration, disposable
-  stack tests, retry/dead-letter assertions, and worker observability.
+- **Messaging operations:** add protected conversation assignment and
+  close/reopen controls, tenant/member selection, explicit permission states,
+  Arabic RTL/LTR visual checks, and inbox E2E coverage.
 
 ## VERIFICATION PENDING
 
@@ -17,63 +16,67 @@ release-gate result, not a feature-level result.
   command-contract tests, audit/outbox coverage, and schema probes were pushed
   in `af31eab`. Local migration/API/type/format checks pass. Its Docker-backed
   disposable-stack CI result is still required before it can move to `DONE`.
+- **Messaging inbound worker:** the reusable canonical payload contract,
+  delivery-claim lease, tenant-bound persistence, provider-message deduplication,
+  retry/dead-letter state handling, and post-commit inbox event path were pushed
+  in `3d71e02` and `732bd86`. Provider-specific adapters intentionally remain
+  part of the integration SDK workstream; the generic worker is pending the
+  Docker-backed integration result before any completion decision.
 
 ## NEXT
 
 1. Messaging outbound command: typed connector dispatch after commit, delivery
    status persistence, retry/dead-letter behavior, templates, media bounds, and
    a real compose/UI flow.
-2. Messaging operations: conversation assignment UI, close/reopen, customer
-   linkage, permission states, Arabic RTL/LTR visual checks, and inbox E2E.
-3. Ticket service/API/UI: create/update/assign/resolve tickets, comments,
+2. Ticket service/API/UI: create/update/assign/resolve tickets, comments,
    customer/conversation links, audit/outbox/idempotency, and tenant tests.
-4. SLA worker/workflow: response/resolution clocks, pause/resume, breach events,
+3. SLA worker/workflow: response/resolution clocks, pause/resume, breach events,
    escalation, deterministic Temporal coverage, and admin visibility.
-5. CRM completion: verified opt-in evidence flow; tag-rule segment UI evaluation
+4. CRM completion: verified opt-in evidence flow; tag-rule segment UI evaluation
    action; CSV import quoted-field integration tests; full two-tenant CRM/RLS,
    approval, merge, import/export, and accessibility/E2E suites.
-6. Integration SDK completion: connection lifecycle, encrypted secret-reference
+5. Integration SDK completion: connection lifecycle, encrypted secret-reference
    boundary, provider assets, sync cursor/reconciliation commands, health, and
    connector contract fixtures.
-7. Commerce schema and service: catalog, inventory, orders, payments,
+6. Commerce schema and service: catalog, inventory, orders, payments,
    fulfillment, canonical provider mapping, commands, audit/outbox, RLS tests.
-8. Order workflows: confirmation, duplicate detection, modification,
+7. Order workflows: confirmation, duplicate detection, modification,
    cancellation, payment/fulfillment guards, provider activity boundaries, UI,
    Temporal tests.
-9. Shipping: carrier abstraction, shipment normalization, tracking updates,
+8. Shipping: carrier abstraction, shipment normalization, tracking updates,
    delivery rescue, tenant tests, operational UI.
-10. Returns/recovery: returns, exchanges, refunds, recovery attribution and
-    commands/workflows, UI, provider contracts, tenant tests.
-11. Sales: lead/pipeline/opportunity schema, services, UI, permissions,
+9. Returns/recovery: returns, exchanges, refunds, recovery attribution and
+   commands/workflows, UI, provider contracts, tenant tests.
+10. Sales: lead/pipeline/opportunity schema, services, UI, permissions,
     audit/outbox, tests.
-12. Campaigns: audience/suppression, batching, provider cost/conversion,
+11. Campaigns: audience/suppression, batching, provider cost/conversion,
     approval controls, worker/workflow and UI tests.
-13. Temporal baseline: all release-critical workflow/activity contracts,
+12. Temporal baseline: all release-critical workflow/activity contracts,
     retries, timeouts, signals, deterministic replay, restart tests.
-14. Automation Studio: typed triggers/actions, version/publish, durable runs,
+13. Automation Studio: typed triggers/actions, version/publish, durable runs,
     approval-aware actions, UI and Temporal verification.
-15. AI Gateway: provider abstraction, safe routing, typed tool registry,
+14. AI Gateway: provider abstraction, safe routing, typed tool registry,
     approval-bound actions, cost records, fallback/escalation, API/UI tests.
-16. Knowledge/RAG and AI evaluation: ingestion, tenant retrieval boundaries,
+15. Knowledge/RAG and AI evaluation: ingestion, tenant retrieval boundaries,
     citations, prompt-injection/sensitive-data fixtures, evaluation thresholds.
-17. Custom Data: tables/fields/records, import/export, permissions, APIs/UI,
+16. Custom Data: tables/fields/records, import/export, permissions, APIs/UI,
     RLS and contract tests.
-18. Analytics/Billing: aggregates, dashboards, usage/metering, provider cost,
+17. Analytics/Billing: aggregates, dashboards, usage/metering, provider cost,
     subscription state, tenant/UI/performance tests.
-19. Developer Platform: tenant API keys, scoped outbound webhooks, signing,
+18. Developer Platform: tenant API keys, scoped outbound webhooks, signing,
     retries/dead letters, developer UI/docs/tests.
-20. Admin Control Center: tenant/integration/workflow health, failed webhooks,
+19. Admin Control Center: tenant/integration/workflow health, failed webhooks,
     stuck outbox, usage/spend, audited remediation commands, UI.
-21. Identity/RBAC/approval closure: onboarding, invitations, organization
+20. Identity/RBAC/approval closure: onboarding, invitations, organization
     selection, role editor/lifecycle, approval observability, auth/security E2E.
-22. Full UX closure: every surface English LTR and Arabic RTL, responsive,
+21. Full UX closure: every surface English LTR and Arabic RTL, responsive,
     accessible, loading/error/empty/forbidden states, visual/E2E scans.
-23. Observability/performance/security hardening: structured logs/traces/metrics,
+22. Observability/performance/security hardening: structured logs/traces/metrics,
     threat-model refresh, dependency/security scan, benchmarks and thresholds.
-24. Release engineering: immutable images, production Compose overlays, migration
+23. Release engineering: immutable images, production Compose overlays, migration
     upgrade fixture, backup/restore/rollback validation, smoke tooling, runbook,
     release notes and release checklist.
-25. Complete release acceptance: execute every mandatory gate in
+24. Complete release acceptance: execute every mandatory gate in
     `TESTING_AND_ACCEPTANCE.md`, inspect green CI, and record evidence.
 
 ## BLOCKED

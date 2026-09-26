@@ -1,5 +1,5 @@
 import { cookies } from 'next/headers';
-import { handoverConversation } from './actions';
+import { assignConversation, handoverConversation, updateConversationStatus } from './actions';
 
 export const dynamic = 'force-dynamic';
 
@@ -11,13 +11,20 @@ interface Message {
   sentAt: string;
 }
 
+interface Assignee {
+  id: string;
+  email: string | null;
+  firstName: string | null;
+  lastName: string | null;
+}
+
 export default async function ConversationPage({
   params,
 }: {
   params: Promise<{ conversationId: string }>;
 }) {
   const { conversationId } = await params;
-  const result = await loadMessages(conversationId);
+  const [result, assignees] = await Promise.all([loadMessages(conversationId), loadAssignees()]);
   return (
     <main className="customers-page">
       <a className="back-link" href="/inbox">
@@ -43,6 +50,42 @@ export default async function ConversationPage({
         </label>
         <button className="action" type="submit">
           Update handover
+        </button>
+      </form>
+      {assignees.kind === 'success' ? (
+        <form action={assignConversation} className="customer-form">
+          <input type="hidden" name="conversationId" value={conversationId} />
+          <label>
+            Assign to a tenant member
+            <select name="assigneeId" defaultValue="">
+              <option disabled value="">
+                Choose a member
+              </option>
+              {assignees.items.map((assignee) => (
+                <option key={assignee.id} value={assignee.id}>
+                  {assigneeName(assignee)}
+                </option>
+              ))}
+            </select>
+          </label>
+          <button className="action" type="submit" disabled={!assignees.items.length}>
+            Assign conversation
+          </button>
+        </form>
+      ) : (
+        <p className="muted">Assignment unavailable: {assignees.detail}</p>
+      )}
+      <form action={updateConversationStatus} className="customer-form">
+        <input type="hidden" name="conversationId" value={conversationId} />
+        <label>
+          Conversation status
+          <select name="status" defaultValue="OPEN">
+            <option value="OPEN">OPEN</option>
+            <option value="CLOSED">CLOSED</option>
+          </select>
+        </label>
+        <button className="action" type="submit">
+          Update status
         </button>
       </form>
       {result.kind === 'success' ? (
@@ -73,6 +116,11 @@ export default async function ConversationPage({
   );
 }
 
+function assigneeName(assignee: Assignee): string {
+  const fullName = [assignee.firstName, assignee.lastName].filter(Boolean).join(' ');
+  return fullName || assignee.email || assignee.id;
+}
+
 async function loadMessages(
   conversationId: string,
 ): Promise<{ kind: 'success'; items: Message[] } | { kind: 'error'; detail: string }> {
@@ -92,5 +140,26 @@ async function loadMessages(
       : { kind: 'error', detail: 'Message API request failed.' };
   } catch {
     return { kind: 'error', detail: 'Message API is unavailable.' };
+  }
+}
+
+async function loadAssignees(): Promise<
+  { kind: 'success'; items: Assignee[] } | { kind: 'error'; detail: string }
+> {
+  const store = await cookies();
+  const token = store.get('platform_access_token')?.value;
+  const tenantId = store.get('platform_tenant_id')?.value;
+  const baseUrl = process.env.API_INTERNAL_URL;
+  if (!token || !tenantId || !baseUrl)
+    return { kind: 'error', detail: 'Sign in and select an organization.' };
+  try {
+    const response = await fetch(new URL('/v1/conversations/assignees', baseUrl), {
+      headers: { authorization: `Bearer ${token}`, 'x-tenant-id': tenantId },
+    });
+    return response.ok
+      ? { kind: 'success', items: (await response.json()) as Assignee[] }
+      : { kind: 'error', detail: 'You may not assign conversations in this organization.' };
+  } catch {
+    return { kind: 'error', detail: 'The assignment API is unavailable.' };
   }
 }
