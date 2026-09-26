@@ -8,6 +8,10 @@ SELECT platform.set_request_context(
 
 DO $$
 BEGIN
+  IF NOT has_schema_privilege(current_user, 'messaging', 'USAGE')
+     OR NOT has_schema_privilege(current_user, 'tickets', 'USAGE') THEN
+    RAISE EXCEPTION 'Runtime role cannot use messaging or tickets schemas';
+  END IF;
   IF NOT EXISTS (SELECT 1 FROM messaging.conversations WHERE id = 'aaaaaaaa-0000-0000-0000-000000000101') THEN
     RAISE EXCEPTION 'Tenant A cannot read own conversation';
   END IF;
