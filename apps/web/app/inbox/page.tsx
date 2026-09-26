@@ -24,6 +24,9 @@ export default async function InboxPage() {
             active implementation.
           </p>
         </div>
+        <a className="surface-link" href="/inbox/templates">
+          Templates
+        </a>
       </header>
       {result.kind === 'success' ? (
         result.items.length ? (
