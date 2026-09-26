@@ -112,6 +112,24 @@ export class MessagingController {
     return this.messaging.setStatus(context, idempotencyKey ?? '', conversationId, parsed.status);
   }
 
+  @Post(':conversationId/messages')
+  public async send(
+    @Param('conversationId') conversationId: string,
+    @Body() body: unknown,
+    @Headers('authorization') authorization: string | undefined,
+    @Headers('x-tenant-id') tenantId: string | undefined,
+    @Headers('x-correlation-id') correlationId: string | undefined,
+    @Headers('idempotency-key') idempotencyKey: string | undefined,
+  ) {
+    const parsed = this.parseJsonBody(body);
+    if (typeof parsed.body !== 'string' || !parsed.body.trim() || parsed.body.length > 20_000)
+      throw new BadRequestException('Message body must contain at most 20,000 characters');
+    const context = await this.context(authorization, tenantId, correlationId);
+    if (!context.permissions.includes('messaging.conversations.reply'))
+      throw new ForbiddenException('Conversation reply permission is required');
+    return this.messaging.send(context, idempotencyKey ?? '', conversationId, parsed.body.trim());
+  }
+
   private parseJsonBody(body: unknown): Record<string, unknown> {
     if (!Buffer.isBuffer(body))
       throw new BadRequestException('Conversation command body must be JSON');

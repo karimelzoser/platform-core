@@ -5,6 +5,7 @@ import {
 } from '@platform/command-execution';
 import { sql, withTenantTransaction } from '@platform/database';
 import { Injectable } from '@nestjs/common';
+import { randomUUID } from 'node:crypto';
 import { ApiDatabaseService } from './api-database.service.js';
 
 @Injectable()
@@ -168,6 +169,38 @@ export class MessagingService {
         },
       },
       { context, input: { conversationId, mode }, idempotencyKey },
+    );
+  }
+
+  public async send(
+    context: TenantRequestContext,
+    idempotencyKey: string,
+    conversationId: string,
+    body: string,
+  ): Promise<CommandResult<{ messageId: string; conversationId: string }>> {
+    const messageId = randomUUID();
+    return this.commands.execute(
+      {
+        action: 'messaging.conversation.reply',
+        permission: 'messaging.conversations.reply',
+        risk: 'MEDIUM',
+        resource: () => ({ type: 'messaging.message', id: messageId }),
+        event: { type: 'messaging.message.dispatch_requested', data: (_input, result) => result },
+        audit: { afterState: (_input, result) => result },
+        execute: async (transaction) => {
+          const inserted = await sql<{ id: string }>`insert into messaging.messages (
+            id, tenant_id, connection_id, conversation_id, direction, sender_type, body, delivery_status,
+            next_delivery_attempt_at
+          ) select ${messageId}::uuid, tenant_id, connection_id, id, 'OUTBOUND', 'USER', ${body},
+            'PENDING', now() from messaging.conversations where id = ${conversationId}::uuid
+              and connection_id is not null
+          returning id`.execute(transaction);
+          if (!inserted.rows[0])
+            throw new Error('Conversation has no dispatchable provider connection');
+          return { messageId, conversationId };
+        },
+      },
+      { context, input: { conversationId, body }, idempotencyKey },
     );
   }
 }
