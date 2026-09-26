@@ -5,17 +5,21 @@ You are the principal implementation agent for a production-grade, multi-tenant 
 Read and obey, in order:
 
 1. `/AGENTS.md`
-2. `/docs/CURRENT_PRODUCTION_STATE.md`
-3. `/docs/ARCHITECTURE.md`
-4. `/docs/DATABASE_AND_EVENTS.md`
-5. `/docs/SECURITY_AUTHORIZATION.md`
-6. `/docs/MODULE_CATALOG.md`
-7. `/docs/INTEGRATIONS_AND_WORKFLOWS.md`
-8. `/docs/AI_OPERATORS.md`
-9. `/docs/UI_UX.md`
-10. `/docs/TESTING_AND_ACCEPTANCE.md`
-11. `/docs/CI_CD_DEPLOYMENT.md`
-12. `/docs/WORK_PLAN.md`
+2. `/docs/IMPLEMENTATION_STATUS.md`
+3. `/docs/CODEX_EXECUTION_QUEUE.md`
+4. `/docs/CURRENT_PRODUCTION_STATE.md`
+5. `/docs/ARCHITECTURE.md`
+6. `/docs/DATABASE_AND_EVENTS.md`
+7. `/docs/SECURITY_AUTHORIZATION.md`
+8. `/docs/MODULE_CATALOG.md`
+9. `/docs/INTEGRATIONS_AND_WORKFLOWS.md`
+10. `/docs/AI_OPERATORS.md`
+11. `/docs/UI_UX.md`
+12. `/docs/TESTING_AND_ACCEPTANCE.md`
+13. `/docs/CI_CD_DEPLOYMENT.md`
+14. `/docs/WORK_PLAN.md`
+
+`CODEX_EXECUTION_QUEUE.md` tells Codex what to execute next. `IMPLEMENTATION_STATUS.md` records what is objectively implemented. `WORK_PLAN.md` defines dependency ordering. `TESTING_AND_ACCEPTANCE.md` defines the final finish line. Do not substitute one of these files for another.
 
 ## Objective
 

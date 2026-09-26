@@ -6,7 +6,6 @@ Use a private repository.
 
 Recommended protections for `main`:
 
-- pull request required
 - status checks required
 - no force push
 - no direct production secrets in Actions
@@ -20,10 +19,13 @@ Codex should:
 
 - read `AGENTS.md`
 - maintain `docs/IMPLEMENTATION_STATUS.md`
-- work in branches/worktrees
-- run tests before PR completion
-- open PRs with summary, migrations, tests, risks, and screenshots for UI work
+- maintain `docs/CODEX_EXECUTION_QUEUE.md`
+- make small reviewable commits directly to `main` when permissions allow
+- run CI for every pushed commit and repair red CI promptly
+- never force push
 - never deploy production unless explicitly instructed
+
+PR-based review may be introduced or enforced before production release. Production release and deployment remain separately gated and reviewed.
 
 ## Parallel work
 

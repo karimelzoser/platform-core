@@ -8,6 +8,18 @@ Build a production-grade, multi-tenant AI operations platform for commerce, cust
 
 The product must support Arabic RTL and English LTR, high-volume messaging/commerce workflows, self-service onboarding, human control, audited AI actions, and safe multi-tenant operation.
 
+## Continuous Execution Protocol
+
+`docs/CODEX_EXECUTION_QUEUE.md` is the authoritative execution ledger.
+
+At the beginning of every implementation turn: read `docs/CODEX_EXECUTION_QUEUE.md` and `docs/IMPLEMENTATION_STATUS.md`, inspect CURRENT, and perform a concrete repository action immediately.
+
+When CURRENT is objectively complete: run required validation; update `docs/IMPLEMENTATION_STATUS.md`; move CURRENT to DONE; promote the next dependency-ready NEXT item; and perform a concrete implementation/tool action on it before ending the turn.
+
+A normal implementation turn must not end only with a progress summary, plan, handoff, “next I will,” or a completed-commit announcement. Reviewable commits are checkpoints, not stopping points. After each coherent commit, push, inspect CI when available, repair failures, and continue CURRENT or promote the next item.
+
+Only stop before release completion for a genuine external decision/input, an irreversible external action requiring authorization, Codex/system limits, or after the complete release gate in `docs/TESTING_AND_ACCEPTANCE.md` passes. If an item is blocked and another dependency-ready item exists, move the blocked item to BLOCKED and continue it. Do not ask the user to say “continue” between ordinary workstreams.
+
 ## Non-negotiable rules
 
 1. Never commit secrets, production tokens, passwords, private keys, `.env` files, Keycloak admin credentials, provider access tokens, or production database dumps.

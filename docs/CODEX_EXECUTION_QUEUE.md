@@ -3,37 +3,28 @@
 This is the authoritative execution ledger. `COMPLETE` is reserved for a
 release-gate result, not a feature-level result.
 
+Invariant: unless BLOCKED contains the only remaining mandatory work, CURRENT
+must always contain exactly one executable item. Completing CURRENT is not a
+reason to stop; it triggers immediate promotion and execution of the next
+dependency-ready item.
+
 ## CURRENT
 
-- **Messaging outbound delivery pipeline:** validate the committed-message
-  claim, typed post-commit dispatch path, and canonical monotonic delivery
-  receipts in the disposable Docker gate; then add template-management UI,
-  bounded media, and tenant tests. Protected compose/send and tenant template
-  selection are implemented; provider-specific adapters remain in the
-  Integration SDK workstream and must not be faked.
+- **Complete bounded outbound media support:** add a local-media/reference
+  contract, attachment metadata and limits, connector request support, compose
+  UI, tenant/RLS tests, and event documentation. Do not add provider adapters.
 
 ## VERIFICATION PENDING
 
-- **Messaging/ticket delivery and RLS acceptance:** two-tenant RLS read
-  and cross-tenant write assertions, protected-handover authorization/idempotency
-  command-contract tests, audit/outbox coverage, and schema probes were pushed
-  in `af31eab`, with the schema-usage repair in `53a7a3d`. Run #72 passed all
-  CI jobs, including the disposable Docker integration gate. Broader feature
-  acceptance remains outstanding, so this is not a completion claim.
-- **Messaging inbound worker:** the reusable canonical payload contract,
-  delivery-claim lease, tenant-bound persistence, provider-message deduplication,
-  retry/dead-letter state handling, and post-commit inbox event path were pushed
-  in `3d71e02` and `732bd86`. Provider-specific adapters intentionally remain
-  part of the integration SDK workstream; the generic worker is pending the
-  Docker-backed integration result before any completion decision; Run #72
-  verifies the schema/RLS path but not provider-specific delivery adapters.
+- **Newest messaging migrations and worker paths:** Docker-backed integration
+  evidence is pending for migrations `0015`–`0017`, outbound claims/dispatch,
+  receipts, templates, and their tenant behavior.
 
 ## NEXT
 
-1. Messaging outbound command: typed connector dispatch after commit, delivery
-   status persistence, retry/dead-letter behavior, templates, media bounds, and
-   a real compose/UI flow.
-2. Ticket service/API/UI: create/update/assign/resolve tickets, comments,
+1. Messaging lifecycle acceptance: execute two-tenant outbound media/lifecycle
+   integration and RLS tests, then promote ticket completion.
+2. Ticket service/API/UI: update/assign/resolve/reopen tickets, comments UI,
    customer/conversation links, audit/outbox/idempotency, and tenant tests.
 3. SLA worker/workflow: response/resolution clocks, pause/resume, breach events,
    escalation, deterministic Temporal coverage, and admin visibility.
@@ -99,11 +90,12 @@ release-gate result, not a feature-level result.
 - CRM customer profiles, merge approval flow, tags, static/tag-rule segments,
   timeline, bounded CSV import/export, bulk tags, and opt-out foundation.
 - Codespaces development preview with isolated services and real Keycloak login.
-- Messaging/ticket schemas through migration `0016`, schema/RLS integration
+- Messaging/ticket schemas through migration `0017`, schema/RLS integration
   harness, conversation/message read API, inbound worker, protected handover,
   assignment, close/reopen API/UI controls, durable outbound command/claim and
-  post-commit dispatch/retry/dead-letter foundation, and initial protected
-  ticket list/create/comment API/UI foundations.
+  post-commit dispatch/retry/dead-letter, receipts, protected compose/template
+  selection/management foundations, and initial protected ticket
+  list/create/comment API/UI foundations.
 
 ## Release evidence
 

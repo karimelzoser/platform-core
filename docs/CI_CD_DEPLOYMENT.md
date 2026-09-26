@@ -4,9 +4,9 @@
 
 GitHub is source of truth for application code.
 
-Protect `main`.
+Protect `main`; do not allow force pushes.
 
-Codex works in branches/worktrees and produces reviewable PRs.
+During pre-release implementation, Codex may make small reviewable commits directly to `main` when repository permissions allow it. Every pushed commit runs CI and red CI is repaired promptly. PR review may be introduced before production release without changing this autonomous implementation flow.
 
 ## PR CI
 
