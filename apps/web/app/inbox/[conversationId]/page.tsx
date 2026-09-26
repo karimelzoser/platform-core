@@ -18,13 +18,23 @@ interface Assignee {
   lastName: string | null;
 }
 
+interface SessionAccess {
+  permissions: string[];
+}
+
 export default async function ConversationPage({
   params,
 }: {
   params: Promise<{ conversationId: string }>;
 }) {
   const { conversationId } = await params;
-  const [result, assignees] = await Promise.all([loadMessages(conversationId), loadAssignees()]);
+  const [result, assignees, access] = await Promise.all([
+    loadMessages(conversationId),
+    loadAssignees(),
+    loadAccess(),
+  ]);
+  const permissions =
+    access.kind === 'success' ? new Set(access.access.permissions) : new Set<string>();
   return (
     <main className="customers-page">
       <a className="back-link" href="/inbox">
@@ -37,22 +47,26 @@ export default async function ConversationPage({
           <p>Tenant-scoped message history.</p>
         </div>
       </header>
-      <form action={handoverConversation} className="customer-form">
-        <input type="hidden" name="conversationId" value={conversationId} />
-        <label>
-          Conversation mode
-          <select name="mode" defaultValue="HUMAN">
-            <option>HUMAN</option>
-            <option>COPILOT</option>
-            <option>AI</option>
-            <option>PAUSED</option>
-          </select>
-        </label>
-        <button className="action" type="submit">
-          Update handover
-        </button>
-      </form>
-      {assignees.kind === 'success' ? (
+      {permissions.has('messaging.conversations.handover') ? (
+        <form action={handoverConversation} className="customer-form">
+          <input type="hidden" name="conversationId" value={conversationId} />
+          <label>
+            Conversation mode
+            <select name="mode" defaultValue="HUMAN">
+              <option>HUMAN</option>
+              <option>COPILOT</option>
+              <option>AI</option>
+              <option>PAUSED</option>
+            </select>
+          </label>
+          <button className="action" type="submit">
+            Update handover
+          </button>
+        </form>
+      ) : (
+        <p className="muted">Handover requires the conversation handover permission.</p>
+      )}
+      {permissions.has('messaging.conversations.assign') && assignees.kind === 'success' ? (
         <form action={assignConversation} className="customer-form">
           <input type="hidden" name="conversationId" value={conversationId} />
           <label>
@@ -73,21 +87,30 @@ export default async function ConversationPage({
           </button>
         </form>
       ) : (
-        <p className="muted">Assignment unavailable: {assignees.detail}</p>
+        <p className="muted">
+          Assignment unavailable:{' '}
+          {permissions.has('messaging.conversations.assign') && assignees.kind === 'error'
+            ? assignees.detail
+            : 'requires the conversation assignment permission.'}
+        </p>
       )}
-      <form action={updateConversationStatus} className="customer-form">
-        <input type="hidden" name="conversationId" value={conversationId} />
-        <label>
-          Conversation status
-          <select name="status" defaultValue="OPEN">
-            <option value="OPEN">OPEN</option>
-            <option value="CLOSED">CLOSED</option>
-          </select>
-        </label>
-        <button className="action" type="submit">
-          Update status
-        </button>
-      </form>
+      {permissions.has('messaging.conversations.close') ? (
+        <form action={updateConversationStatus} className="customer-form">
+          <input type="hidden" name="conversationId" value={conversationId} />
+          <label>
+            Conversation status
+            <select name="status" defaultValue="OPEN">
+              <option value="OPEN">OPEN</option>
+              <option value="CLOSED">CLOSED</option>
+            </select>
+          </label>
+          <button className="action" type="submit">
+            Update status
+          </button>
+        </form>
+      ) : (
+        <p className="muted">Closing or reopening requires the conversation close permission.</p>
+      )}
       {result.kind === 'success' ? (
         result.items.length ? (
           <section className="customer-card customer-card-wide">
@@ -161,5 +184,25 @@ async function loadAssignees(): Promise<
       : { kind: 'error', detail: 'You may not assign conversations in this organization.' };
   } catch {
     return { kind: 'error', detail: 'The assignment API is unavailable.' };
+  }
+}
+
+async function loadAccess(): Promise<
+  { kind: 'success'; access: SessionAccess } | { kind: 'error' }
+> {
+  const store = await cookies();
+  const token = store.get('platform_access_token')?.value;
+  const tenantId = store.get('platform_tenant_id')?.value;
+  const baseUrl = process.env.API_INTERNAL_URL;
+  if (!token || !tenantId || !baseUrl) return { kind: 'error' };
+  try {
+    const response = await fetch(new URL('/v1/session', baseUrl), {
+      headers: { authorization: `Bearer ${token}`, 'x-tenant-id': tenantId },
+    });
+    return response.ok
+      ? { kind: 'success', access: (await response.json()) as SessionAccess }
+      : { kind: 'error' };
+  } catch {
+    return { kind: 'error' };
   }
 }
