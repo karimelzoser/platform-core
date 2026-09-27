@@ -29,6 +29,10 @@ function readerController(): TicketsController {
 void test('ticket mutations reject a read-only tenant member', async () => {
   const controller = readerController();
   await assert.rejects(
+    controller.assignees('Bearer test-token', tenantId, 'ticket-auth-test'),
+    ForbiddenException,
+  );
+  await assert.rejects(
     controller.create(
       Buffer.from('{"title":"A ticket"}'),
       'Bearer test-token',

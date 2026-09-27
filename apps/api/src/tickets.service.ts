@@ -106,6 +106,28 @@ export class TicketsService {
     });
   }
 
+  public async listAssignees(context: TenantRequestContext) {
+    return withTenantTransaction(this.database.database, context, async (transaction) => {
+      const response = await sql<{
+        id: string;
+        email: string | null;
+        first_name: string | null;
+        last_name: string | null;
+      }>`select user_record.id, user_record.email, user_record.first_name, user_record.last_name
+        from identity.memberships as membership
+        join identity.users as user_record on user_record.id = membership.user_id
+        where membership.status = 'ACTIVE' and user_record.status = 'ACTIVE'
+        order by coalesce(user_record.first_name, ''), coalesce(user_record.last_name, ''), user_record.id
+        limit 100`.execute(transaction);
+      return response.rows.map((row) => ({
+        id: row.id,
+        email: row.email,
+        firstName: row.first_name,
+        lastName: row.last_name,
+      }));
+    });
+  }
+
   public async create(
     context: TenantRequestContext,
     idempotencyKey: string,

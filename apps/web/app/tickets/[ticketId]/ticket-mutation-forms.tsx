@@ -14,6 +14,7 @@ const initialState: TicketActionState = {};
 export function TicketMutationForms({
   ticket,
   permissions,
+  assignees,
 }: {
   ticket: {
     id: string;
@@ -23,6 +24,12 @@ export function TicketMutationForms({
     assignedTo: string | null;
   };
   permissions: readonly string[];
+  assignees: readonly {
+    id: string;
+    email: string | null;
+    firstName: string | null;
+    lastName: string | null;
+  }[];
 }) {
   const [updateState, updateAction] = useActionState(updateTicket, initialState);
   const [assignmentState, assignmentAction] = useActionState(assignTicket, initialState);
@@ -69,14 +76,17 @@ export function TicketMutationForms({
           <form action={assignmentAction} className="customer-form">
             <input name="ticketId" type="hidden" value={ticket.id} readOnly />
             <label>
-              Tenant member ID
-              <input
-                defaultValue={ticket.assignedTo ?? ''}
-                name="assigneeId"
-                placeholder="Leave blank to unassign"
-              />
+              Tenant member
+              <select defaultValue={ticket.assignedTo ?? ''} name="assigneeId">
+                <option value="">Unassigned</option>
+                {assignees.map((assignee) => (
+                  <option key={assignee.id} value={assignee.id}>
+                    {assigneeName(assignee)}
+                  </option>
+                ))}
+              </select>
             </label>
-            <p className="muted">Only an active member of this organization can be assigned.</p>
+            <p className="muted">Only active members of this organization are available.</p>
             <button className="action" type="submit">
               Save assignment
             </button>
@@ -132,6 +142,16 @@ export function TicketMutationForms({
       ) : null}
     </>
   );
+}
+
+function assigneeName(assignee: {
+  id: string;
+  email: string | null;
+  firstName: string | null;
+  lastName: string | null;
+}): string {
+  const fullName = [assignee.firstName, assignee.lastName].filter(Boolean).join(' ');
+  return fullName || assignee.email || assignee.id;
 }
 
 function FormState({ state, success }: { state: TicketActionState; success: string }) {

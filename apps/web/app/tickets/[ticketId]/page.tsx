@@ -27,9 +27,20 @@ interface SessionAccess {
   permissions: string[];
 }
 
+interface Assignee {
+  id: string;
+  email: string | null;
+  firstName: string | null;
+  lastName: string | null;
+}
+
 export default async function TicketPage({ params }: { params: Promise<{ ticketId: string }> }) {
   const { ticketId } = await params;
-  const [result, access] = await Promise.all([loadTicket(ticketId), loadAccess()]);
+  const [result, access, assignees] = await Promise.all([
+    loadTicket(ticketId),
+    loadAccess(),
+    loadAssignees(),
+  ]);
   const permissions = access.kind === 'success' ? access.access.permissions : [];
   return (
     <main className="customers-page">
@@ -71,7 +82,11 @@ export default async function TicketPage({ params }: { params: Promise<{ ticketI
               </li>
             </ul>
           </section>
-          <TicketMutationForms ticket={result.ticket} permissions={permissions} />
+          <TicketMutationForms
+            ticket={result.ticket}
+            permissions={permissions}
+            assignees={assignees.kind === 'success' ? assignees.items : []}
+          />
           <section
             className="customer-card customer-card-wide"
             aria-labelledby="ticket-comments-heading"
@@ -119,6 +134,26 @@ async function loadAccess(): Promise<
     });
     return response.ok
       ? { kind: 'success', access: (await response.json()) as SessionAccess }
+      : { kind: 'error' };
+  } catch {
+    return { kind: 'error' };
+  }
+}
+
+async function loadAssignees(): Promise<
+  { kind: 'success'; items: Assignee[] } | { kind: 'error' }
+> {
+  const store = await cookies();
+  const token = store.get('platform_access_token')?.value;
+  const tenantId = store.get('platform_tenant_id')?.value;
+  const baseUrl = process.env.API_INTERNAL_URL;
+  if (!token || !tenantId || !baseUrl) return { kind: 'error' };
+  try {
+    const response = await fetch(new URL('/v1/tickets/assignees', baseUrl), {
+      headers: { authorization: `Bearer ${token}`, 'x-tenant-id': tenantId },
+    });
+    return response.ok
+      ? { kind: 'success', items: (await response.json()) as Assignee[] }
       : { kind: 'error' };
   } catch {
     return { kind: 'error' };

@@ -53,6 +53,17 @@ export class TicketsController {
     return this.tickets.create(context, idempotencyKey ?? '', parseCreateTicket(body));
   }
 
+  @Get('assignees')
+  public async assignees(
+    @Headers('authorization') authorization: string | undefined,
+    @Headers('x-tenant-id') tenantId: string | undefined,
+    @Headers('x-correlation-id') correlationId: string | undefined,
+  ) {
+    const context = await this.context(authorization, tenantId, correlationId);
+    this.assertPermission(context.permissions, 'tickets.assign');
+    return this.tickets.listAssignees(context);
+  }
+
   @Get(':ticketId')
   public async get(
     @Param('ticketId') ticketId: string,
