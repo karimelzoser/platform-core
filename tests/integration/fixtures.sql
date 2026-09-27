@@ -18,6 +18,12 @@ VALUES
   ('aaaaaaaa-0000-0000-0000-000000000102', 'aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa', 'aaaaaaaa-0000-0000-0000-000000000101', 'INBOUND', 'CUSTOMER', 'Tenant A message'),
   ('bbbbbbbb-0000-0000-0000-000000000102', 'bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb', 'bbbbbbbb-0000-0000-0000-000000000101', 'INBOUND', 'CUSTOMER', 'Tenant B message');
 
+INSERT INTO messaging.message_attachments (
+  tenant_id, message_id, storage_key, media_type, content_type, file_name, byte_size
+) VALUES
+  ('aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa', 'aaaaaaaa-0000-0000-0000-000000000102', 'tenant-a/test.png', 'IMAGE', 'image/png', 'test.png', 1024),
+  ('bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb', 'bbbbbbbb-0000-0000-0000-000000000102', 'tenant-b/test.pdf', 'DOCUMENT', 'application/pdf', 'test.pdf', 2048);
+
 INSERT INTO tickets.records (id, tenant_id, conversation_id, title)
 VALUES
   ('aaaaaaaa-0000-0000-0000-000000000103', 'aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa', 'aaaaaaaa-0000-0000-0000-000000000101', 'Tenant A ticket'),

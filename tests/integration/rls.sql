@@ -18,6 +18,9 @@ BEGIN
   IF NOT EXISTS (SELECT 1 FROM messaging.messages WHERE id = 'aaaaaaaa-0000-0000-0000-000000000102') THEN
     RAISE EXCEPTION 'Tenant A cannot read own message';
   END IF;
+  IF NOT EXISTS (SELECT 1 FROM messaging.message_attachments WHERE storage_key = 'tenant-a/test.png') THEN
+    RAISE EXCEPTION 'Tenant A cannot read own message attachment';
+  END IF;
   IF NOT EXISTS (SELECT 1 FROM tickets.records WHERE id = 'aaaaaaaa-0000-0000-0000-000000000103') THEN
     RAISE EXCEPTION 'Tenant A cannot read own ticket';
   END IF;
@@ -120,6 +123,9 @@ BEGIN
   END IF;
   IF EXISTS (SELECT 1 FROM messaging.messages WHERE id = 'aaaaaaaa-0000-0000-0000-000000000102') THEN
     RAISE EXCEPTION 'Tenant B can read Tenant A message';
+  END IF;
+  IF EXISTS (SELECT 1 FROM messaging.message_attachments WHERE storage_key = 'tenant-a/test.png') THEN
+    RAISE EXCEPTION 'Tenant B can read Tenant A message attachment';
   END IF;
   IF EXISTS (SELECT 1 FROM tickets.records WHERE id = 'aaaaaaaa-0000-0000-0000-000000000103') THEN
     RAISE EXCEPTION 'Tenant B can read Tenant A ticket';
