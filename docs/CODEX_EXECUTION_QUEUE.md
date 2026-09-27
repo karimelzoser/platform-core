@@ -17,7 +17,7 @@ dependency-ready item.
 ## VERIFICATION PENDING
 
 - **Newest messaging migrations and worker paths:** Docker-backed integration
-  evidence is pending for migrations `0015`–`0017`, outbound claims/dispatch,
+  evidence is pending for migrations `0015`–`0018`, outbound claims/dispatch,
   receipts, templates, and their tenant behavior.
 
 ## NEXT

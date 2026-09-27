@@ -127,6 +127,17 @@ BEGIN
   IF EXISTS (SELECT 1 FROM messaging.message_attachments WHERE storage_key = 'tenant-a/test.png') THEN
     RAISE EXCEPTION 'Tenant B can read Tenant A message attachment';
   END IF;
+  BEGIN
+    INSERT INTO messaging.message_attachments (
+      tenant_id, message_id, storage_key, media_type, content_type, file_name, byte_size
+    ) VALUES (
+      'aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa', 'aaaaaaaa-0000-0000-0000-000000000102',
+      'tenant-a/cross-tenant.png', 'IMAGE', 'image/png', 'cross-tenant.png', 1
+    );
+    RAISE EXCEPTION 'Tenant B inserted a Tenant A message attachment';
+  EXCEPTION WHEN insufficient_privilege THEN
+    NULL;
+  END;
   IF EXISTS (SELECT 1 FROM tickets.records WHERE id = 'aaaaaaaa-0000-0000-0000-000000000103') THEN
     RAISE EXCEPTION 'Tenant B can read Tenant A ticket';
   END IF;

@@ -76,6 +76,10 @@ export function MessageComposeForm({
           }}
         />
       </label>
+      <label>
+        Attachment (development local media, max 700 KB)
+        <input name="attachment" type="file" accept="image/*,.pdf,.txt" disabled={!submissionId} />
+      </label>
       <p className="muted">
         The message is queued securely and dispatched by the worker after the database commit.
       </p>

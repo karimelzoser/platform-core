@@ -46,6 +46,7 @@ export async function sendConversationMessage(
   const conversationId = formData.get('conversationId');
   const body = formData.get('body');
   const submissionId = formData.get('submissionId');
+  const upload = formData.get('attachment');
   if (typeof conversationId !== 'string' || !conversationId) {
     return { error: 'The conversation could not be identified.' };
   }
@@ -61,6 +62,29 @@ export async function sendConversationMessage(
   if (!baseUrl) return { error: 'Messaging workspace configuration is incomplete.' };
 
   try {
+    const attachments = [] as unknown[];
+    if (upload instanceof File && upload.size > 0) {
+      if (upload.size > 700_000)
+        return { error: 'Attachments are limited to 700 KB in development.' };
+      const mediaType = upload.type.startsWith('image/') ? 'IMAGE' : 'DOCUMENT';
+      const mediaResponse = await fetch(new URL('/v1/media', baseUrl), {
+        method: 'POST',
+        headers: {
+          authorization: `Bearer ${token}`,
+          'content-type': 'application/json',
+          'x-tenant-id': tenantId,
+        },
+        body: JSON.stringify({
+          mediaType,
+          contentType: upload.type || 'application/octet-stream',
+          fileName: upload.name,
+          bytesBase64: Buffer.from(await upload.arrayBuffer()).toString('base64'),
+        }),
+      });
+      if (!mediaResponse.ok)
+        return { error: 'The attachment could not be stored. Nothing was sent.' };
+      attachments.push(await mediaResponse.json());
+    }
     const response = await fetch(
       new URL(`/v1/conversations/${encodeURIComponent(conversationId)}/messages`, baseUrl),
       {
@@ -72,7 +96,7 @@ export async function sendConversationMessage(
             typeof submissionId === 'string' && submissionId ? submissionId : randomUUID(),
           'x-tenant-id': tenantId,
         },
-        body: JSON.stringify({ body: body.trim() }),
+        body: JSON.stringify({ body: body.trim(), attachments }),
       },
     );
     if (response.status === 401 || response.status === 403)
