@@ -3,6 +3,7 @@ import { CommandAuthorizer, OpaClient } from '@platform/authorization';
 import { CommandExecutor } from '@platform/command-execution';
 import { ConnectorRegistry } from '@platform/connectors';
 import { CustomerService } from '@platform/crm';
+import { LocalMediaStore } from '@platform/media';
 import { ApprovalService } from './approval.service.js';
 import { ApprovalsController } from './approvals.controller.js';
 import { ApiDatabaseService } from './api-database.service.js';
@@ -42,6 +43,10 @@ class HealthController {
     WebhookIngressService,
     MessagingService,
     TicketsService,
+    {
+      provide: LocalMediaStore,
+      useFactory: () => new LocalMediaStore(loadApiConfig().MEDIA_LOCAL_ROOT),
+    },
     { provide: ConnectorRegistry, useValue: new ConnectorRegistry() },
     {
       provide: CommandExecutor,
