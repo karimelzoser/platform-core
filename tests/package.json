@@ -5,7 +5,7 @@
   "type": "module",
   "scripts": {
     "typecheck": "tsc --noEmit -p tsconfig.json",
-    "test:integration": "tsx integration/messaging-lifecycle.ts"
+    "test:integration": "tsx integration/messaging-lifecycle.ts && tsx integration/ticket-lifecycle.ts"
   },
   "dependencies": {
     "@platform/authorization": "workspace:*",

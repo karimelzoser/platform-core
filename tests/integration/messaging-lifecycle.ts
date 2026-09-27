@@ -33,7 +33,11 @@ function context(tenantId: string, actorId: string, suffix: string): TenantReque
     requestId: `messaging-lifecycle-${suffix}`,
     correlationId: `messaging-lifecycle-${suffix}`,
     actorType: 'USER',
-    permissions: ['messaging.conversations.reply'],
+    permissions: [
+      'messaging.conversations.reply',
+      'messaging.templates.read',
+      'messaging.templates.manage',
+    ],
   };
 }
 
@@ -68,6 +72,34 @@ async function main(): Promise<void> {
       ),
     );
     const messaging = new MessagingService(databaseService, commands);
+    const templateA = await messaging.createTemplate(contextA, 'lifecycle-template-a', {
+      name: 'Tenant A welcome',
+      locale: 'en',
+      channel: undefined,
+      body: 'Hello from A',
+    });
+    const replayTemplateA = await messaging.createTemplate(contextA, 'lifecycle-template-a', {
+      name: 'Tenant A welcome',
+      locale: 'en',
+      channel: undefined,
+      body: 'Hello from A',
+    });
+    assert.equal(replayTemplateA.replayed, true);
+    assert.equal(replayTemplateA.result.templateId, templateA.result.templateId);
+    const templateB = await messaging.createTemplate(contextB, 'lifecycle-template-b', {
+      name: 'Tenant B welcome',
+      locale: 'ar',
+      channel: undefined,
+      body: 'مرحبا من ب',
+    });
+    assert.deepEqual(
+      (await messaging.listTemplates(contextA)).map((template) => template.id),
+      [templateA.result.templateId],
+    );
+    assert.deepEqual(
+      (await messaging.listTemplates(contextB)).map((template) => template.id),
+      [templateB.result.templateId],
+    );
     const media = new MediaService(new LocalMediaStore(root), databaseService);
     const attachmentA = await media.registerLocalBytes(contextA, {
       mediaType: 'IMAGE',
