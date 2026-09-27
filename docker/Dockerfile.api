@@ -3,23 +3,28 @@ WORKDIR /workspace
 RUN corepack enable
 COPY package.json pnpm-lock.yaml pnpm-workspace.yaml tsconfig.base.json ./
 COPY apps/api/package.json apps/api/package.json
+COPY packages/auth/package.json packages/auth/package.json
 COPY packages/authorization/package.json packages/authorization/package.json
+COPY packages/command-execution/package.json packages/command-execution/package.json
+COPY packages/connectors/package.json packages/connectors/package.json
 COPY packages/contracts/package.json packages/contracts/package.json
+COPY packages/crm/package.json packages/crm/package.json
 COPY packages/database/package.json packages/database/package.json
+COPY packages/media/package.json packages/media/package.json
 RUN pnpm install --frozen-lockfile
 COPY apps/api apps/api
-COPY packages/authorization packages/authorization
-COPY packages/contracts packages/contracts
-COPY packages/database packages/database
-RUN pnpm --filter @platform/contracts build && pnpm --filter @platform/database build && pnpm --filter @platform/authorization build && pnpm --filter @platform/api build
+COPY packages packages
+RUN pnpm --filter @platform/api... build
 
 FROM node:24-bookworm-slim
 WORKDIR /workspace
 ENV NODE_ENV=production
 COPY --from=build /workspace/node_modules ./node_modules
+COPY --from=build /workspace/apps/api/package.json ./apps/api/package.json
 COPY --from=build /workspace/apps/api/dist ./apps/api/dist
 COPY --from=build /workspace/apps/api/node_modules ./apps/api/node_modules
 COPY --from=build /workspace/packages ./packages
+RUN mkdir -p /srv/platform/media && chown node:node /srv/platform/media
 USER node
 EXPOSE 3001
 CMD ["node", "apps/api/dist/main.js"]

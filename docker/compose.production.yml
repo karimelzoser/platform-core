@@ -3,12 +3,14 @@ services:
     image: ${PLATFORM_API_IMAGE:?set immutable API image digest}
     env_file: /etc/platform/platform.env
     networks: [platform_internal]
+    volumes: [platform_media:/srv/platform/media]
     restart: unless-stopped
     deploy: { resources: { limits: { cpus: '0.75', memory: 512M } } }
   worker:
     image: ${PLATFORM_WORKER_IMAGE:?set immutable worker image digest}
     env_file: /etc/platform/platform.env
     networks: [platform_internal]
+    volumes: [platform_media:/srv/platform/media:ro]
     restart: unless-stopped
     deploy: { resources: { limits: { cpus: '0.50', memory: 512M } } }
   ai-gateway:
@@ -21,3 +23,6 @@ services:
 networks:
   platform_internal:
     external: true
+
+volumes:
+  platform_media:

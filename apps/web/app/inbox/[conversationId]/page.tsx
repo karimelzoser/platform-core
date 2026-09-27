@@ -11,6 +11,7 @@ interface Message {
   body: string;
   sentAt: string;
   deliveryStatus: string | null;
+  attachments: Array<{ fileName: string; mediaType: string; byteSize: number }>;
 }
 
 interface Assignee {
@@ -132,6 +133,11 @@ export default async function ConversationPage({
                     {message.direction} · {message.senderType}
                   </strong>
                   <span>{message.body}</span>
+                  {message.attachments.length ? (
+                    <span>
+                      {message.attachments.map((attachment) => attachment.fileName).join(', ')}
+                    </span>
+                  ) : null}
                   <small>
                     {new Date(message.sentAt).toLocaleString()}
                     {message.direction === 'OUTBOUND' && message.deliveryStatus

@@ -1,5 +1,5 @@
 import path from 'node:path';
-import { mkdir, readFile, writeFile } from 'node:fs/promises';
+import { mkdir, readFile, unlink, writeFile } from 'node:fs/promises';
 import { z } from 'zod';
 
 export const outboundAttachmentSchema = z.object({
@@ -40,5 +40,9 @@ export class LocalMediaStore {
 
   public read(reference: MediaReference): Promise<Buffer> {
     return readFile(localMediaPath(this.root, reference));
+  }
+
+  public remove(reference: MediaReference): Promise<void> {
+    return unlink(localMediaPath(this.root, reference));
   }
 }

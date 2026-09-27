@@ -53,3 +53,5 @@ corepack pnpm preview:health
 Inspect `.preview/*.log` for host application logs. For container diagnostics,
 run `docker compose -f docker/integration/compose.yml -f docker/preview/compose.yml ps`.
 If dependencies changed, rerun `corepack pnpm install --frozen-lockfile`.
+Development media uploads are stored under `.preview/media`; `preview:reset`
+removes them along with the disposable database state.

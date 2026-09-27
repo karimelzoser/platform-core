@@ -43,6 +43,12 @@ jobs:
       - name: Stop isolated integration stack
         if: always()
         run: scripts/integration/down.sh
+  api-image:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+      - name: Build API image with its workspace dependencies
+        run: docker build --file docker/Dockerfile.api --tag platform-api:ci .
   ai-gateway:
     runs-on: ubuntu-24.04
     steps:

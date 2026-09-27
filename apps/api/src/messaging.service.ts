@@ -4,7 +4,7 @@ import {
   type TenantRequestContext,
 } from '@platform/command-execution';
 import { sql, withTenantTransaction } from '@platform/database';
-import { Injectable } from '@nestjs/common';
+import { BadRequestException, Injectable } from '@nestjs/common';
 import { randomUUID } from 'node:crypto';
 import { ApiDatabaseService } from './api-database.service.js';
 
@@ -97,10 +97,19 @@ export class MessagingService {
         body: string;
         sent_at: Date;
         delivery_status: string | null;
-      }>`select id, direction, sender_type, body, sent_at, delivery_status from messaging.messages
-        where conversation_id = ${conversationId}::uuid order by sent_at asc, id asc limit 500`.execute(
-        transaction,
-      );
+        attachments: Array<{ fileName: string; mediaType: string; byteSize: number }>;
+      }>`select message.id, message.direction, message.sender_type, message.body,
+          message.sent_at, message.delivery_status,
+          coalesce((select jsonb_agg(jsonb_build_object(
+            'fileName', attachment.file_name,
+            'mediaType', attachment.media_type,
+            'byteSize', attachment.byte_size
+          ) order by attachment.id)
+          from messaging.message_attachments as attachment
+          where attachment.message_id = message.id), '[]'::jsonb) as attachments
+        from messaging.messages as message
+        where message.conversation_id = ${conversationId}::uuid
+        order by message.sent_at asc, message.id asc limit 500`.execute(transaction);
       return response.rows.map((row) => ({
         id: row.id,
         direction: row.direction,
@@ -108,6 +117,7 @@ export class MessagingService {
         body: row.body,
         sentAt: row.sent_at,
         deliveryStatus: row.delivery_status,
+        attachments: row.attachments,
       }));
     });
   }
@@ -259,6 +269,18 @@ export class MessagingService {
           if (!inserted.rows[0])
             throw new Error('Conversation has no dispatchable provider connection');
           for (const attachment of attachments) {
+            const claimed = await sql<{ id: string }>`update messaging.media_uploads
+              set message_id = ${messageId}::uuid
+              where tenant_id = ${context.tenantId}::uuid
+                and storage_key = ${attachment.storageKey}
+                and media_type = ${attachment.mediaType}
+                and content_type = ${attachment.contentType}
+                and file_name = ${attachment.fileName}
+                and byte_size = ${attachment.byteSize}
+                and message_id is null and expires_at > now()
+              returning id`.execute(transaction);
+            if (!claimed.rows[0])
+              throw new BadRequestException('Attachment is unavailable for this tenant');
             await sql`insert into messaging.message_attachments (
               tenant_id, message_id, storage_key, media_type, content_type, file_name, byte_size
             ) values (

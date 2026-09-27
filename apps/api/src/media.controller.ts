@@ -39,8 +39,7 @@ export class MediaController {
     if (!bytes.byteLength || bytes.byteLength > 700_000)
       throw new BadRequestException('Development media is limited to 700,000 bytes');
     const context = await this.context(authorization, tenantId, correlationId);
-    return this.media.registerLocalBytes({
-      tenantId: context.tenantId,
+    return this.media.registerLocalBytes(context, {
       mediaType: parsed.mediaType as 'IMAGE' | 'DOCUMENT' | 'AUDIO' | 'VIDEO',
       contentType: parsed.contentType,
       fileName: parsed.fileName,

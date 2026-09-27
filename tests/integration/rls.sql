@@ -21,12 +21,32 @@ BEGIN
   IF NOT EXISTS (SELECT 1 FROM messaging.message_attachments WHERE storage_key = 'tenant-a/test.png') THEN
     RAISE EXCEPTION 'Tenant A cannot read own message attachment';
   END IF;
+  IF NOT EXISTS (SELECT 1 FROM messaging.media_uploads WHERE storage_key = 'uploads/a-test.png') THEN
+    RAISE EXCEPTION 'Tenant A cannot read own media upload';
+  END IF;
   IF NOT EXISTS (SELECT 1 FROM tickets.records WHERE id = 'aaaaaaaa-0000-0000-0000-000000000103') THEN
     RAISE EXCEPTION 'Tenant A cannot read own ticket';
   END IF;
   IF NOT EXISTS (SELECT 1 FROM tickets.comments WHERE ticket_id = 'aaaaaaaa-0000-0000-0000-000000000103') THEN
     RAISE EXCEPTION 'Tenant A cannot read own ticket comment';
   END IF;
+END;
+$$;
+
+DO $$
+DECLARE affected integer;
+BEGIN
+  UPDATE messaging.media_uploads
+  SET message_id = 'aaaaaaaa-0000-0000-0000-000000000102'
+  WHERE storage_key = 'uploads/a-test.png' AND message_id IS NULL AND expires_at > now();
+  GET DIAGNOSTICS affected = ROW_COUNT;
+  IF affected <> 1 THEN RAISE EXCEPTION 'Tenant A could not claim own media upload'; END IF;
+
+  UPDATE messaging.media_uploads
+  SET message_id = 'aaaaaaaa-0000-0000-0000-000000000102'
+  WHERE storage_key = 'uploads/a-test.png' AND message_id IS NULL AND expires_at > now();
+  GET DIAGNOSTICS affected = ROW_COUNT;
+  IF affected <> 0 THEN RAISE EXCEPTION 'Media upload was claimed twice'; END IF;
 END;
 $$;
 
@@ -127,6 +147,28 @@ BEGIN
   IF EXISTS (SELECT 1 FROM messaging.message_attachments WHERE storage_key = 'tenant-a/test.png') THEN
     RAISE EXCEPTION 'Tenant B can read Tenant A message attachment';
   END IF;
+  IF EXISTS (SELECT 1 FROM messaging.media_uploads WHERE storage_key = 'uploads/a-test.png') THEN
+    RAISE EXCEPTION 'Tenant B can read Tenant A media upload';
+  END IF;
+  BEGIN
+    INSERT INTO messaging.media_uploads (
+      tenant_id, storage_key, media_type, content_type, file_name, byte_size
+    ) VALUES (
+      'aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa', 'uploads/cross-tenant.png',
+      'IMAGE', 'image/png', 'cross-tenant.png', 1
+    );
+    RAISE EXCEPTION 'Tenant B registered a Tenant A media upload';
+  EXCEPTION WHEN insufficient_privilege THEN
+    NULL;
+  END;
+  BEGIN
+    UPDATE messaging.media_uploads
+    SET message_id = 'aaaaaaaa-0000-0000-0000-000000000102'
+    WHERE storage_key = 'uploads/b-test.pdf';
+    RAISE EXCEPTION 'Tenant B linked own upload to Tenant A message';
+  EXCEPTION WHEN foreign_key_violation THEN
+    NULL;
+  END;
   BEGIN
     INSERT INTO messaging.message_attachments (
       tenant_id, message_id, storage_key, media_type, content_type, file_name, byte_size
@@ -190,6 +232,12 @@ BEGIN
   WHERE id = 'aaaaaaaa-0000-0000-0000-000000000102';
   GET DIAGNOSTICS affected = ROW_COUNT;
   IF affected <> 0 THEN RAISE EXCEPTION 'Tenant B updated Tenant A message'; END IF;
+
+  UPDATE messaging.media_uploads
+  SET message_id = 'bbbbbbbb-0000-0000-0000-000000000102'
+  WHERE storage_key = 'uploads/a-test.png';
+  GET DIAGNOSTICS affected = ROW_COUNT;
+  IF affected <> 0 THEN RAISE EXCEPTION 'Tenant B claimed Tenant A media upload'; END IF;
 
   UPDATE tickets.records
   SET status = 'CLOSED'

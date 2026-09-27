@@ -1,5 +1,5 @@
 import assert from 'node:assert/strict';
-import { mkdtemp, rm } from 'node:fs/promises';
+import { mkdtemp, readFile, rm } from 'node:fs/promises';
 import path from 'node:path';
 import test from 'node:test';
 import { LocalMediaStore, localMediaPath, mediaReferenceSchema } from './index.js';
@@ -31,6 +31,8 @@ void test('writes and reads only the declared bounded media bytes', async () => 
     await store.write(stored, new Uint8Array([1, 2, 3]));
     assert.deepEqual(await store.read(stored), Buffer.from([1, 2, 3]));
     await assert.rejects(store.write(stored, new Uint8Array([1, 2])));
+    await store.remove(stored);
+    await assert.rejects(readFile(localMediaPath(root, stored)));
   } finally {
     await rm(root, { recursive: true, force: true });
   }
