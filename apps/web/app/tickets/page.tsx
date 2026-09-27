@@ -18,10 +18,7 @@ export default async function TicketsPage() {
         <div>
           <p className="eyebrow">TICKETS</p>
           <h1>Support tickets</h1>
-          <p>
-            Tenant-scoped operational tickets. Assignment, resolution, and SLA controls are in
-            progress.
-          </p>
+          <p>Tenant-scoped operational tickets with protected lifecycle controls.</p>
         </div>
       </header>
       {result.kind === 'success' ? (
@@ -30,7 +27,7 @@ export default async function TicketsPage() {
             <ul className="detail-list">
               {result.items.map((ticket) => (
                 <li key={ticket.id}>
-                  <strong>{ticket.title}</strong>
+                  <a href={`/tickets/${ticket.id}`}>{ticket.title}</a>
                   <span>
                     {ticket.status} · {ticket.priority}
                   </span>
@@ -42,7 +39,7 @@ export default async function TicketsPage() {
         ) : (
           <section className="state-panel customer-state">
             <h2>No tickets yet</h2>
-            <p>Create tickets through the protected API while the creation surface is completed.</p>
+            <p>The protected ticket creation surface is under development.</p>
           </section>
         )
       ) : (
