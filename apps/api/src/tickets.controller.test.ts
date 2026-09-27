@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
-import { ForbiddenException, NotFoundException } from '@nestjs/common';
+import { BadRequestException, ForbiddenException, NotFoundException } from '@nestjs/common';
 import { AuthenticatedContextService } from './authenticated-context.service.js';
 import { TicketsController } from './tickets.controller.js';
 import { TicketsService } from './tickets.service.js';
@@ -107,5 +107,48 @@ void test('ticket detail returns 404 when RLS hides another tenant record', asyn
   await assert.rejects(
     controller.get(ticketId, 'Bearer test-token', tenantId, 'ticket-hidden-test'),
     NotFoundException,
+  );
+});
+
+void test('ticket command input rejects invalid IDs before reaching the service', async () => {
+  const controller = new TicketsController(
+    {
+      resolve: () =>
+        Promise.resolve({
+          tenantId,
+          actorId: '11111111-1111-1111-1111-111111111111',
+          subject: 'test-subject-a',
+          requestId: 'ticket-validation-test',
+          correlationId: 'ticket-validation-test',
+          actorType: 'USER',
+          permissions: ['tickets.read', 'tickets.create', 'tickets.update', 'tickets.assign'],
+        }),
+    } as unknown as AuthenticatedContextService,
+    {} as TicketsService,
+  );
+  await assert.rejects(
+    controller.get('not-a-uuid', 'Bearer test-token', tenantId, 'ticket-validation-test'),
+    BadRequestException,
+  );
+  await assert.rejects(
+    controller.create(
+      Buffer.from('{"title":"Valid","conversationId":"not-a-uuid"}'),
+      'Bearer test-token',
+      tenantId,
+      'ticket-validation-test',
+      'ticket-validation-create',
+    ),
+    BadRequestException,
+  );
+  await assert.rejects(
+    controller.assign(
+      ticketId,
+      Buffer.from('{"assigneeId":"not-a-uuid"}'),
+      'Bearer test-token',
+      tenantId,
+      'ticket-validation-test',
+      'ticket-validation-assign',
+    ),
+    BadRequestException,
   );
 });

@@ -1,7 +1,10 @@
 'use server';
 
 import { randomUUID } from 'node:crypto';
+import { revalidatePath } from 'next/cache';
 import { cookies } from 'next/headers';
+
+const refreshPath = revalidatePath as (path: string) => void;
 
 export interface TicketActionState {
   error?: string;
@@ -104,6 +107,8 @@ async function sendTicketCommand(
   } catch {
     return { error: 'The ticket API is unavailable.' };
   }
+  refreshPath('/tickets');
+  refreshPath(`/tickets/${ticketId}`);
   return { completed: true };
 }
 
@@ -134,6 +139,7 @@ async function sendTicketCollectionCommand(
   } catch {
     return { error: 'The ticket API is unavailable.' };
   }
+  refreshPath('/tickets');
   return { completed: true };
 }
 

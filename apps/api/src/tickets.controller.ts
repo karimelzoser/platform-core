@@ -74,6 +74,7 @@ export class TicketsController {
   ) {
     const context = await this.context(authorization, tenantId, correlationId);
     this.assertPermission(context.permissions, 'tickets.read');
+    assertUuid(ticketId, 'ticketId');
     const ticket = await this.tickets.get(context, ticketId);
     if (!ticket) throw new NotFoundException('Ticket not found');
     return ticket;
@@ -90,6 +91,7 @@ export class TicketsController {
   ) {
     const context = await this.context(authorization, tenantId, correlationId);
     this.assertPermission(context.permissions, 'tickets.update');
+    assertUuid(ticketId, 'ticketId');
     return this.tickets.update(context, idempotencyKey ?? '', ticketId, parseUpdateTicket(body));
   }
 
@@ -105,6 +107,7 @@ export class TicketsController {
     const parsed = parseAssignment(body);
     const context = await this.context(authorization, tenantId, correlationId);
     this.assertPermission(context.permissions, 'tickets.assign');
+    assertUuid(ticketId, 'ticketId');
     return this.tickets.assign(context, idempotencyKey ?? '', ticketId, parsed.assigneeId);
   }
 
@@ -120,6 +123,7 @@ export class TicketsController {
     const parsed = parseResolution(body);
     const context = await this.context(authorization, tenantId, correlationId);
     this.assertPermission(context.permissions, 'tickets.close');
+    assertUuid(ticketId, 'ticketId');
     return this.tickets.setResolution(context, idempotencyKey ?? '', ticketId, parsed.status);
   }
 
@@ -135,6 +139,7 @@ export class TicketsController {
     const parsed = parseComment(body);
     const context = await this.context(authorization, tenantId, correlationId);
     this.assertPermission(context.permissions, 'tickets.update');
+    assertUuid(ticketId, 'ticketId');
     return this.tickets.addComment(
       context,
       idempotencyKey ?? '',
@@ -164,12 +169,10 @@ export class TicketsController {
 
 function parseCreateTicket(body: unknown): CreateTicketInput {
   const parsed = parseJsonObject(body);
-  if (typeof parsed.title !== 'string' || !parsed.title.trim())
-    throw new BadRequestException('Ticket title is required');
-  if (parsed.customerId !== undefined && typeof parsed.customerId !== 'string')
-    throw new BadRequestException('customerId must be a string');
-  if (parsed.conversationId !== undefined && typeof parsed.conversationId !== 'string')
-    throw new BadRequestException('conversationId must be a string');
+  if (typeof parsed.title !== 'string' || !parsed.title.trim() || parsed.title.length > 500)
+    throw new BadRequestException('Ticket title must contain at most 500 characters');
+  if (parsed.customerId !== undefined) assertUuid(parsed.customerId, 'customerId');
+  if (parsed.conversationId !== undefined) assertUuid(parsed.conversationId, 'conversationId');
   const priority = parsed.priority ?? 'NORMAL';
   if (typeof priority !== 'string' || !['LOW', 'NORMAL', 'HIGH', 'URGENT'].includes(priority))
     throw new BadRequestException('Invalid ticket priority');
@@ -186,8 +189,8 @@ function parseComment(body: unknown): {
   visibility: 'INTERNAL' | 'CUSTOMER_VISIBLE';
 } {
   const parsed = parseJsonObject(body);
-  if (typeof parsed.body !== 'string' || !parsed.body.trim())
-    throw new BadRequestException('Comment body is required');
+  if (typeof parsed.body !== 'string' || !parsed.body.trim() || parsed.body.length > 20_000)
+    throw new BadRequestException('Comment body must contain at most 20000 characters');
   const visibility = parsed.visibility ?? 'INTERNAL';
   if (typeof visibility !== 'string' || !['INTERNAL', 'CUSTOMER_VISIBLE'].includes(visibility))
     throw new BadRequestException('Invalid comment visibility');
@@ -217,10 +220,9 @@ function parseUpdateTicket(body: unknown): UpdateTicketInput {
     (typeof priority !== 'string' || !['LOW', 'NORMAL', 'HIGH', 'URGENT'].includes(priority))
   )
     throw new BadRequestException('Invalid ticket priority');
-  if (customerId !== undefined && customerId !== null && typeof customerId !== 'string')
-    throw new BadRequestException('customerId must be a string or null');
-  if (conversationId !== undefined && conversationId !== null && typeof conversationId !== 'string')
-    throw new BadRequestException('conversationId must be a string or null');
+  if (customerId !== undefined && customerId !== null) assertUuid(customerId, 'customerId');
+  if (conversationId !== undefined && conversationId !== null)
+    assertUuid(conversationId, 'conversationId');
   return {
     ...(typeof title === 'string' ? { title: title.trim() } : {}),
     ...(typeof priority === 'string' ? { priority: priority as TicketPriority } : {}),
@@ -231,8 +233,7 @@ function parseUpdateTicket(body: unknown): UpdateTicketInput {
 
 function parseAssignment(body: unknown): { assigneeId: string | null } {
   const assigneeId = parseJsonObject(body).assigneeId;
-  if (assigneeId !== null && typeof assigneeId !== 'string')
-    throw new BadRequestException('assigneeId must be a string or null');
+  if (assigneeId !== null) assertUuid(assigneeId, 'assigneeId');
   return { assigneeId };
 }
 
@@ -252,4 +253,12 @@ function parseJsonObject(body: unknown): Record<string, unknown> {
   } catch {
     throw new BadRequestException('Ticket body must be a JSON object');
   }
+}
+
+function assertUuid(value: unknown, field: string): asserts value is string {
+  if (
+    typeof value !== 'string' ||
+    !/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(value)
+  )
+    throw new BadRequestException(`${field} must be a UUID`);
 }

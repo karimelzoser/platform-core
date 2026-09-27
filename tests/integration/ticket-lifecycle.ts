@@ -156,6 +156,7 @@ async function main(): Promise<void> {
           'tickets.record.created',
           'tickets.record.updated',
           'tickets.record.assigned',
+          'tickets.comment.created',
           'tickets.record.resolved',
           'tickets.record.reopened',
         ]),
