@@ -49,4 +49,37 @@ void test('ticket mutations reject a read-only tenant member', async () => {
     ),
     ForbiddenException,
   );
+  await assert.rejects(
+    controller.update(
+      ticketId,
+      Buffer.from('{"priority":"HIGH"}'),
+      'Bearer test-token',
+      tenantId,
+      'ticket-auth-test',
+      'ticket-update-key',
+    ),
+    ForbiddenException,
+  );
+  await assert.rejects(
+    controller.assign(
+      ticketId,
+      Buffer.from('{"assigneeId":null}'),
+      'Bearer test-token',
+      tenantId,
+      'ticket-auth-test',
+      'ticket-assignment-key',
+    ),
+    ForbiddenException,
+  );
+  await assert.rejects(
+    controller.resolution(
+      ticketId,
+      Buffer.from('{"status":"RESOLVED"}'),
+      'Bearer test-token',
+      tenantId,
+      'ticket-auth-test',
+      'ticket-resolution-key',
+    ),
+    ForbiddenException,
+  );
 });

@@ -26,6 +26,10 @@ The worker claims at most 100 pending events through a narrowly scoped database 
 | `platform.messaging.v1`    | `messaging.conversation.closed`         | Messaging command   | Stop active handling and refresh the inbox                     |
 | `platform.messaging.v1`    | `messaging.conversation.reopened`       | Messaging command   | Resume active handling and refresh the inbox                   |
 | `platform.tickets.v1`      | `tickets.record.created`                | Ticket command      | Create tenant ticket projections                               |
+| `platform.tickets.v1`      | `tickets.record.updated`                | Ticket command      | Refresh linked customer/conversation ticket views              |
+| `platform.tickets.v1`      | `tickets.record.assigned`               | Ticket command      | Refresh tenant assignee work queues idempotently               |
+| `platform.tickets.v1`      | `tickets.record.resolved`               | Ticket command      | Start resolution-side SLA and reporting projections            |
+| `platform.tickets.v1`      | `tickets.record.reopened`               | Ticket command      | Resume tenant ticket operational handling                      |
 | `platform.tickets.v1`      | `tickets.comment.created`               | Ticket command      | Refresh the ticket timeline idempotently                       |
 | `platform.policy.v1`       | `policy.approval.decided`               | Approval service    | Verify digest then execute once or record failure              |
 

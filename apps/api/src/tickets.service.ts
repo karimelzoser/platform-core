@@ -9,12 +9,20 @@ import { randomUUID } from 'node:crypto';
 import { ApiDatabaseService } from './api-database.service.js';
 
 export type TicketPriority = 'LOW' | 'NORMAL' | 'HIGH' | 'URGENT';
+export type TicketResolutionStatus = 'OPEN' | 'RESOLVED';
 
 export interface CreateTicketInput {
   title: string;
   customerId?: string;
   conversationId?: string;
   priority?: TicketPriority;
+}
+
+export interface UpdateTicketInput {
+  title?: string;
+  priority?: TicketPriority;
+  customerId?: string | null;
+  conversationId?: string | null;
 }
 
 @Injectable()
@@ -47,6 +55,54 @@ export class TicketsService {
         assignedTo: row.assigned_to,
         createdAt: row.created_at,
       }));
+    });
+  }
+
+  public async get(context: TenantRequestContext, ticketId: string) {
+    return withTenantTransaction(this.database.database, context, async (transaction) => {
+      const ticket = await sql<{
+        id: string;
+        title: string;
+        status: string;
+        priority: string;
+        customer_id: string | null;
+        conversation_id: string | null;
+        assigned_to: string | null;
+        resolved_at: Date | null;
+        created_at: Date;
+        updated_at: Date;
+      }>`select id, title, status, priority, customer_id, conversation_id, assigned_to,
+          resolved_at, created_at, updated_at
+        from tickets.records where id = ${ticketId}::uuid`.execute(transaction);
+      const record = ticket.rows[0];
+      if (!record) return undefined;
+      const comments = await sql<{
+        id: string;
+        author_id: string | null;
+        body: string;
+        visibility: string;
+        created_at: Date;
+      }>`select id, author_id, body, visibility, created_at from tickets.comments
+        where ticket_id = ${ticketId}::uuid order by created_at asc, id asc`.execute(transaction);
+      return {
+        id: record.id,
+        title: record.title,
+        status: record.status,
+        priority: record.priority,
+        customerId: record.customer_id,
+        conversationId: record.conversation_id,
+        assignedTo: record.assigned_to,
+        resolvedAt: record.resolved_at,
+        createdAt: record.created_at,
+        updatedAt: record.updated_at,
+        comments: comments.rows.map((comment) => ({
+          id: comment.id,
+          authorId: comment.author_id,
+          body: comment.body,
+          visibility: comment.visibility,
+          createdAt: comment.created_at,
+        })),
+      };
     });
   }
 
@@ -116,6 +172,96 @@ export class TicketsService {
         },
       },
       { context, input: { ticketId, body, visibility }, idempotencyKey },
+    );
+  }
+
+  public async update(
+    context: TenantRequestContext,
+    idempotencyKey: string,
+    ticketId: string,
+    input: UpdateTicketInput,
+  ): Promise<CommandResult<{ ticketId: string }>> {
+    return this.commands.execute(
+      {
+        action: 'tickets.record.update',
+        permission: 'tickets.update',
+        risk: 'MEDIUM',
+        resource: () => ({ type: 'ticket', id: ticketId }),
+        event: { type: 'tickets.record.updated', data: (_input, result) => result },
+        audit: { afterState: (_input, result) => result },
+        execute: async (transaction) => {
+          const updated = await sql<{ id: string }>`update tickets.records set
+            title = coalesce(${input.title ?? null}, title),
+            priority = coalesce(${input.priority ?? null}, priority),
+            customer_id = case when ${input.customerId !== undefined}
+              then ${input.customerId ?? null}::uuid else customer_id end,
+            conversation_id = case when ${input.conversationId !== undefined}
+              then ${input.conversationId ?? null}::uuid else conversation_id end
+            where id = ${ticketId}::uuid returning id`.execute(transaction);
+          if (!updated.rows[0]) throw new Error('Ticket was not found');
+          return { ticketId };
+        },
+      },
+      { context, input: { ticketId, ...input }, idempotencyKey },
+    );
+  }
+
+  public async assign(
+    context: TenantRequestContext,
+    idempotencyKey: string,
+    ticketId: string,
+    assigneeId: string | null,
+  ): Promise<CommandResult<{ ticketId: string; assigneeId: string | null }>> {
+    return this.commands.execute(
+      {
+        action: 'tickets.record.assign',
+        permission: 'tickets.assign',
+        risk: 'LOW',
+        resource: () => ({ type: 'ticket', id: ticketId }),
+        event: { type: 'tickets.record.assigned', data: (_input, result) => result },
+        audit: { afterState: (_input, result) => result },
+        execute: async (transaction) => {
+          const updated = await sql<{ id: string }>`update tickets.records
+            set assigned_to = ${assigneeId}::uuid
+            where id = ${ticketId}::uuid
+              and (${assigneeId}::uuid is null or exists (
+                select 1 from identity.memberships
+                where user_id = ${assigneeId}::uuid and status = 'ACTIVE'
+              )) returning id`.execute(transaction);
+          if (!updated.rows[0]) throw new Error('Ticket or active tenant assignee was not found');
+          return { ticketId, assigneeId };
+        },
+      },
+      { context, input: { ticketId, assigneeId }, idempotencyKey },
+    );
+  }
+
+  public async setResolution(
+    context: TenantRequestContext,
+    idempotencyKey: string,
+    ticketId: string,
+    status: TicketResolutionStatus,
+  ): Promise<CommandResult<{ ticketId: string; status: TicketResolutionStatus }>> {
+    const action = status === 'RESOLVED' ? 'tickets.record.resolve' : 'tickets.record.reopen';
+    const eventType = status === 'RESOLVED' ? 'tickets.record.resolved' : 'tickets.record.reopened';
+    return this.commands.execute(
+      {
+        action,
+        permission: 'tickets.close',
+        risk: 'MEDIUM',
+        resource: () => ({ type: 'ticket', id: ticketId }),
+        event: { type: eventType, data: (_input, result) => result },
+        audit: { afterState: (_input, result) => result },
+        execute: async (transaction) => {
+          const updated = await sql<{ id: string }>`update tickets.records set
+            status = ${status},
+            resolved_at = case when ${status} = 'RESOLVED' then now() else null end
+            where id = ${ticketId}::uuid returning id`.execute(transaction);
+          if (!updated.rows[0]) throw new Error('Ticket was not found');
+          return { ticketId, status };
+        },
+      },
+      { context, input: { ticketId, status }, idempotencyKey },
     );
   }
 }

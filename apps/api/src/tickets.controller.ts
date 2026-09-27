@@ -8,11 +8,18 @@ import {
   HttpCode,
   HttpStatus,
   Param,
+  Patch,
   Post,
   UnauthorizedException,
 } from '@nestjs/common';
 import { AuthenticatedContextService } from './authenticated-context.service.js';
-import { TicketsService, type CreateTicketInput, type TicketPriority } from './tickets.service.js';
+import {
+  TicketsService,
+  type CreateTicketInput,
+  type TicketPriority,
+  type TicketResolutionStatus,
+  type UpdateTicketInput,
+} from './tickets.service.js';
 
 @Controller('v1/tickets')
 export class TicketsController {
@@ -44,6 +51,62 @@ export class TicketsController {
     const context = await this.context(authorization, tenantId, correlationId);
     this.assertPermission(context.permissions, 'tickets.create');
     return this.tickets.create(context, idempotencyKey ?? '', parseCreateTicket(body));
+  }
+
+  @Get(':ticketId')
+  public async get(
+    @Param('ticketId') ticketId: string,
+    @Headers('authorization') authorization: string | undefined,
+    @Headers('x-tenant-id') tenantId: string | undefined,
+    @Headers('x-correlation-id') correlationId: string | undefined,
+  ) {
+    const context = await this.context(authorization, tenantId, correlationId);
+    this.assertPermission(context.permissions, 'tickets.read');
+    return this.tickets.get(context, ticketId);
+  }
+
+  @Patch(':ticketId')
+  public async update(
+    @Param('ticketId') ticketId: string,
+    @Body() body: unknown,
+    @Headers('authorization') authorization: string | undefined,
+    @Headers('x-tenant-id') tenantId: string | undefined,
+    @Headers('x-correlation-id') correlationId: string | undefined,
+    @Headers('idempotency-key') idempotencyKey: string | undefined,
+  ) {
+    const context = await this.context(authorization, tenantId, correlationId);
+    this.assertPermission(context.permissions, 'tickets.update');
+    return this.tickets.update(context, idempotencyKey ?? '', ticketId, parseUpdateTicket(body));
+  }
+
+  @Post(':ticketId/assignment')
+  public async assign(
+    @Param('ticketId') ticketId: string,
+    @Body() body: unknown,
+    @Headers('authorization') authorization: string | undefined,
+    @Headers('x-tenant-id') tenantId: string | undefined,
+    @Headers('x-correlation-id') correlationId: string | undefined,
+    @Headers('idempotency-key') idempotencyKey: string | undefined,
+  ) {
+    const parsed = parseAssignment(body);
+    const context = await this.context(authorization, tenantId, correlationId);
+    this.assertPermission(context.permissions, 'tickets.assign');
+    return this.tickets.assign(context, idempotencyKey ?? '', ticketId, parsed.assigneeId);
+  }
+
+  @Post(':ticketId/resolution')
+  public async resolution(
+    @Param('ticketId') ticketId: string,
+    @Body() body: unknown,
+    @Headers('authorization') authorization: string | undefined,
+    @Headers('x-tenant-id') tenantId: string | undefined,
+    @Headers('x-correlation-id') correlationId: string | undefined,
+    @Headers('idempotency-key') idempotencyKey: string | undefined,
+  ) {
+    const parsed = parseResolution(body);
+    const context = await this.context(authorization, tenantId, correlationId);
+    this.assertPermission(context.permissions, 'tickets.close');
+    return this.tickets.setResolution(context, idempotencyKey ?? '', ticketId, parsed.status);
   }
 
   @Post(':ticketId/comments')
@@ -118,6 +181,52 @@ function parseComment(body: unknown): {
     body: parsed.body.trim(),
     visibility: visibility as 'INTERNAL' | 'CUSTOMER_VISIBLE',
   };
+}
+
+function parseUpdateTicket(body: unknown): UpdateTicketInput {
+  const parsed = parseJsonObject(body);
+  const title = parsed.title;
+  const priority = parsed.priority;
+  const customerId = parsed.customerId;
+  const conversationId = parsed.conversationId;
+  if (
+    title === undefined &&
+    priority === undefined &&
+    customerId === undefined &&
+    conversationId === undefined
+  )
+    throw new BadRequestException('At least one ticket field is required');
+  if (title !== undefined && (typeof title !== 'string' || !title.trim() || title.length > 500))
+    throw new BadRequestException('Ticket title must contain at most 500 characters');
+  if (
+    priority !== undefined &&
+    (typeof priority !== 'string' || !['LOW', 'NORMAL', 'HIGH', 'URGENT'].includes(priority))
+  )
+    throw new BadRequestException('Invalid ticket priority');
+  if (customerId !== undefined && customerId !== null && typeof customerId !== 'string')
+    throw new BadRequestException('customerId must be a string or null');
+  if (conversationId !== undefined && conversationId !== null && typeof conversationId !== 'string')
+    throw new BadRequestException('conversationId must be a string or null');
+  return {
+    ...(typeof title === 'string' ? { title: title.trim() } : {}),
+    ...(typeof priority === 'string' ? { priority: priority as TicketPriority } : {}),
+    ...(customerId === null || typeof customerId === 'string' ? { customerId } : {}),
+    ...(conversationId === null || typeof conversationId === 'string' ? { conversationId } : {}),
+  };
+}
+
+function parseAssignment(body: unknown): { assigneeId: string | null } {
+  const assigneeId = parseJsonObject(body).assigneeId;
+  if (assigneeId !== null && typeof assigneeId !== 'string')
+    throw new BadRequestException('assigneeId must be a string or null');
+  return { assigneeId };
+}
+
+function parseResolution(body: unknown): { status: TicketResolutionStatus } {
+  const status = parseJsonObject(body).status;
+  if (status !== 'OPEN' && status !== 'RESOLVED')
+    throw new BadRequestException('Ticket status must be OPEN or RESOLVED');
+  return { status };
 }
 
 function parseJsonObject(body: unknown): Record<string, unknown> {
