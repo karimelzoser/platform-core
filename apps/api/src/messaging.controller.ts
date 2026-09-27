@@ -9,6 +9,7 @@ import {
   Post,
   UnauthorizedException,
 } from '@nestjs/common';
+import { outboundAttachmentSchema } from '@platform/media';
 import { AuthenticatedContextService } from './authenticated-context.service.js';
 import { MessagingService } from './messaging.service.js';
 
@@ -176,28 +177,9 @@ export class MessagingController {
     if (attachments.length > 10)
       throw new BadRequestException('At most 10 attachments are allowed');
     const validAttachments = attachments.map((attachment) => {
-      if (attachment === null || typeof attachment !== 'object')
-        throw new BadRequestException('Invalid attachment');
-      const value = attachment as Record<string, unknown>;
-      if (
-        typeof value.storageKey !== 'string' ||
-        typeof value.contentType !== 'string' ||
-        typeof value.fileName !== 'string' ||
-        typeof value.byteSize !== 'number' ||
-        typeof value.mediaType !== 'string' ||
-        !Number.isSafeInteger(value.byteSize) ||
-        value.byteSize < 1 ||
-        value.byteSize > 25 * 1024 * 1024 ||
-        !['IMAGE', 'DOCUMENT', 'AUDIO', 'VIDEO'].includes(value.mediaType)
-      )
-        throw new BadRequestException('Invalid attachment');
-      return {
-        storageKey: value.storageKey,
-        mediaType: value.mediaType,
-        contentType: value.contentType,
-        fileName: value.fileName,
-        byteSize: value.byteSize,
-      };
+      const result = outboundAttachmentSchema.safeParse(attachment);
+      if (!result.success) throw new BadRequestException('Invalid attachment');
+      return result.data;
     });
     return this.messaging.send(
       context,
