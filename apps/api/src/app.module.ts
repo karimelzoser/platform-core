@@ -15,6 +15,8 @@ import { WebhookController } from './webhook.controller.js';
 import { WebhookIngressService } from './webhook-ingress.service.js';
 import { MessagingController } from './messaging.controller.js';
 import { MessagingService } from './messaging.service.js';
+import { MediaService } from './media.service.js';
+import { MediaController } from './media.controller.js';
 import { TicketsController } from './tickets.controller.js';
 import { TicketsService } from './tickets.service.js';
 
@@ -35,6 +37,7 @@ class HealthController {
     ApprovalsController,
     MessagingController,
     TicketsController,
+    MediaController,
   ],
   providers: [
     ApiDatabaseService,
@@ -42,6 +45,7 @@ class HealthController {
     ApprovalService,
     WebhookIngressService,
     MessagingService,
+    MediaService,
     TicketsService,
     {
       provide: LocalMediaStore,
