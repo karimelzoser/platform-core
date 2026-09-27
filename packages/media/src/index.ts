@@ -1,4 +1,5 @@
 import path from 'node:path';
+import { mkdir, readFile, writeFile } from 'node:fs/promises';
 import { z } from 'zod';
 
 export const outboundAttachmentSchema = z.object({
@@ -23,4 +24,21 @@ export function localMediaPath(root: string, reference: MediaReference): string 
   if (!target.startsWith(`${tenantRoot}${path.sep}`))
     throw new Error('Invalid local media storage key');
   return target;
+}
+
+/** Development storage boundary. Production can replace this with an S3-compatible adapter. */
+export class LocalMediaStore {
+  public constructor(private readonly root: string) {}
+
+  public async write(reference: MediaReference, bytes: Uint8Array): Promise<void> {
+    if (bytes.byteLength !== reference.byteSize)
+      throw new Error('Media byte size does not match reference');
+    const target = localMediaPath(this.root, reference);
+    await mkdir(path.dirname(target), { recursive: true });
+    await writeFile(target, bytes, { flag: 'wx' });
+  }
+
+  public read(reference: MediaReference): Promise<Buffer> {
+    return readFile(localMediaPath(this.root, reference));
+  }
 }
