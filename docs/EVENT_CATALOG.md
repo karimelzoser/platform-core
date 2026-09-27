@@ -17,7 +17,7 @@ The worker claims at most 100 pending events through a narrowly scoped database 
 | `platform.integrations.v1` | `integration.webhook.received`          | Webhook ingress     | Normalize asynchronously from persisted delivery               |
 | `platform.integrations.v1` | `integration.sync.requested`            | Integration command | Start deterministic Temporal sync workflow                     |
 | `platform.messaging.v1`    | `messaging.message.received`            | Inbound worker      | Refresh tenant inbox after normalized delivery commit          |
-| `platform.messaging.v1`    | `messaging.message.dispatch_requested`  | Messaging command   | Claim a committed outbound message for provider dispatch       |
+| `platform.messaging.v1`    | `messaging.message.dispatch_requested`  | Messaging command   | Claim a committed send with bounded attachment references      |
 | `platform.messaging.v1`    | `messaging.message.sent`                | Outbound worker     | Refresh inbox after provider accepts an idempotent send        |
 | `platform.messaging.v1`    | `messaging.message.delivery_updated`    | Webhook worker      | Apply a monotonic provider delivery/read receipt               |
 | `platform.messaging.v1`    | `messaging.message.dead_lettered`       | Outbound worker     | Surface a bounded, exhausted provider delivery failure         |
