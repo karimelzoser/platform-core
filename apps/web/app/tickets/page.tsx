@@ -1,4 +1,5 @@
 import { cookies } from 'next/headers';
+import { CreateTicketForm } from './create-ticket-form';
 
 export const dynamic = 'force-dynamic';
 
@@ -10,8 +11,14 @@ interface Ticket {
   createdAt: string;
 }
 
+interface SessionAccess {
+  permissions: string[];
+}
+
 export default async function TicketsPage() {
-  const result = await loadTickets();
+  const [result, access] = await Promise.all([loadTickets(), loadAccess()]);
+  const canCreate =
+    access.kind === 'success' && access.access.permissions.includes('tickets.create');
   return (
     <main className="customers-page">
       <header className="customer-profile-header">
@@ -21,6 +28,7 @@ export default async function TicketsPage() {
           <p>Tenant-scoped operational tickets with protected lifecycle controls.</p>
         </div>
       </header>
+      {canCreate ? <CreateTicketForm /> : null}
       {result.kind === 'success' ? (
         result.items.length ? (
           <section className="customer-card customer-card-wide">
@@ -50,6 +58,26 @@ export default async function TicketsPage() {
       )}
     </main>
   );
+}
+
+async function loadAccess(): Promise<
+  { kind: 'success'; access: SessionAccess } | { kind: 'error' }
+> {
+  const store = await cookies();
+  const token = store.get('platform_access_token')?.value;
+  const tenantId = store.get('platform_tenant_id')?.value;
+  const baseUrl = process.env.API_INTERNAL_URL;
+  if (!token || !tenantId || !baseUrl) return { kind: 'error' };
+  try {
+    const response = await fetch(new URL('/v1/session', baseUrl), {
+      headers: { authorization: `Bearer ${token}`, 'x-tenant-id': tenantId },
+    });
+    return response.ok
+      ? { kind: 'success', access: (await response.json()) as SessionAccess }
+      : { kind: 'error' };
+  } catch {
+    return { kind: 'error' };
+  }
 }
 
 async function loadTickets(): Promise<

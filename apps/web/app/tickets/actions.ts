@@ -8,6 +8,23 @@ export interface TicketActionState {
   completed?: boolean;
 }
 
+export async function createTicket(
+  _previousState: TicketActionState,
+  formData: FormData,
+): Promise<TicketActionState> {
+  const title = requiredText(formData, 'title');
+  const priority = requiredText(formData, 'priority');
+  if (!title || !priority) return { error: 'A ticket title and priority are required.' };
+  const customerId = optionalText(formData, 'customerId');
+  const conversationId = optionalText(formData, 'conversationId');
+  return sendTicketCollectionCommand({
+    title,
+    priority,
+    ...(customerId ? { customerId } : {}),
+    ...(conversationId ? { conversationId } : {}),
+  });
+}
+
 export async function updateTicket(
   _previousState: TicketActionState,
   formData: FormData,
@@ -84,6 +101,36 @@ async function sendTicketCommand(
     if (response.status === 409)
       return { error: 'This update conflicts with an existing request. Refresh and try again.' };
     if (!response.ok) return { error: 'The ticket update could not be recorded.' };
+  } catch {
+    return { error: 'The ticket API is unavailable.' };
+  }
+  return { completed: true };
+}
+
+async function sendTicketCollectionCommand(
+  body: Record<string, string>,
+): Promise<TicketActionState> {
+  const store = await cookies();
+  const token = store.get('platform_access_token')?.value;
+  const tenantId = store.get('platform_tenant_id')?.value;
+  const baseUrl = process.env.API_INTERNAL_URL;
+  if (!token || !tenantId)
+    return { error: 'Sign in and select an organization before creating tickets.' };
+  if (!baseUrl) return { error: 'Ticket workspace configuration is incomplete.' };
+  try {
+    const response = await fetch(new URL('/v1/tickets', baseUrl), {
+      method: 'POST',
+      headers: {
+        authorization: `Bearer ${token}`,
+        'content-type': 'application/json',
+        'idempotency-key': randomUUID(),
+        'x-tenant-id': tenantId,
+      },
+      body: JSON.stringify(body),
+    });
+    if (response.status === 401 || response.status === 403)
+      return { error: 'Your session no longer has permission to create tickets.' };
+    if (!response.ok) return { error: 'The ticket could not be created.' };
   } catch {
     return { error: 'The ticket API is unavailable.' };
   }
