@@ -29,12 +29,28 @@ jobs:
     runs-on: ubuntu-24.04
     steps:
       - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+        with: { version: 9.15.5 }
+      - uses: actions/setup-node@v4
+        with: { node-version: 22, cache: pnpm }
       - name: Start isolated integration stack
+        env:
+          INTEGRATION_HOST_PORTS: '1'
         run: scripts/integration/up.sh
       - name: Apply SQL migrations
         run: scripts/integration/migrate.sh
       - name: Verify migration and tenant-RLS behavior
         run: scripts/integration/test-migrations.sh
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm --filter @platform/api... --filter @platform/worker... build
+      - name: Verify two-tenant messaging lifecycle
+        env:
+          DATABASE_URL: postgres://platform_app:platform-test-app-password@127.0.0.1:5432/platform
+          OPA_URL: http://127.0.0.1:8181
+          KEYCLOAK_ISSUER: http://127.0.0.1:8080/realms/platform
+          KEYCLOAK_JWKS_URL: http://127.0.0.1:8080/realms/platform/protocol/openid-connect/certs
+          KEYCLOAK_CLIENT_ID: platform-web
+        run: pnpm --filter @platform/integration-tests test:integration
       - name: Collect integration diagnostics
         if: failure()
         run: |

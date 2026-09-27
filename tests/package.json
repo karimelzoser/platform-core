@@ -1,0 +1,22 @@
+{
+  "name": "@platform/integration-tests",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "typecheck": "tsc --noEmit -p tsconfig.json",
+    "test:integration": "tsx integration/messaging-lifecycle.ts"
+  },
+  "dependencies": {
+    "@platform/authorization": "workspace:*",
+    "@platform/command-execution": "workspace:*",
+    "@platform/connectors": "workspace:*",
+    "@platform/database": "workspace:*",
+    "@platform/media": "workspace:*"
+  },
+  "devDependencies": {
+    "@types/node": "22.10.2",
+    "tsx": "4.19.2",
+    "typescript": "5.7.2"
+  }
+}

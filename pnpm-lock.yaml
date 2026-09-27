@@ -230,6 +230,34 @@ importers:
         specifier: 3.24.1
         version: 3.24.1
 
+  tests:
+    dependencies:
+      '@platform/authorization':
+        specifier: workspace:*
+        version: link:../packages/authorization
+      '@platform/command-execution':
+        specifier: workspace:*
+        version: link:../packages/command-execution
+      '@platform/connectors':
+        specifier: workspace:*
+        version: link:../packages/connectors
+      '@platform/database':
+        specifier: workspace:*
+        version: link:../packages/database
+      '@platform/media':
+        specifier: workspace:*
+        version: link:../packages/media
+    devDependencies:
+      '@types/node':
+        specifier: 22.10.2
+        version: 22.10.2
+      tsx:
+        specifier: 4.19.2
+        version: 4.19.2
+      typescript:
+        specifier: 5.7.2
+        version: 5.7.2
+
 packages:
   '@emnapi/runtime@1.11.3':
     resolution:
