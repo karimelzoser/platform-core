@@ -16,6 +16,7 @@
   },
   "dependencies": {
     "@platform/contracts": "workspace:*",
+    "@platform/media": "workspace:*",
     "zod": "3.24.1"
   }
 }

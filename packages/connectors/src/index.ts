@@ -1,4 +1,5 @@
 import { connectorManifestSchema, type ConnectorManifest } from '@platform/contracts';
+import { outboundAttachmentSchema } from '@platform/media';
 import { z } from 'zod';
 
 export const webhookEnvelopeSchema = z.object({
@@ -56,22 +57,7 @@ export const outboundMessageRequestSchema = z.object({
   providerConversationId: z.string().min(1).max(500),
   idempotencyKey: z.string().min(1).max(256),
   body: z.string().min(1).max(20_000),
-  attachments: z
-    .array(
-      z.object({
-        storageKey: z.string().min(1).max(1000),
-        mediaType: z.enum(['IMAGE', 'DOCUMENT', 'AUDIO', 'VIDEO']),
-        contentType: z.string().min(1).max(255),
-        fileName: z.string().min(1).max(255),
-        byteSize: z
-          .number()
-          .int()
-          .positive()
-          .max(25 * 1024 * 1024),
-      }),
-    )
-    .max(10)
-    .default([]),
+  attachments: z.array(outboundAttachmentSchema).max(10).default([]),
 });
 
 export type OutboundMessageRequest = z.infer<typeof outboundMessageRequestSchema>;
