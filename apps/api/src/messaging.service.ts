@@ -230,6 +230,13 @@ export class MessagingService {
     idempotencyKey: string,
     conversationId: string,
     body: string,
+    attachments: Array<{
+      storageKey: string;
+      mediaType: string;
+      contentType: string;
+      fileName: string;
+      byteSize: number;
+    }> = [],
   ): Promise<CommandResult<{ messageId: string; conversationId: string }>> {
     const messageId = randomUUID();
     return this.commands.execute(
@@ -251,10 +258,18 @@ export class MessagingService {
           returning id`.execute(transaction);
           if (!inserted.rows[0])
             throw new Error('Conversation has no dispatchable provider connection');
+          for (const attachment of attachments) {
+            await sql`insert into messaging.message_attachments (
+              tenant_id, message_id, storage_key, media_type, content_type, file_name, byte_size
+            ) values (
+              ${context.tenantId}::uuid, ${messageId}::uuid, ${attachment.storageKey},
+              ${attachment.mediaType}, ${attachment.contentType}, ${attachment.fileName}, ${attachment.byteSize}
+            )`.execute(transaction);
+          }
           return { messageId, conversationId };
         },
       },
-      { context, input: { conversationId, body }, idempotencyKey },
+      { context, input: { conversationId, body, attachments }, idempotencyKey },
     );
   }
 }

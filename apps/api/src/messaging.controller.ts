@@ -172,7 +172,40 @@ export class MessagingController {
     const context = await this.context(authorization, tenantId, correlationId);
     if (!context.permissions.includes('messaging.conversations.reply'))
       throw new ForbiddenException('Conversation reply permission is required');
-    return this.messaging.send(context, idempotencyKey ?? '', conversationId, parsed.body.trim());
+    const attachments = Array.isArray(parsed.attachments) ? parsed.attachments : [];
+    if (attachments.length > 10)
+      throw new BadRequestException('At most 10 attachments are allowed');
+    const validAttachments = attachments.map((attachment) => {
+      if (attachment === null || typeof attachment !== 'object')
+        throw new BadRequestException('Invalid attachment');
+      const value = attachment as Record<string, unknown>;
+      if (
+        typeof value.storageKey !== 'string' ||
+        typeof value.contentType !== 'string' ||
+        typeof value.fileName !== 'string' ||
+        typeof value.byteSize !== 'number' ||
+        typeof value.mediaType !== 'string' ||
+        !Number.isSafeInteger(value.byteSize) ||
+        value.byteSize < 1 ||
+        value.byteSize > 25 * 1024 * 1024 ||
+        !['IMAGE', 'DOCUMENT', 'AUDIO', 'VIDEO'].includes(value.mediaType)
+      )
+        throw new BadRequestException('Invalid attachment');
+      return {
+        storageKey: value.storageKey,
+        mediaType: value.mediaType,
+        contentType: value.contentType,
+        fileName: value.fileName,
+        byteSize: value.byteSize,
+      };
+    });
+    return this.messaging.send(
+      context,
+      idempotencyKey ?? '',
+      conversationId,
+      parsed.body.trim(),
+      validAttachments,
+    );
   }
 
   private parseJsonBody(body: unknown): Record<string, unknown> {

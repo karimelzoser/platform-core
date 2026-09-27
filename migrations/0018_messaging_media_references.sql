@@ -2,6 +2,9 @@
 -- abstraction and are never copied into messaging records or provider calls.
 BEGIN;
 
+ALTER TABLE messaging.messages
+  ADD CONSTRAINT messaging_messages_tenant_id_id_key UNIQUE (tenant_id, id);
+
 CREATE TABLE messaging.message_attachments (
   id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
   tenant_id uuid NOT NULL REFERENCES identity.organizations(id),
