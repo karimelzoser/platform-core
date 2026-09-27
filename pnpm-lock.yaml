@@ -218,6 +218,12 @@ importers:
         specifier: 8.11.10
         version: 8.11.10
 
+  packages/media:
+    dependencies:
+      zod:
+        specifier: 3.24.1
+        version: 3.24.1
+
 packages:
   '@emnapi/runtime@1.11.3':
     resolution:
