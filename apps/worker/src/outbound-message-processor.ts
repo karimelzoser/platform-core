@@ -20,6 +20,13 @@ interface ClaimedOutboundMessage {
 interface DispatchRoute {
   connectorKey: string;
   providerConversationId: string;
+  attachments: Array<{
+    storageKey: string;
+    mediaType: 'IMAGE' | 'DOCUMENT' | 'AUDIO' | 'VIDEO';
+    contentType: string;
+    fileName: string;
+    byteSize: number;
+  }>;
 }
 
 function isMessagingConnector(connector: Connector): connector is MessagingConnector {
@@ -65,6 +72,7 @@ export class OutboundMessageProcessor {
         providerConversationId: route.providerConversationId,
         idempotencyKey: message.id,
         body: message.body,
+        attachments: route.attachments,
       }),
     );
     await this.recordSent(message, result.providerMessageId, result.acceptedAt, route.connectorKey);
@@ -97,9 +105,25 @@ export class OutboundMessageProcessor {
         const claimedRoute = route.rows[0];
         if (!claimedRoute?.provider_conversation_id)
           throw new Error('Outbound message has no dispatchable provider conversation');
+        const attachments = await sql<{
+          storage_key: string;
+          media_type: 'IMAGE' | 'DOCUMENT' | 'AUDIO' | 'VIDEO';
+          content_type: string;
+          file_name: string;
+          byte_size: string;
+        }>`select storage_key, media_type, content_type, file_name, byte_size
+          from messaging.message_attachments where message_id = ${message.id}::uuid
+          order by id limit 10`.execute(transaction);
         return {
           connectorKey: claimedRoute.connector_key,
           providerConversationId: claimedRoute.provider_conversation_id,
+          attachments: attachments.rows.map((attachment) => ({
+            storageKey: attachment.storage_key,
+            mediaType: attachment.media_type,
+            contentType: attachment.content_type,
+            fileName: attachment.file_name,
+            byteSize: Number(attachment.byte_size),
+          })),
         };
       },
     );
