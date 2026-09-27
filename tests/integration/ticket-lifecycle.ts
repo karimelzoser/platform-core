@@ -9,6 +9,8 @@ const tenantA = 'aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa';
 const tenantB = 'bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb';
 const conversationA = 'aaaaaaaa-0000-0000-0000-000000000101';
 const conversationB = 'bbbbbbbb-0000-0000-0000-000000000101';
+const customerA = 'aaaaaaaa-0000-0000-0000-000000000201';
+const customerB = 'bbbbbbbb-0000-0000-0000-000000000201';
 
 function context(tenantId: string, actorId: string): TenantRequestContext {
   return {
@@ -47,19 +49,25 @@ async function main(): Promise<void> {
     await withTenantTransaction(database, contextA, async (transaction) => {
       await sql`insert into identity.memberships (tenant_id, user_id, status)
         values (${tenantA}::uuid, ${contextA.actorId}::uuid, 'ACTIVE')`.execute(transaction);
+      await sql`insert into crm.customers (id, tenant_id, display_name)
+        values (${customerA}::uuid, ${tenantA}::uuid, 'Lifecycle customer A')`.execute(transaction);
     });
     await withTenantTransaction(database, contextB, async (transaction) => {
       await sql`insert into identity.memberships (tenant_id, user_id, status)
         values (${tenantB}::uuid, ${contextB.actorId}::uuid, 'ACTIVE')`.execute(transaction);
+      await sql`insert into crm.customers (id, tenant_id, display_name)
+        values (${customerB}::uuid, ${tenantB}::uuid, 'Lifecycle customer B')`.execute(transaction);
     });
 
     const createdA = await tickets.create(contextA, 'ticket-lifecycle-create-a', {
       title: 'Investigate A',
+      customerId: customerA,
       conversationId: conversationA,
       priority: 'HIGH',
     });
     const replayA = await tickets.create(contextA, 'ticket-lifecycle-create-a', {
       title: 'Investigate A',
+      customerId: customerA,
       conversationId: conversationA,
       priority: 'HIGH',
     });
@@ -74,6 +82,12 @@ async function main(): Promise<void> {
       }),
     );
     assert.equal(await tickets.get(contextB, ticketA), undefined);
+    await assert.rejects(
+      tickets.create(contextB, 'ticket-lifecycle-cross-customer', {
+        title: 'Invalid customer link',
+        customerId: customerA,
+      }),
+    );
     await assert.rejects(
       tickets.addComment(
         contextB,
@@ -106,16 +120,19 @@ async function main(): Promise<void> {
     );
     await tickets.setResolution(contextA, 'ticket-lifecycle-resolve-a', ticketA, 'RESOLVED');
     const resolved = await tickets.get(contextA, ticketA);
-    assert.equal(resolved?.status, 'RESOLVED');
-    assert.ok(resolved?.resolvedAt);
-    assert.equal(resolved?.assignedTo, contextA.actorId);
-    assert.equal(resolved?.comments.length, 1);
+    assert.ok(resolved);
+    assert.equal(resolved.status, 'RESOLVED');
+    assert.ok(resolved.resolvedAt);
+    assert.equal(resolved.assignedTo, contextA.actorId);
+    assert.equal(resolved.comments.length, 1);
     await tickets.setResolution(contextA, 'ticket-lifecycle-reopen-a', ticketA, 'OPEN');
     const reopened = await tickets.get(contextA, ticketA);
-    assert.equal(reopened?.status, 'OPEN');
-    assert.equal(reopened?.resolvedAt, null);
-    assert.equal(reopened?.title, 'Investigate A updated');
-    assert.equal(reopened?.priority, 'URGENT');
+    assert.ok(reopened);
+    assert.equal(reopened.status, 'OPEN');
+    assert.equal(reopened.resolvedAt, null);
+    assert.equal(reopened.title, 'Investigate A updated');
+    assert.equal(reopened.priority, 'URGENT');
+    assert.equal(reopened.customerId, customerA);
 
     await assert.rejects(
       tickets.update(contextA, 'ticket-lifecycle-cross-conversation', ticketA, {
@@ -123,10 +140,16 @@ async function main(): Promise<void> {
       }),
     );
     assert.equal((await tickets.get(contextA, ticketA))?.conversationId, conversationA);
+    await assert.rejects(
+      tickets.update(contextA, 'ticket-lifecycle-cross-customer-update', ticketA, {
+        customerId: customerB,
+      }),
+    );
+    assert.equal((await tickets.get(contextA, ticketA))?.customerId, customerA);
 
     await withTenantTransaction(database, contextA, async (transaction) => {
       const events = await sql<{ event_type: string }>`select event_type from platform.outbox_events
-        where resource_id = ${ticketA} order by created_at`.execute(transaction);
+        where resource_id = ${ticketA} order by occurred_at`.execute(transaction);
       assert.deepEqual(
         new Set(events.rows.map((event) => event.event_type)),
         new Set([

@@ -47,7 +47,7 @@ export default async function TicketsPage() {
         ) : (
           <section className="state-panel customer-state">
             <h2>No tickets yet</h2>
-            <p>The protected ticket creation surface is under development.</p>
+            <p>Create the first tenant ticket above to start tracking customer work.</p>
           </section>
         )
       ) : (

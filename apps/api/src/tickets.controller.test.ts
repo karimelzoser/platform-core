@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
-import { ForbiddenException } from '@nestjs/common';
+import { ForbiddenException, NotFoundException } from '@nestjs/common';
 import { AuthenticatedContextService } from './authenticated-context.service.js';
 import { TicketsController } from './tickets.controller.js';
 import { TicketsService } from './tickets.service.js';
@@ -85,5 +85,27 @@ void test('ticket mutations reject a read-only tenant member', async () => {
       'ticket-resolution-key',
     ),
     ForbiddenException,
+  );
+});
+
+void test('ticket detail returns 404 when RLS hides another tenant record', async () => {
+  const controller = new TicketsController(
+    {
+      resolve: () =>
+        Promise.resolve({
+          tenantId,
+          actorId: '11111111-1111-1111-1111-111111111111',
+          subject: 'test-subject-a',
+          requestId: 'ticket-hidden-test',
+          correlationId: 'ticket-hidden-test',
+          actorType: 'USER',
+          permissions: ['tickets.read'],
+        }),
+    } as unknown as AuthenticatedContextService,
+    { get: () => Promise.resolve(undefined) } as unknown as TicketsService,
+  );
+  await assert.rejects(
+    controller.get(ticketId, 'Bearer test-token', tenantId, 'ticket-hidden-test'),
+    NotFoundException,
   );
 });

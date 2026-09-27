@@ -7,6 +7,7 @@ import {
   Headers,
   HttpCode,
   HttpStatus,
+  NotFoundException,
   Param,
   Patch,
   Post,
@@ -73,7 +74,9 @@ export class TicketsController {
   ) {
     const context = await this.context(authorization, tenantId, correlationId);
     this.assertPermission(context.permissions, 'tickets.read');
-    return this.tickets.get(context, ticketId);
+    const ticket = await this.tickets.get(context, ticketId);
+    if (!ticket) throw new NotFoundException('Ticket not found');
+    return ticket;
   }
 
   @Patch(':ticketId')
