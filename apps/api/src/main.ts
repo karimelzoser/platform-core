@@ -14,7 +14,9 @@ async function bootstrap(): Promise<void> {
     .addContentTypeParser('application/json', { parseAs: 'buffer' }, (_request, body, done) => {
       done(null, body);
     });
-  const app = await NestFactory.create<NestFastifyApplication>(AppModule, adapter);
+  const app = await NestFactory.create<NestFastifyApplication>(AppModule, adapter, {
+    bodyParser: false,
+  });
   app
     .getHttpAdapter()
     .getInstance()
