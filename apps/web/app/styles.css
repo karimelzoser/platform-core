@@ -101,6 +101,13 @@ a {
   border-color: var(--accent);
   color: white;
 }
+button:focus-visible,
+input:focus-visible,
+select:focus-visible,
+textarea:focus-visible {
+  outline: 3px solid color-mix(in srgb, var(--accent) 35%, transparent);
+  outline-offset: 2px;
+}
 .customers-page {
   width: min(1200px, calc(100% - 2rem));
   margin: 0 auto;
