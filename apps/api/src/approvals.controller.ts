@@ -69,6 +69,26 @@ export class ApprovalsController {
     });
   }
 
+  @Post(':approvalId/execute-sla-policy-archive')
+  public async executeSlaPolicyArchive(
+    @Param('approvalId') approvalId: string,
+    @Headers('authorization') authorization: string | undefined,
+    @Headers('x-tenant-id') tenantId: string | undefined,
+    @Headers('x-correlation-id') correlationId: string | undefined,
+    @Headers('idempotency-key') idempotencyKey: string | undefined,
+  ) {
+    return this.invoke(async () => {
+      const context = await this.context(authorization, tenantId, correlationId);
+      const policy = await this.approvals.executableSlaPolicyArchive(context, approvalId);
+      return this.tickets.archiveSlaPolicy(
+        context,
+        idempotencyKey ?? '',
+        policy.slaPolicyId,
+        approvalId,
+      );
+    });
+  }
+
   @Post(':approvalId/decision')
   public async decide(
     @Param('approvalId') approvalId: string,
@@ -113,6 +133,22 @@ export class ApprovalsController {
     if (!Buffer.isBuffer(body)) throw new BadRequestException('Approval body must be JSON');
     return this.invoke(async () =>
       this.approvals.requestSlaPolicy(
+        await this.context(authorization, tenantId, correlationId),
+        JSON.parse(body.toString('utf8')),
+      ),
+    );
+  }
+
+  @Post('ticket-sla-policy-archive-request')
+  public async requestSlaPolicyArchive(
+    @Body() body: unknown,
+    @Headers('authorization') authorization: string | undefined,
+    @Headers('x-tenant-id') tenantId: string | undefined,
+    @Headers('x-correlation-id') correlationId: string | undefined,
+  ) {
+    if (!Buffer.isBuffer(body)) throw new BadRequestException('Approval body must be JSON');
+    return this.invoke(async () =>
+      this.approvals.requestSlaPolicyArchive(
         await this.context(authorization, tenantId, correlationId),
         JSON.parse(body.toString('utf8')),
       ),

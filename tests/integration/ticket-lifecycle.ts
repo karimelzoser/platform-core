@@ -220,6 +220,27 @@ async function main(): Promise<void> {
     assert.equal(reopened.priority, 'URGENT');
     assert.equal(reopened.customerId, customerA);
 
+    const archiveApproval = await approvals.requestSlaPolicyArchive(slaRequester, {
+      slaPolicyId: createdPolicy.result.slaPolicyId,
+    });
+    await approvals.decide(slaDecider, archiveApproval.approvalId, { decision: 'APPROVED' });
+    const archive = await approvals.executableSlaPolicyArchive(
+      slaRequester,
+      archiveApproval.approvalId,
+    );
+    await tickets.archiveSlaPolicy(
+      slaRequester,
+      'ticket-lifecycle-policy-archive-a',
+      archive.slaPolicyId,
+      archiveApproval.approvalId,
+    );
+    assert.equal(
+      (await tickets.listSlaPolicies(slaRequester)).find(
+        (policy) => policy.id === createdPolicy.result.slaPolicyId,
+      )?.active,
+      false,
+    );
+
     await assert.rejects(
       tickets.update(contextA, 'ticket-lifecycle-cross-conversation', ticketA, {
         conversationId: conversationB,

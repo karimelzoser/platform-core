@@ -21,6 +21,7 @@ const slaPolicyRequestSchema = z.object({
   resolutionMinutes: z.number().int().min(1).max(43200),
   escalationMinutes: z.number().int().min(1).max(43200).optional(),
 });
+const slaPolicyArchiveRequestSchema = z.object({ slaPolicyId: z.string().uuid() });
 
 export class ApprovalError extends Error {}
 
@@ -102,6 +103,47 @@ export class ApprovalService {
       returning id, status, expires_at`.execute(transaction);
       const approval = result.rows[0];
       if (!approval) throw new ApprovalError('SLA policy approval request could not be stored');
+      await sql`insert into platform.audit_log (
+        tenant_id, actor_type, actor_id, action, resource_type, resource_id, request_id, correlation_id, metadata
+      ) values (
+        ${context.tenantId}::uuid, ${context.actorType}, ${context.actorId}::uuid,
+        'policy.approval.request', ${action.resource.type}, ${action.resource.id},
+        ${context.requestId}, ${context.correlationId}, ${JSON.stringify({ approvalId: approval.id, actionDigest: digest })}::jsonb
+      )`.execute(transaction);
+      return { approvalId: approval.id, status: approval.status, expiresAt: approval.expires_at };
+    });
+  }
+
+  public async requestSlaPolicyArchive(context: TenantRequestContext, input: unknown) {
+    this.require(context, 'tickets.sla.manage');
+    const request = slaPolicyArchiveRequestSchema.parse(input);
+    const action: ApprovalAction = {
+      action: 'tickets.sla_policy.archive',
+      permission: 'tickets.sla.manage',
+      risk: 'HIGH',
+      resource: { type: 'ticket_sla_policy', id: request.slaPolicyId, tenantId: context.tenantId },
+      input: {},
+    };
+    const digest = approvalActionDigest(action);
+    return withTenantTransaction(this.database.database, context, async (transaction) => {
+      const policy = await sql<{ id: string }>`select id from tickets.sla_policies
+        where id = ${request.slaPolicyId}::uuid and active`.execute(transaction);
+      if (!policy.rows[0]) throw new ApprovalError('Active SLA policy was not found');
+      const result = await sql<{
+        id: string;
+        status: string;
+        expires_at: Date;
+      }>`insert into policy.approval_requests (
+        id, tenant_id, requested_by, action, permission, risk, resource_type, resource_id,
+        action_digest, request_snapshot, policy_reason, status, expires_at
+      ) values (
+        ${randomUUID()}::uuid, ${context.tenantId}::uuid, ${context.actorId}::uuid,
+        ${action.action}, ${action.permission}, ${action.risk}, ${action.resource.type}, ${action.resource.id},
+        ${digest}, ${JSON.stringify(action)}::jsonb, 'approval_required', 'REQUESTED', now() + interval '24 hours'
+      ) on conflict (tenant_id, action_digest, status) do update set updated_at = now()
+      returning id, status, expires_at`.execute(transaction);
+      const approval = result.rows[0];
+      if (!approval) throw new ApprovalError('SLA policy archive approval could not be stored');
       await sql`insert into platform.audit_log (
         tenant_id, actor_type, actor_id, action, resource_type, resource_id, request_id, correlation_id, metadata
       ) values (
@@ -204,6 +246,32 @@ export class ApprovalService {
             ? {}
             : { escalationMinutes: input.escalationMinutes }),
         },
+      };
+    });
+  }
+
+  public async executableSlaPolicyArchive(
+    context: TenantRequestContext,
+    approvalId: string,
+  ): Promise<{ slaPolicyId: string }> {
+    this.require(context, 'tickets.sla.manage');
+    return withTenantTransaction(this.database.database, context, async (transaction) => {
+      const result = await sql<{
+        request_snapshot: unknown;
+        status: string;
+      }>`select request_snapshot, status from policy.approval_requests
+        where id = ${approvalId}::uuid and action = 'tickets.sla_policy.archive'`.execute(
+        transaction,
+      );
+      const approval = result.rows[0];
+      if (!approval || approval.status !== 'APPROVED')
+        throw new ApprovalError('SLA policy archive approval is not executable');
+      const snapshot = approval.request_snapshot as { resource?: { id?: unknown; type?: unknown } };
+      if (snapshot.resource?.type !== 'ticket_sla_policy')
+        throw new ApprovalError('SLA policy archive approval snapshot is invalid');
+      return {
+        slaPolicyId: slaPolicyArchiveRequestSchema.parse({ slaPolicyId: snapshot.resource.id })
+          .slaPolicyId,
       };
     });
   }

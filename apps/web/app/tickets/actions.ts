@@ -79,6 +79,41 @@ export async function requestSlaPolicy(
   return { completed: true };
 }
 
+export async function requestSlaPolicyArchive(
+  _previousState: TicketActionState,
+  formData: FormData,
+): Promise<TicketActionState> {
+  const slaPolicyId = requiredText(formData, 'slaPolicyId');
+  if (!slaPolicyId) return { error: 'The SLA policy could not be identified.' };
+  const store = await cookies();
+  const token = store.get('platform_access_token')?.value;
+  const tenantId = store.get('platform_tenant_id')?.value;
+  const baseUrl = process.env.API_INTERNAL_URL;
+  if (!token || !tenantId)
+    return { error: 'Sign in and select an organization before archiving an SLA policy.' };
+  if (!baseUrl) return { error: 'Ticket workspace configuration is incomplete.' };
+  try {
+    const response = await fetch(
+      new URL('/v1/approvals/ticket-sla-policy-archive-request', baseUrl),
+      {
+        method: 'POST',
+        headers: {
+          authorization: `Bearer ${token}`,
+          'content-type': 'application/json',
+          'x-tenant-id': tenantId,
+        },
+        body: JSON.stringify({ slaPolicyId }),
+      },
+    );
+    if (response.status === 401 || response.status === 403)
+      return { error: 'Your session no longer has permission to archive this SLA policy.' };
+    if (!response.ok) return { error: 'The SLA policy archive request could not be recorded.' };
+  } catch {
+    return { error: 'The approval API is unavailable.' };
+  }
+  return { completed: true };
+}
+
 export async function updateTicket(
   _previousState: TicketActionState,
   formData: FormData,

@@ -1,5 +1,6 @@
 import { cookies } from 'next/headers';
 import { CreateTicketForm } from './create-ticket-form';
+import { SlaPolicyArchiveForm } from './sla-policy-archive-form';
 import { SlaPolicyRequestForm } from './sla-policy-request-form';
 
 export const dynamic = 'force-dynamic';
@@ -67,6 +68,9 @@ export default async function TicketsPage() {
                     : ''}
                 </span>
                 <small>{policy.active ? 'ACTIVE' : 'ARCHIVED'}</small>
+                {canManageSla && policy.active ? (
+                  <SlaPolicyArchiveForm slaPolicyId={policy.id} />
+                ) : null}
               </li>
             ))}
           </ul>

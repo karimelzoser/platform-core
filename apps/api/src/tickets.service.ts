@@ -232,6 +232,31 @@ export class TicketsService {
     );
   }
 
+  public async archiveSlaPolicy(
+    context: TenantRequestContext,
+    idempotencyKey: string,
+    slaPolicyId: string,
+    approvalId: string,
+  ): Promise<CommandResult<{ slaPolicyId: string }>> {
+    return this.commands.execute(
+      {
+        action: 'tickets.sla_policy.archive',
+        permission: 'tickets.sla.manage',
+        risk: 'HIGH',
+        resource: () => ({ type: 'ticket_sla_policy', id: slaPolicyId }),
+        event: { type: 'tickets.sla_policy.archived', data: (_input, result) => result },
+        audit: { afterState: (_input, result) => ({ ...result, active: false }) },
+        execute: async (transaction) => {
+          const archived = await sql<{ id: string }>`update tickets.sla_policies set active = false
+            where id = ${slaPolicyId}::uuid and active returning id`.execute(transaction);
+          if (!archived.rows[0]) throw new Error('Active SLA policy was not found');
+          return { slaPolicyId };
+        },
+      },
+      { context, input: {}, idempotencyKey, approvalId },
+    );
+  }
+
   public async create(
     context: TenantRequestContext,
     idempotencyKey: string,
