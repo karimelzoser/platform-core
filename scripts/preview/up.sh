@@ -4,8 +4,7 @@ compose='docker compose -f docker/integration/compose.yml -f docker/preview/comp
 if [ ! -x node_modules/.bin/tsc ]; then
   corepack pnpm install --frozen-lockfile
 fi
-corepack pnpm --filter @platform/api build
-corepack pnpm --filter @platform/worker build
+corepack pnpm --filter @platform/api... --filter @platform/worker... build
 $compose up --detach --wait
 scripts/integration/migrate.sh
 scripts/preview/seed.sh
