@@ -4,6 +4,7 @@ import { CommandExecutor, type TenantRequestContext } from '@platform/command-ex
 import { sql, withTenantTransaction } from '@platform/database';
 import { ApiDatabaseService } from '../../apps/api/src/api-database.service.js';
 import { TicketsService } from '../../apps/api/src/tickets.service.js';
+import { TicketSlaProcessor } from '../../apps/worker/src/ticket-sla-processor.js';
 
 const tenantA = 'aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa';
 const tenantB = 'bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb';
@@ -58,6 +59,14 @@ async function main(): Promise<void> {
       await sql`insert into crm.customers (id, tenant_id, display_name)
         values (${customerB}::uuid, ${tenantB}::uuid, 'Lifecycle customer B')`.execute(transaction);
     });
+    await withTenantTransaction(database, contextA, async (transaction) => {
+      await sql`insert into tickets.sla_policies (
+        tenant_id, name, priority, first_response_minutes, resolution_minutes, escalation_minutes
+      ) values (
+        ${tenantA}::uuid, 'High priority lifecycle', 'HIGH', 5, 5, 1
+      )`.execute(transaction);
+    });
+    assert.deepEqual(await tickets.listSlaPolicies(contextB), []);
 
     const createdA = await tickets.create(contextA, 'ticket-lifecycle-create-a', {
       title: 'Investigate A',
@@ -74,6 +83,14 @@ async function main(): Promise<void> {
     assert.equal(replayA.replayed, true);
     assert.equal(replayA.result.ticketId, createdA.result.ticketId);
     const ticketA = createdA.result.ticketId;
+    const createdDetail = await tickets.get(contextA, ticketA);
+    assert.ok(createdDetail?.slaPolicyId);
+    assert.ok(createdDetail.firstResponseDueAt);
+    assert.ok(createdDetail.resolutionDueAt);
+    assert.deepEqual(
+      createdDetail.slaEvents.map((event) => event.eventType),
+      ['CLOCK_STARTED'],
+    );
 
     await assert.rejects(
       tickets.create(contextB, 'ticket-lifecycle-cross-link', {
@@ -118,6 +135,39 @@ async function main(): Promise<void> {
       'Private note',
       'INTERNAL',
     );
+    await tickets.addComment(
+      contextA,
+      'ticket-lifecycle-first-response-a',
+      ticketA,
+      'Customer-facing response',
+      'CUSTOMER_VISIBLE',
+    );
+    await tickets.setSlaStatus(contextA, 'ticket-lifecycle-pause-a', ticketA, 'PENDING');
+    const paused = await tickets.get(contextA, ticketA);
+    assert.ok(paused);
+    assert.equal(paused.status, 'PENDING');
+    assert.ok(paused.slaPausedAt);
+    await withTenantTransaction(database, contextA, async (transaction) => {
+      await sql`update tickets.records set sla_paused_at = now() - interval '30 seconds'
+        where id = ${ticketA}::uuid`.execute(transaction);
+    });
+    await tickets.setSlaStatus(contextA, 'ticket-lifecycle-resume-a', ticketA, 'OPEN');
+    const resumed = await tickets.get(contextA, ticketA);
+    assert.ok(resumed);
+    assert.equal(resumed.status, 'OPEN');
+    assert.equal(resumed.slaPausedAt, null);
+    assert.ok(resumed.firstResponseAt);
+    await withTenantTransaction(database, contextA, async (transaction) => {
+      await sql`update tickets.records
+        set resolution_due_at = now() - interval '2 minutes'
+        where id = ${ticketA}::uuid`.execute(transaction);
+    });
+    const slaProcessor = new TicketSlaProcessor(database);
+    assert.equal(await slaProcessor.processBatch(), 1);
+    const breached = await tickets.get(contextA, ticketA);
+    assert.ok(breached);
+    assert.ok(breached.slaEvents.some((event) => event.eventType === 'RESOLUTION_BREACHED'));
+    assert.ok(breached.slaEvents.some((event) => event.eventType === 'ESCALATED'));
     await tickets.setResolution(contextA, 'ticket-lifecycle-resolve-a', ticketA, 'RESOLVED');
     const resolved = await tickets.get(contextA, ticketA);
     assert.ok(resolved);
@@ -157,13 +207,22 @@ async function main(): Promise<void> {
           'tickets.record.updated',
           'tickets.record.assigned',
           'tickets.comment.created',
+          'tickets.record.paused',
+          'tickets.record.resumed',
           'tickets.record.resolved',
           'tickets.record.reopened',
+          'tickets.sla.clock_started',
+          'tickets.sla.clock_paused',
+          'tickets.sla.clock_resumed',
+          'tickets.sla.first_response_met',
+          'tickets.sla.resolution_breached',
+          'tickets.sla.escalated',
+          'tickets.sla.resolution_met',
         ]),
       );
       const audits = await sql<{ count: number }>`select count(*)::integer as count
         from platform.audit_log where resource_id = ${ticketA}`.execute(transaction);
-      assert.equal(audits.rows[0]?.count, 6);
+      assert.equal(audits.rows[0]?.count, 9);
     });
   } finally {
     await databaseService.onModuleDestroy();

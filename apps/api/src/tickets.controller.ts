@@ -19,6 +19,8 @@ import {
   type CreateTicketInput,
   type TicketPriority,
   type TicketResolutionStatus,
+  type TicketSlaPolicyInput,
+  type TicketSlaStatus,
   type UpdateTicketInput,
 } from './tickets.service.js';
 
@@ -63,6 +65,31 @@ export class TicketsController {
     const context = await this.context(authorization, tenantId, correlationId);
     this.assertPermission(context.permissions, 'tickets.assign');
     return this.tickets.listAssignees(context);
+  }
+
+  @Get('sla-policies')
+  public async slaPolicies(
+    @Headers('authorization') authorization: string | undefined,
+    @Headers('x-tenant-id') tenantId: string | undefined,
+    @Headers('x-correlation-id') correlationId: string | undefined,
+  ) {
+    const context = await this.context(authorization, tenantId, correlationId);
+    this.assertPermission(context.permissions, 'tickets.read');
+    return this.tickets.listSlaPolicies(context);
+  }
+
+  @Post('sla-policies')
+  @HttpCode(HttpStatus.CREATED)
+  public async createSlaPolicy(
+    @Body() body: unknown,
+    @Headers('authorization') authorization: string | undefined,
+    @Headers('x-tenant-id') tenantId: string | undefined,
+    @Headers('x-correlation-id') correlationId: string | undefined,
+    @Headers('idempotency-key') idempotencyKey: string | undefined,
+  ) {
+    const context = await this.context(authorization, tenantId, correlationId);
+    this.assertPermission(context.permissions, 'tickets.sla.manage');
+    return this.tickets.createSlaPolicy(context, idempotencyKey ?? '', parseSlaPolicy(body));
   }
 
   @Get(':ticketId')
@@ -125,6 +152,22 @@ export class TicketsController {
     this.assertPermission(context.permissions, 'tickets.close');
     assertUuid(ticketId, 'ticketId');
     return this.tickets.setResolution(context, idempotencyKey ?? '', ticketId, parsed.status);
+  }
+
+  @Post(':ticketId/sla-status')
+  public async slaStatus(
+    @Param('ticketId') ticketId: string,
+    @Body() body: unknown,
+    @Headers('authorization') authorization: string | undefined,
+    @Headers('x-tenant-id') tenantId: string | undefined,
+    @Headers('x-correlation-id') correlationId: string | undefined,
+    @Headers('idempotency-key') idempotencyKey: string | undefined,
+  ) {
+    const parsed = parseSlaStatus(body);
+    const context = await this.context(authorization, tenantId, correlationId);
+    this.assertPermission(context.permissions, 'tickets.update');
+    assertUuid(ticketId, 'ticketId');
+    return this.tickets.setSlaStatus(context, idempotencyKey ?? '', ticketId, parsed.status);
   }
 
   @Post(':ticketId/comments')
@@ -242,6 +285,51 @@ function parseResolution(body: unknown): { status: TicketResolutionStatus } {
   if (status !== 'OPEN' && status !== 'RESOLVED')
     throw new BadRequestException('Ticket status must be OPEN or RESOLVED');
   return { status };
+}
+
+function parseSlaStatus(body: unknown): { status: TicketSlaStatus } {
+  const status = parseJsonObject(body).status;
+  if (status !== 'OPEN' && status !== 'PENDING')
+    throw new BadRequestException('Ticket SLA status must be OPEN or PENDING');
+  return { status };
+}
+
+function parseSlaPolicy(body: unknown): TicketSlaPolicyInput {
+  const parsed = parseJsonObject(body);
+  if (typeof parsed.name !== 'string' || !parsed.name.trim() || parsed.name.length > 120)
+    throw new BadRequestException('SLA policy name must contain at most 120 characters');
+  const priority = parsed.priority;
+  if (typeof priority !== 'string' || !['LOW', 'NORMAL', 'HIGH', 'URGENT'].includes(priority))
+    throw new BadRequestException('Invalid SLA policy priority');
+  const firstResponseMinutes = positiveWholeNumber(
+    parsed.firstResponseMinutes,
+    'firstResponseMinutes',
+    10080,
+  );
+  const resolutionMinutes = positiveWholeNumber(
+    parsed.resolutionMinutes,
+    'resolutionMinutes',
+    43200,
+  );
+  const escalationMinutes =
+    parsed.escalationMinutes === undefined
+      ? undefined
+      : positiveWholeNumber(parsed.escalationMinutes, 'escalationMinutes', 43200);
+  return {
+    name: parsed.name.trim(),
+    priority: priority as TicketPriority,
+    firstResponseMinutes,
+    resolutionMinutes,
+    ...(escalationMinutes === undefined ? {} : { escalationMinutes }),
+  };
+}
+
+function positiveWholeNumber(value: unknown, field: string, maximum: number): number {
+  if (typeof value !== 'number' || !Number.isInteger(value) || value < 1 || value > maximum)
+    throw new BadRequestException(
+      `${field} must be a whole number between 1 and ${String(maximum)}`,
+    );
+  return value;
 }
 
 function parseJsonObject(body: unknown): Record<string, unknown> {

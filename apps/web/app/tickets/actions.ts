@@ -60,6 +60,17 @@ export async function setTicketResolution(
   return sendTicketCommand(ticketId, '/resolution', 'POST', { status });
 }
 
+export async function setTicketSlaStatus(
+  _previousState: TicketActionState,
+  formData: FormData,
+): Promise<TicketActionState> {
+  const ticketId = requiredText(formData, 'ticketId');
+  const status = requiredText(formData, 'status');
+  if (!ticketId || (status !== 'OPEN' && status !== 'PENDING'))
+    return { error: 'A valid SLA clock state is required.' };
+  return sendTicketCommand(ticketId, '/sla-status', 'POST', { status });
+}
+
 export async function addTicketComment(
   _previousState: TicketActionState,
   formData: FormData,

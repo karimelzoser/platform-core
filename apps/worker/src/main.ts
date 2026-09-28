@@ -6,6 +6,7 @@ import { z } from 'zod';
 import { MessagingWebhookProcessor } from './messaging-webhook-processor.js';
 import { OutboundMessageProcessor } from './outbound-message-processor.js';
 import { OutboxPublisher } from './outbox-publisher.js';
+import { TicketSlaProcessor } from './ticket-sla-processor.js';
 
 const environmentSchema = z.object({
   DATABASE_URL: z.string().url(),
@@ -22,6 +23,7 @@ async function main(): Promise<void> {
   const connectors = new ConnectorRegistry();
   const webhookProcessor = new MessagingWebhookProcessor(db, connectors, workerId);
   const outboundMessageProcessor = new OutboundMessageProcessor(db, connectors, workerId);
+  const ticketSlaProcessor = new TicketSlaProcessor(db);
   await publisher.ensureEventStream();
   console.log(
     JSON.stringify({ level: 'info', message: 'worker_started', natsServer: nats.getServer() }),
@@ -38,7 +40,8 @@ async function main(): Promise<void> {
     const published = await publisher.publishBatch();
     const processed = await webhookProcessor.processBatch();
     const dispatched = await outboundMessageProcessor.processBatch();
-    if (published === 0 && processed === 0 && dispatched === 0)
+    const evaluatedSla = await ticketSlaProcessor.processBatch();
+    if (published === 0 && processed === 0 && dispatched === 0 && evaluatedSla === 0)
       await new Promise<void>((resolve) => setTimeout(resolve, 250));
   }
 }

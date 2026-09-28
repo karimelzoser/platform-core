@@ -40,6 +40,17 @@ VALUES
   ('aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa', 'aaaaaaaa-0000-0000-0000-000000000103', '11111111-1111-1111-1111-111111111111', 'Tenant A comment'),
   ('bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb', 'bbbbbbbb-0000-0000-0000-000000000103', '22222222-2222-2222-2222-222222222222', 'Tenant B comment');
 
+INSERT INTO tickets.sla_policies (
+  id, tenant_id, name, priority, first_response_minutes, resolution_minutes
+) VALUES
+  ('aaaaaaaa-0000-0000-0000-000000000301', 'aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa', 'Tenant A normal', 'NORMAL', 60, 480),
+  ('bbbbbbbb-0000-0000-0000-000000000301', 'bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb', 'Tenant B normal', 'NORMAL', 60, 480);
+
+INSERT INTO tickets.sla_events (tenant_id, ticket_id, event_type, dedupe_key)
+VALUES
+  ('aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa', 'aaaaaaaa-0000-0000-0000-000000000103', 'CLOCK_STARTED', 'fixture-clock-started'),
+  ('bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb', 'bbbbbbbb-0000-0000-0000-000000000103', 'CLOCK_STARTED', 'fixture-clock-started');
+
 INSERT INTO integrations.connector_definitions (key, version, category, display_name, manifest)
 VALUES ('test-connector', '1.0.0', 'GENERIC', 'Test connector', '{}'::jsonb);
 

@@ -12,6 +12,11 @@ interface TicketDetail {
   conversationId: string | null;
   assignedTo: string | null;
   resolvedAt: string | null;
+  firstResponseDueAt: string | null;
+  resolutionDueAt: string | null;
+  firstResponseAt: string | null;
+  slaPausedAt: string | null;
+  slaPolicyId: string | null;
   createdAt: string;
   updatedAt: string;
   comments: Array<{
@@ -20,6 +25,11 @@ interface TicketDetail {
     body: string;
     visibility: string;
     createdAt: string;
+  }>;
+  slaEvents: Array<{
+    id: string;
+    eventType: string;
+    occurredAt: string;
   }>;
 }
 
@@ -87,6 +97,38 @@ export default async function TicketPage({ params }: { params: Promise<{ ticketI
             permissions={permissions}
             assignees={assignees.kind === 'success' ? assignees.items : []}
           />
+          {result.ticket.slaPolicyId ? (
+            <section
+              className="customer-card customer-card-wide"
+              aria-labelledby="ticket-sla-heading"
+            >
+              <h2 id="ticket-sla-heading">SLA</h2>
+              <ul className="detail-list">
+                <li>
+                  <strong>First response</strong>
+                  <span>
+                    {result.ticket.firstResponseAt
+                      ? `Responded ${new Date(result.ticket.firstResponseAt).toLocaleString()}`
+                      : formatDue(result.ticket.firstResponseDueAt)}
+                  </span>
+                </li>
+                <li>
+                  <strong>Resolution</strong>
+                  <span>{formatDue(result.ticket.resolutionDueAt)}</span>
+                </li>
+              </ul>
+              {result.ticket.slaEvents.length ? (
+                <ul className="detail-list">
+                  {result.ticket.slaEvents.map((event) => (
+                    <li key={event.id}>
+                      <strong>{event.eventType.replaceAll('_', ' ')}</strong>
+                      <small>{new Date(event.occurredAt).toLocaleString()}</small>
+                    </li>
+                  ))}
+                </ul>
+              ) : null}
+            </section>
+          ) : null}
           <section
             className="customer-card customer-card-wide"
             aria-labelledby="ticket-comments-heading"
@@ -118,6 +160,10 @@ export default async function TicketPage({ params }: { params: Promise<{ ticketI
       )}
     </main>
   );
+}
+
+function formatDue(value: string | null): string {
+  return value ? `Due ${new Date(value).toLocaleString()}` : 'No SLA policy is assigned.';
 }
 
 async function loadAccess(): Promise<

@@ -11,6 +11,7 @@ export interface DatabaseContext {
 }
 
 export type PlatformDatabase = Kysely<Record<string, never>>;
+export type PlatformTransaction = Transaction<Record<string, never>>;
 
 export function createDatabase(connectionString: string, maxConnections = 10): PlatformDatabase {
   return new Kysely({
@@ -25,7 +26,7 @@ export function createDatabase(connectionString: string, maxConnections = 10): P
 export async function withTenantTransaction<T>(
   db: PlatformDatabase,
   context: DatabaseContext,
-  operation: (transaction: Transaction<Record<string, never>>) => Promise<T>,
+  operation: (transaction: PlatformTransaction) => Promise<T>,
 ): Promise<T> {
   return db.transaction().execute(async (transaction) => {
     await sql`select platform.set_request_context(

@@ -30,6 +30,12 @@ BEGIN
   IF NOT EXISTS (SELECT 1 FROM tickets.comments WHERE ticket_id = 'aaaaaaaa-0000-0000-0000-000000000103') THEN
     RAISE EXCEPTION 'Tenant A cannot read own ticket comment';
   END IF;
+  IF NOT EXISTS (SELECT 1 FROM tickets.sla_policies WHERE id = 'aaaaaaaa-0000-0000-0000-000000000301') THEN
+    RAISE EXCEPTION 'Tenant A cannot read own SLA policy';
+  END IF;
+  IF NOT EXISTS (SELECT 1 FROM tickets.sla_events WHERE ticket_id = 'aaaaaaaa-0000-0000-0000-000000000103') THEN
+    RAISE EXCEPTION 'Tenant A cannot read own SLA event';
+  END IF;
 END;
 $$;
 
@@ -186,6 +192,12 @@ BEGIN
   IF EXISTS (SELECT 1 FROM tickets.comments WHERE ticket_id = 'aaaaaaaa-0000-0000-0000-000000000103') THEN
     RAISE EXCEPTION 'Tenant B can read Tenant A ticket comment';
   END IF;
+  IF EXISTS (SELECT 1 FROM tickets.sla_policies WHERE id = 'aaaaaaaa-0000-0000-0000-000000000301') THEN
+    RAISE EXCEPTION 'Tenant B can read Tenant A SLA policy';
+  END IF;
+  IF EXISTS (SELECT 1 FROM tickets.sla_events WHERE ticket_id = 'aaaaaaaa-0000-0000-0000-000000000103') THEN
+    RAISE EXCEPTION 'Tenant B can read Tenant A SLA event';
+  END IF;
   IF EXISTS (SELECT 1 FROM integrations.webhook_deliveries WHERE id = 'aaaaaaaa-0000-0000-0000-000000000104') THEN
     RAISE EXCEPTION 'Tenant B can read Tenant A webhook delivery';
   END IF;
@@ -203,6 +215,12 @@ BEGIN
   END IF;
   IF NOT EXISTS (SELECT 1 FROM tickets.comments WHERE ticket_id = 'bbbbbbbb-0000-0000-0000-000000000103') THEN
     RAISE EXCEPTION 'Tenant B cannot read own ticket comment';
+  END IF;
+  IF NOT EXISTS (SELECT 1 FROM tickets.sla_policies WHERE id = 'bbbbbbbb-0000-0000-0000-000000000301') THEN
+    RAISE EXCEPTION 'Tenant B cannot read own SLA policy';
+  END IF;
+  IF NOT EXISTS (SELECT 1 FROM tickets.sla_events WHERE ticket_id = 'bbbbbbbb-0000-0000-0000-000000000103') THEN
+    RAISE EXCEPTION 'Tenant B cannot read own SLA event';
   END IF;
 END;
 $$;
@@ -250,6 +268,12 @@ BEGIN
   WHERE ticket_id = 'aaaaaaaa-0000-0000-0000-000000000103';
   GET DIAGNOSTICS affected = ROW_COUNT;
   IF affected <> 0 THEN RAISE EXCEPTION 'Tenant B updated Tenant A ticket comment'; END IF;
+
+  UPDATE tickets.sla_policies
+  SET name = 'Cross-tenant update'
+  WHERE id = 'aaaaaaaa-0000-0000-0000-000000000301';
+  GET DIAGNOSTICS affected = ROW_COUNT;
+  IF affected <> 0 THEN RAISE EXCEPTION 'Tenant B updated Tenant A SLA policy'; END IF;
 END;
 $$;
 

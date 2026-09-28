@@ -5,6 +5,7 @@ import {
   addTicketComment,
   assignTicket,
   setTicketResolution,
+  setTicketSlaStatus,
   updateTicket,
   type TicketActionState,
 } from '../actions';
@@ -22,6 +23,8 @@ export function TicketMutationForms({
     priority: string;
     status: string;
     assignedTo: string | null;
+    slaPolicyId: string | null;
+    slaPausedAt: string | null;
   };
   permissions: readonly string[];
   assignees: readonly {
@@ -34,11 +37,13 @@ export function TicketMutationForms({
   const [updateState, updateAction] = useActionState(updateTicket, initialState);
   const [assignmentState, assignmentAction] = useActionState(assignTicket, initialState);
   const [resolutionState, resolutionAction] = useActionState(setTicketResolution, initialState);
+  const [slaState, slaAction] = useActionState(setTicketSlaStatus, initialState);
   const [commentState, commentAction] = useActionState(addTicketComment, initialState);
   const resolve = ticket.status !== 'RESOLVED';
   const canUpdate = permissions.includes('tickets.update');
   const canAssign = permissions.includes('tickets.assign');
   const canResolve = permissions.includes('tickets.close');
+  const hasSla = ticket.slaPolicyId !== null;
   if (!canUpdate && !canAssign && !canResolve)
     return <p className="muted">You have read-only access to this ticket.</p>;
 
@@ -110,6 +115,30 @@ export function TicketMutationForms({
               {resolve ? 'Resolve ticket' : 'Reopen ticket'}
             </button>
             <FormState state={resolutionState} success="Ticket resolution saved." />
+          </form>
+        </section>
+      ) : null}
+
+      {canUpdate && hasSla ? (
+        <section className="customer-card" aria-labelledby="ticket-sla-control-heading">
+          <h2 id="ticket-sla-control-heading">SLA clock</h2>
+          <form action={slaAction} className="customer-form">
+            <input name="ticketId" type="hidden" value={ticket.id} readOnly />
+            <input
+              name="status"
+              type="hidden"
+              value={ticket.status === 'PENDING' ? 'OPEN' : 'PENDING'}
+              readOnly
+            />
+            <p className="muted">
+              {ticket.status === 'PENDING'
+                ? 'This SLA clock is paused. Resume it when active work continues.'
+                : 'Pause this SLA clock only while the ticket is formally pending.'}
+            </p>
+            <button className="action" type="submit">
+              {ticket.status === 'PENDING' ? 'Resume SLA clock' : 'Pause SLA clock'}
+            </button>
+            <FormState state={slaState} success="SLA clock updated." />
           </form>
         </section>
       ) : null}

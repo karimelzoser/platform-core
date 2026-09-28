@@ -31,6 +31,9 @@ The worker claims at most 100 pending events through a narrowly scoped database 
 | `platform.tickets.v1`      | `tickets.record.resolved`               | Ticket command      | Start resolution-side SLA and reporting projections            |
 | `platform.tickets.v1`      | `tickets.record.reopened`               | Ticket command      | Resume tenant ticket operational handling                      |
 | `platform.tickets.v1`      | `tickets.comment.created`               | Ticket command      | Refresh the ticket timeline idempotently                       |
+| `platform.tickets.v1`      | `tickets.sla.*`                         | Ticket/SLA worker   | Record clock, breach, escalation, and resolution projections   |
+| `platform.tickets.v1`      | `tickets.record.paused`                 | Ticket command      | Freeze a tenant ticket SLA clock                               |
+| `platform.tickets.v1`      | `tickets.record.resumed`                | Ticket command      | Resume a tenant ticket SLA clock                               |
 | `platform.policy.v1`       | `policy.approval.decided`               | Approval service    | Verify digest then execute once or record failure              |
 
 The canonical wire format is defined by `@platform/contracts`. Consumers must use event ID/dedupe keys and retain tenant, correlation, and causation identifiers.

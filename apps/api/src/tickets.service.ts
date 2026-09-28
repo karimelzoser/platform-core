@@ -3,13 +3,14 @@ import {
   type CommandResult,
   type TenantRequestContext,
 } from '@platform/command-execution';
-import { sql, withTenantTransaction } from '@platform/database';
+import { sql, withTenantTransaction, type PlatformTransaction } from '@platform/database';
 import { Injectable } from '@nestjs/common';
 import { randomUUID } from 'node:crypto';
 import { ApiDatabaseService } from './api-database.service.js';
 
 export type TicketPriority = 'LOW' | 'NORMAL' | 'HIGH' | 'URGENT';
 export type TicketResolutionStatus = 'OPEN' | 'RESOLVED';
+export type TicketSlaStatus = 'OPEN' | 'PENDING';
 
 export interface CreateTicketInput {
   title: string;
@@ -23,6 +24,14 @@ export interface UpdateTicketInput {
   priority?: TicketPriority;
   customerId?: string | null;
   conversationId?: string | null;
+}
+
+export interface TicketSlaPolicyInput {
+  name: string;
+  priority: TicketPriority;
+  firstResponseMinutes: number;
+  resolutionMinutes: number;
+  escalationMinutes?: number;
 }
 
 @Injectable()
@@ -69,10 +78,16 @@ export class TicketsService {
         conversation_id: string | null;
         assigned_to: string | null;
         resolved_at: Date | null;
+        first_response_due_at: Date | null;
+        resolution_due_at: Date | null;
+        first_response_at: Date | null;
+        sla_paused_at: Date | null;
+        sla_policy_id: string | null;
         created_at: Date;
         updated_at: Date;
       }>`select id, title, status, priority, customer_id, conversation_id, assigned_to,
-          resolved_at, created_at, updated_at
+          resolved_at, first_response_due_at, resolution_due_at, first_response_at, sla_paused_at,
+          sla_policy_id, created_at, updated_at
         from tickets.records where id = ${ticketId}::uuid`.execute(transaction);
       const record = ticket.rows[0];
       if (!record) return undefined;
@@ -84,6 +99,15 @@ export class TicketsService {
         created_at: Date;
       }>`select id, author_id, body, visibility, created_at from tickets.comments
         where ticket_id = ${ticketId}::uuid order by created_at asc, id asc`.execute(transaction);
+      const slaEvents = await sql<{
+        id: string;
+        event_type: string;
+        metadata: Record<string, unknown>;
+        occurred_at: Date;
+      }>`select id, event_type, metadata, occurred_at from tickets.sla_events
+        where ticket_id = ${ticketId}::uuid order by occurred_at desc, id desc limit 100`.execute(
+        transaction,
+      );
       return {
         id: record.id,
         title: record.title,
@@ -93,6 +117,11 @@ export class TicketsService {
         conversationId: record.conversation_id,
         assignedTo: record.assigned_to,
         resolvedAt: record.resolved_at,
+        firstResponseDueAt: record.first_response_due_at,
+        resolutionDueAt: record.resolution_due_at,
+        firstResponseAt: record.first_response_at,
+        slaPausedAt: record.sla_paused_at,
+        slaPolicyId: record.sla_policy_id,
         createdAt: record.created_at,
         updatedAt: record.updated_at,
         comments: comments.rows.map((comment) => ({
@@ -101,6 +130,12 @@ export class TicketsService {
           body: comment.body,
           visibility: comment.visibility,
           createdAt: comment.created_at,
+        })),
+        slaEvents: slaEvents.rows.map((event) => ({
+          id: event.id,
+          eventType: event.event_type,
+          metadata: event.metadata,
+          occurredAt: event.occurred_at,
         })),
       };
     });
@@ -128,6 +163,72 @@ export class TicketsService {
     });
   }
 
+  public async listSlaPolicies(context: TenantRequestContext) {
+    return withTenantTransaction(this.database.database, context, async (transaction) => {
+      const response = await sql<{
+        id: string;
+        name: string;
+        priority: TicketPriority;
+        first_response_minutes: number;
+        resolution_minutes: number;
+        escalation_minutes: number | null;
+        active: boolean;
+      }>`select id, name, priority, first_response_minutes, resolution_minutes,
+          escalation_minutes, active from tickets.sla_policies
+        order by active desc, priority, name, id`.execute(transaction);
+      return response.rows.map((policy) => ({
+        id: policy.id,
+        name: policy.name,
+        priority: policy.priority,
+        firstResponseMinutes: policy.first_response_minutes,
+        resolutionMinutes: policy.resolution_minutes,
+        escalationMinutes: policy.escalation_minutes,
+        active: policy.active,
+      }));
+    });
+  }
+
+  public async createSlaPolicy(
+    context: TenantRequestContext,
+    idempotencyKey: string,
+    input: TicketSlaPolicyInput,
+  ): Promise<CommandResult<{ slaPolicyId: string }>> {
+    const slaPolicyId = randomUUID();
+    return this.commands.execute(
+      {
+        action: 'tickets.sla_policy.create',
+        permission: 'tickets.sla.manage',
+        risk: 'HIGH',
+        resource: () => ({ type: 'ticket_sla_policy', id: slaPolicyId }),
+        event: { type: 'tickets.sla_policy.created', data: (_input, result) => result },
+        audit: { afterState: (_input, result) => result },
+        execute: async (transaction) => {
+          const created = await sql<{ id: string }>`insert into tickets.sla_policies (
+            id, tenant_id, name, priority, first_response_minutes, resolution_minutes, escalation_minutes
+          ) values (
+            ${slaPolicyId}::uuid, ${context.tenantId}::uuid, ${input.name}, ${input.priority},
+            ${input.firstResponseMinutes}, ${input.resolutionMinutes}, ${input.escalationMinutes ?? null}
+          ) returning id`.execute(transaction);
+          if (!created.rows[0]) throw new Error('SLA policy could not be created');
+          return { slaPolicyId };
+        },
+      },
+      {
+        context,
+        input: {
+          name: input.name,
+          priority: input.priority,
+          firstResponseMinutes: input.firstResponseMinutes,
+          resolutionMinutes: input.resolutionMinutes,
+          ...(input.escalationMinutes === undefined
+            ? {}
+            : { escalationMinutes: input.escalationMinutes }),
+        },
+        idempotencyKey,
+      },
+    );
+  }
+
   public async create(
     context: TenantRequestContext,
     idempotencyKey: string,
@@ -143,13 +244,39 @@ export class TicketsService {
         event: { type: 'tickets.record.created', data: (_input, result) => result },
         audit: { afterState: (_input, result) => result },
         execute: async (transaction) => {
-          const created = await sql<{ id: string }>`insert into tickets.records (
-            id, tenant_id, customer_id, conversation_id, title, priority
-          ) values (
+          const priority = input.priority ?? 'NORMAL';
+          const created = await sql<{
+            id: string;
+            sla_policy_id: string | null;
+          }>`insert into tickets.records (
+            id, tenant_id, customer_id, conversation_id, title, priority, sla_policy_id,
+            first_response_due_at, resolution_due_at
+          ) select
             ${ticketId}::uuid, ${context.tenantId}::uuid, ${input.customerId ?? null}::uuid,
-            ${input.conversationId ?? null}::uuid, ${input.title}, ${input.priority ?? 'NORMAL'}
-          ) returning id`.execute(transaction);
-          if (!created.rows[0]?.id) throw new Error('Ticket was not created');
+            ${input.conversationId ?? null}::uuid, ${input.title}, ${priority}, policy.id,
+            case when policy.id is null then null
+              else now() + make_interval(mins => policy.first_response_minutes) end,
+            case when policy.id is null then null
+              else now() + make_interval(mins => policy.resolution_minutes) end
+          from (select 1) as input_row
+          left join tickets.sla_policies as policy
+            on policy.tenant_id = ${context.tenantId}::uuid
+            and policy.priority = ${priority} and policy.active
+          returning id, sla_policy_id`.execute(transaction);
+          const ticket = created.rows[0];
+          if (!ticket?.id) throw new Error('Ticket was not created');
+          if (ticket.sla_policy_id) {
+            await this.recordSlaEvent(
+              transaction,
+              context.tenantId,
+              ticketId,
+              'CLOCK_STARTED',
+              'clock-started',
+              {
+                slaPolicyId: ticket.sla_policy_id,
+              },
+            );
+          }
           return { ticketId };
         },
       },
@@ -190,6 +317,22 @@ export class TicketsService {
           ) returning id`.execute(transaction);
           const commentId = created.rows[0]?.id;
           if (!commentId) throw new Error('Ticket was not found');
+          if (visibility === 'CUSTOMER_VISIBLE') {
+            const firstResponse = await sql<{ id: string }>`update tickets.records
+              set first_response_at = now()
+              where id = ${ticketId}::uuid and first_response_at is null
+              returning id`.execute(transaction);
+            if (firstResponse.rows[0]) {
+              await this.recordSlaEvent(
+                transaction,
+                context.tenantId,
+                ticketId,
+                'FIRST_RESPONSE_MET',
+                'first-response-met',
+                { commentId },
+              );
+            }
+          }
           return { ticketId, commentId };
         },
       },
@@ -275,15 +418,114 @@ export class TicketsService {
         event: { type: eventType, data: (_input, result) => result },
         audit: { afterState: (_input, result) => result },
         execute: async (transaction) => {
-          const updated = await sql<{ id: string }>`update tickets.records set
+          const updated = await sql<{
+            id: string;
+            sla_policy_id: string | null;
+          }>`update tickets.records set
             status = ${status},
             resolved_at = case when ${status} = 'RESOLVED' then now() else null end
-            where id = ${ticketId}::uuid returning id`.execute(transaction);
-          if (!updated.rows[0]) throw new Error('Ticket was not found');
+            where id = ${ticketId}::uuid returning id, sla_policy_id`.execute(transaction);
+          const ticket = updated.rows[0];
+          if (!ticket) throw new Error('Ticket was not found');
+          if (status === 'RESOLVED' && ticket.sla_policy_id) {
+            await this.recordSlaEvent(
+              transaction,
+              context.tenantId,
+              ticketId,
+              'RESOLUTION_MET',
+              'resolution-met',
+              {},
+            );
+          }
           return { ticketId, status };
         },
       },
       { context, input: { ticketId, status }, idempotencyKey },
     );
+  }
+
+  public async setSlaStatus(
+    context: TenantRequestContext,
+    idempotencyKey: string,
+    ticketId: string,
+    status: TicketSlaStatus,
+  ): Promise<CommandResult<{ ticketId: string; status: TicketSlaStatus }>> {
+    const pausing = status === 'PENDING';
+    return this.commands.execute(
+      {
+        action: pausing ? 'tickets.record.pause' : 'tickets.record.resume',
+        permission: 'tickets.update',
+        risk: 'MEDIUM',
+        resource: () => ({ type: 'ticket', id: ticketId }),
+        event: {
+          type: pausing ? 'tickets.record.paused' : 'tickets.record.resumed',
+          data: (_input, result) => result,
+        },
+        audit: { afterState: (_input, result) => result },
+        execute: async (transaction) => {
+          const updated = pausing
+            ? await sql<{ id: string; sla_policy_id: string | null }>`update tickets.records
+                set status = 'PENDING', sla_paused_at = now()
+                where id = ${ticketId}::uuid and status = 'OPEN' and sla_paused_at is null
+                returning id, sla_policy_id`.execute(transaction)
+            : await sql<{ id: string; sla_policy_id: string | null }>`update tickets.records
+                set status = 'OPEN',
+                    first_response_due_at = case when first_response_due_at is null then null
+                      else first_response_due_at + (now() - sla_paused_at) end,
+                    resolution_due_at = case when resolution_due_at is null then null
+                      else resolution_due_at + (now() - sla_paused_at) end,
+                    sla_paused_seconds = sla_paused_seconds + extract(epoch from now() - sla_paused_at)::integer,
+                    sla_paused_at = null
+                where id = ${ticketId}::uuid and status = 'PENDING' and sla_paused_at is not null
+                returning id, sla_policy_id`.execute(transaction);
+          const ticket = updated.rows[0];
+          if (!ticket)
+            throw new Error(
+              pausing ? 'Only open tickets can be paused' : 'Only paused tickets can be resumed',
+            );
+          if (ticket.sla_policy_id) {
+            await this.recordSlaEvent(
+              transaction,
+              context.tenantId,
+              ticketId,
+              pausing ? 'CLOCK_PAUSED' : 'CLOCK_RESUMED',
+              `${pausing ? 'clock-paused' : 'clock-resumed'}:${idempotencyKey}`,
+              {},
+            );
+          }
+          return { ticketId, status };
+        },
+      },
+      { context, input: { ticketId, status }, idempotencyKey },
+    );
+  }
+
+  private async recordSlaEvent(
+    transaction: PlatformTransaction,
+    tenantId: string,
+    ticketId: string,
+    eventType:
+      | 'CLOCK_STARTED'
+      | 'CLOCK_PAUSED'
+      | 'CLOCK_RESUMED'
+      | 'FIRST_RESPONSE_MET'
+      | 'RESOLUTION_MET',
+    dedupeKey: string,
+    metadata: Record<string, unknown>,
+  ): Promise<void> {
+    const inserted = await sql<{ id: string }>`insert into tickets.sla_events (
+      tenant_id, ticket_id, event_type, dedupe_key, metadata
+    ) values (
+      ${tenantId}::uuid, ${ticketId}::uuid, ${eventType}, ${dedupeKey},
+      ${JSON.stringify(metadata)}::jsonb
+    ) on conflict (tenant_id, ticket_id, dedupe_key) do nothing returning id`.execute(transaction);
+    if (!inserted.rows[0]) return;
+    await sql`insert into platform.outbox_events (
+      tenant_id, event_type, source, actor_type, resource_type, resource_id, data, dedupe_key
+    ) values (
+      ${tenantId}::uuid, ${`tickets.sla.${eventType.toLowerCase()}`}, 'tickets-service', 'USER',
+      'ticket', ${ticketId}, ${JSON.stringify(metadata)}::jsonb,
+      ${`tickets:sla:${ticketId}:${dedupeKey}`}
+    )`.execute(transaction);
   }
 }
