@@ -57,7 +57,10 @@ async function main(): Promise<void> {
       nats.drain(),
       destroyDatabase(db),
       new Promise<void>((resolve, reject) =>
-        healthServer.close((error) => (error ? reject(error) : resolve())),
+        healthServer.close((error) => {
+          if (error) reject(error);
+          else resolve();
+        }),
       ),
     ]);
   };
