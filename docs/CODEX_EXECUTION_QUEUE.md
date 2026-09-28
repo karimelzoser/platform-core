@@ -23,9 +23,18 @@ dependency-ready item.
 
 ## NEXT
 
-1. Integration SDK completion: connection lifecycle, encrypted secret-reference
-   boundary, provider assets, sync cursor/reconciliation commands, health, and
-   connector contract fixtures.
+1. Integration SDK completion: connection lifecycle (connect/disconnect),
+   credential validation and rotation through encrypted secret references,
+   provider assets, webhook registration/unregistration and signature
+   verification, normalization, initial backfill, incremental sync with
+   cursors/high-water marks, reconciliation, health, throttling/rate limits,
+   error mapping, typed provider actions, and connector fixtures/emulators.
+   Implement explicit provider boundaries for Meta account/assets and Embedded
+   Signup; WhatsApp; Instagram; Messenger; Email; Web Chat; API; Shopify public
+   app lifecycle/webhooks/backfill/sync/reconciliation/actions; and WooCommerce
+   lifecycle/webhooks/sync/reconciliation/actions. Production credentials and
+   provider accounts remain deliberately out of scope; use development fixtures
+   and emulators only.
 2. Commerce schema and service: catalog, inventory, orders, payments,
    fulfillment, canonical provider mapping, commands, audit/outbox, RLS tests.
 3. Order workflows: confirmation, duplicate detection, modification,

@@ -16,7 +16,7 @@ At the beginning of every implementation turn: read `docs/CODEX_EXECUTION_QUEUE.
 
 When CURRENT is objectively complete: run required validation; update `docs/IMPLEMENTATION_STATUS.md`; move CURRENT to DONE; promote the next dependency-ready NEXT item; and perform a concrete implementation/tool action on it before ending the turn.
 
-A normal implementation turn must not end only with a progress summary, plan, handoff, “next I will,” or a completed-commit announcement. Reviewable commits are checkpoints, not stopping points. After each coherent commit, push, inspect CI when available, repair failures, and continue CURRENT or promote the next item.
+A normal implementation turn must not end only with a progress summary, plan, handoff, “next I will,” or a completed-commit announcement. Reviewable commits are checkpoints, not stopping points. Make local implementation changes, run the relevant local checks, and create reviewable local commits as coherent work completes. Push a substantial coherent batch once, inspect its CI result, repair any failures, and continue CURRENT or promote the next item. Do not create a remote CI run for every individual local commit.
 
 Only stop before release completion for a genuine external decision/input, an irreversible external action requiring authorization, Codex/system limits, or after the complete release gate in `docs/TESTING_AND_ACCEPTANCE.md` passes. If an item is blocked and another dependency-ready item exists, move the blocked item to BLOCKED and continue it. Do not ask the user to say “continue” between ordinary workstreams.
 

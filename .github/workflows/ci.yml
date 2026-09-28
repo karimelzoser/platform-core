@@ -59,6 +59,49 @@ jobs:
       - name: Stop isolated integration stack
         if: always()
         run: scripts/integration/down.sh
+  preview-e2e:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+        with: { version: 9.15.5 }
+      - uses: actions/setup-node@v4
+        with: { node-version: 22, cache: pnpm }
+      - uses: actions/setup-python@v5
+        with: { python-version: '3.12' }
+      - run: pnpm install --frozen-lockfile
+      - run: python -m pip install './apps/ai-gateway'
+      - name: Install disposable-preview browser
+        run: pnpm --filter @platform/web exec playwright install --with-deps chromium
+      - name: Start disposable development preview
+        run: corepack pnpm preview:up
+      - name: Verify disposable development preview health
+        run: corepack pnpm preview:health
+      - name: Run protected CRM browser acceptance
+        env:
+          PREVIEW_E2E: '1'
+          PREVIEW_E2E_OWNER_USERNAME: preview-owner
+          PREVIEW_E2E_OWNER_PASSWORD: preview-owner-password
+          PREVIEW_E2E_APPROVER_USERNAME: preview-approver
+          PREVIEW_E2E_APPROVER_PASSWORD: preview-approver-password
+          PREVIEW_E2E_TAG_ID: 55555555-5555-5555-5555-555555555555
+        run: corepack pnpm --filter @platform/web test:e2e
+      - name: Collect preview diagnostics
+        if: failure()
+        run: |
+          docker compose -f docker/integration/compose.yml -f docker/preview/compose.yml ps
+          docker compose -f docker/integration/compose.yml -f docker/preview/compose.yml logs --no-color
+          find .preview -maxdepth 1 -type f -name '*.log' -print -exec cat {} \;
+      - name: Upload CRM browser evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: crm-preview-e2e-${{ github.run_id }}
+          path: apps/web/test-results
+          if-no-files-found: warn
+      - name: Stop disposable development preview
+        if: always()
+        run: corepack pnpm preview:down
   api-image:
     runs-on: ubuntu-24.04
     steps:

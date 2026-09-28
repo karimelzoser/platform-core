@@ -7,6 +7,11 @@ SELECT '33333333-3333-3333-3333-333333333333', '33333333-3333-3333-3333-33333333
 WHERE NOT EXISTS (
   SELECT 1 FROM identity.users WHERE keycloak_subject = '33333333-3333-3333-3333-333333333333'
 );
+INSERT INTO identity.users (id, keycloak_subject, email)
+SELECT '44444444-4444-4444-4444-444444444444', '44444444-4444-4444-4444-444444444444', 'preview-approver@example.test'
+WHERE NOT EXISTS (
+  SELECT 1 FROM identity.users WHERE keycloak_subject = '44444444-4444-4444-4444-444444444444'
+);
 INSERT INTO identity.organizations (id, name, slug, created_by_user_id)
 SELECT 'cccccccc-cccc-cccc-cccc-cccccccccccc', 'Preview Tenant', 'preview-tenant', '33333333-3333-3333-3333-333333333333'
 WHERE NOT EXISTS (
@@ -27,12 +32,28 @@ WHERE NOT EXISTS (
   WHERE tenant_id = 'cccccccc-cccc-cccc-cccc-cccccccccccc'
     AND user_id = '33333333-3333-3333-3333-333333333333'
 );
+INSERT INTO identity.memberships (tenant_id, user_id, status)
+SELECT 'cccccccc-cccc-cccc-cccc-cccccccccccc', '44444444-4444-4444-4444-444444444444', 'ACTIVE'
+WHERE NOT EXISTS (
+  SELECT 1 FROM identity.memberships
+  WHERE tenant_id = 'cccccccc-cccc-cccc-cccc-cccccccccccc'
+    AND user_id = '44444444-4444-4444-4444-444444444444'
+);
 INSERT INTO identity.membership_roles (tenant_id, membership_id, role_id)
 SELECT m.tenant_id, m.id, r.id FROM identity.memberships m JOIN identity.roles r ON r.tenant_id=m.tenant_id AND r.code='owner'
-WHERE m.tenant_id='cccccccc-cccc-cccc-cccc-cccccccccccc' AND m.user_id='33333333-3333-3333-3333-333333333333'
+WHERE m.tenant_id='cccccccc-cccc-cccc-cccc-cccccccccccc'
+  AND m.user_id IN ('33333333-3333-3333-3333-333333333333', '44444444-4444-4444-4444-444444444444')
   AND NOT EXISTS (
     SELECT 1 FROM identity.membership_roles existing
     WHERE existing.tenant_id = m.tenant_id AND existing.membership_id = m.id AND existing.role_id = r.id
   );
+INSERT INTO crm.tags (id, tenant_id, name, description)
+VALUES (
+  '55555555-5555-5555-5555-555555555555',
+  'cccccccc-cccc-cccc-cccc-cccccccccccc',
+  'Preview E2E tag',
+  'Development-only fixture for disposable browser acceptance tests.'
+)
+ON CONFLICT (id) DO NOTHING;
 COMMIT;
 SQL

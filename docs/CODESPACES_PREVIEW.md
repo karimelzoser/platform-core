@@ -21,16 +21,24 @@ or provider accounts.
 
 ## Development identity
 
-Keycloak imports one development-only user:
+Keycloak imports two development-only users:
 
 - username: `preview-owner`
 - password: `preview-owner-password`
 - tenant ID: `cccccccc-cccc-cccc-cccc-cccccccccccc`
 
+The independent approver used only for safe merge-preview testing is:
+
+- username: `preview-approver`
+- password: `preview-approver-password`
+
 It owns `Preview Tenant` and uses normal Keycloak JWT, membership, effective
 permission, OPA, and PostgreSQL RLS paths. There is no authentication bypass.
 The development-only `/preview-login` page exchanges these credentials with
-Keycloak and writes secure HTTP-only session cookies for the selected tenant.
+Keycloak and writes HTTP-only, same-site session cookies for the selected
+tenant. The route is unavailable outside development. Its cookies are
+intentionally non-Secure only because the preview runs over loopback HTTP
+inside the Codespace; the forwarded Codespaces edge remains HTTPS.
 You can also inspect a real token from the terminal:
 
 ```sh

@@ -39,13 +39,13 @@ export async function previewLogin(
     store.set('platform_access_token', body.access_token, {
       httpOnly: true,
       sameSite: 'lax',
-      secure: true,
+      secure: false,
       path: '/',
     });
     store.set('platform_tenant_id', tenantId, {
       httpOnly: true,
       sameSite: 'lax',
-      secure: true,
+      secure: false,
       path: '/',
     });
   } catch {
