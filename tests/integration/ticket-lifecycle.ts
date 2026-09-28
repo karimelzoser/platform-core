@@ -206,7 +206,11 @@ async function main(): Promise<void> {
     assert.equal(resolved.status, 'RESOLVED');
     assert.ok(resolved.resolvedAt);
     assert.equal(resolved.assignedTo, contextA.actorId);
-    assert.equal(resolved.comments.length, 1);
+    assert.equal(resolved.comments.length, 2);
+    assert.deepEqual(
+      resolved.comments.map((comment) => comment.visibility),
+      ['INTERNAL', 'CUSTOMER_VISIBLE'],
+    );
     await tickets.setResolution(contextA, 'ticket-lifecycle-reopen-a', ticketA, 'OPEN');
     const reopened = await tickets.get(contextA, ticketA);
     assert.ok(reopened);
