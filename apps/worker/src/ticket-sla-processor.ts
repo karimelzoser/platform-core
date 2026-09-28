@@ -55,7 +55,7 @@ export class TicketSlaProcessor {
           left join tickets.sla_policies as policy
             on policy.tenant_id = record.tenant_id and policy.id = record.sla_policy_id
           where record.id = ${ticket.id}::uuid and record.sla_paused_at is null
-          for update`.execute(transaction);
+          for update of record`.execute(transaction);
         const clock = result.rows[0];
         if (!clock || !['OPEN', 'PENDING'].includes(clock.status)) return;
 
