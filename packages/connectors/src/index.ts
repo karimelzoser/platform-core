@@ -52,6 +52,27 @@ export function parseMessagingDeliveryReceipt(
   return messagingDeliveryReceiptSchema.safeParse(envelope.payload).data;
 }
 
+/**
+ * A connector-normalized, provider-verified communication consent event. The
+ * worker records the authenticated webhook delivery as immutable evidence; a
+ * browser or staff command cannot manufacture an opt-in state.
+ */
+export const verifiedConsentWebhookSchema = z.object({
+  kind: z.literal('crm.communication_consent_verified'),
+  customerId: z.string().uuid(),
+  channel: z.enum(['EMAIL', 'SMS', 'WHATSAPP', 'MESSENGER', 'INSTAGRAM', 'PUSH']),
+  providerConsentId: z.string().min(1).max(500),
+  occurredAt: z.string().datetime().optional(),
+});
+
+export type VerifiedConsentWebhook = z.infer<typeof verifiedConsentWebhookSchema>;
+
+export function parseVerifiedConsentWebhook(
+  envelope: WebhookEnvelope,
+): VerifiedConsentWebhook | undefined {
+  return verifiedConsentWebhookSchema.safeParse(envelope.payload).data;
+}
+
 export const outboundMessageRequestSchema = z.object({
   connectionId: z.string().uuid(),
   providerConversationId: z.string().min(1).max(500),

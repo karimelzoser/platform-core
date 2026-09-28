@@ -12,6 +12,7 @@ The worker claims at most 100 pending events through a narrowly scoped database 
 | `platform.crm.v1`          | `crm.customer.tag.assigned`             | Customer 360        | Refresh customer profile and segment projections               |
 | `platform.crm.v1`          | `crm.customer.tag.bulk_assigned`        | Customer 360        | Refresh tagged customer profiles and segment projections       |
 | `platform.crm.v1`          | `crm.customer.communication.suppressed` | Customer 360        | Stop outbound channel activity and refresh consent projections |
+| `platform.crm.v1`          | `crm.customer.communication.opted_in`   | Consent webhook     | Refresh consent only from verified provider delivery evidence  |
 | `platform.crm.v1`          | `crm.customer.merged`                   | Customer 360        | Repoint projections and re-evaluate customer segments          |
 | `platform.crm.v1`          | `crm.customer.changed`                  | Customer 360        | Refresh search, segments, and timeline projections             |
 | `platform.integrations.v1` | `integration.webhook.received`          | Webhook ingress     | Normalize asynchronously from persisted delivery               |
@@ -32,6 +33,7 @@ The worker claims at most 100 pending events through a narrowly scoped database 
 | `platform.tickets.v1`      | `tickets.record.reopened`               | Ticket command      | Resume tenant ticket operational handling                      |
 | `platform.tickets.v1`      | `tickets.comment.created`               | Ticket command      | Refresh the ticket timeline idempotently                       |
 | `platform.tickets.v1`      | `tickets.sla.*`                         | Ticket/SLA worker   | Record clock, breach, escalation, and resolution projections   |
+| `platform.tickets.v1`      | `tickets.sla_policy.archived`           | Ticket command      | Archive a policy only through its exact approved action        |
 | `platform.tickets.v1`      | `tickets.record.paused`                 | Ticket command      | Freeze a tenant ticket SLA clock                               |
 | `platform.tickets.v1`      | `tickets.record.resumed`                | Ticket command      | Resume a tenant ticket SLA clock                               |
 | `platform.policy.v1`       | `policy.approval.decided`               | Approval service    | Verify digest then execute once or record failure              |

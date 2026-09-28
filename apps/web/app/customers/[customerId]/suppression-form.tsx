@@ -44,7 +44,7 @@ export function SuppressionForm({ customerId }: { customerId: string }) {
       ) : null}
       {state.suppressed ? (
         <p className="merge-success" role="status">
-          Opt-out recorded. Unverified opt-in is intentionally unavailable.
+          Opt-out recorded. Opt-ins are accepted only from verified provider consent events.
         </p>
       ) : null}
     </form>

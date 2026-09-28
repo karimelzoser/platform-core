@@ -24,6 +24,8 @@ const conversationA = 'aaaaaaaa-0000-0000-0000-000000000101';
 const conversationB = 'bbbbbbbb-0000-0000-0000-000000000101';
 const connectionA = 'aaaaaaaa-0000-0000-0000-000000000002';
 const connectionB = 'bbbbbbbb-0000-0000-0000-000000000002';
+const customerA = 'aaaaaaaa-0000-0000-0000-000000000401';
+const customerB = 'bbbbbbbb-0000-0000-0000-000000000401';
 
 function context(tenantId: string, actorId: string, suffix: string): TenantRequestContext {
   return {
@@ -52,6 +54,8 @@ async function main(): Promise<void> {
     await withTenantTransaction(database, contextA, async (transaction) => {
       await sql`update messaging.conversations set connection_id = ${connectionA}::uuid
         where id = ${conversationA}::uuid`.execute(transaction);
+      await sql`insert into crm.customers (id, tenant_id, display_name)
+        values (${customerA}::uuid, ${tenantA}::uuid, 'Consent customer A')`.execute(transaction);
     });
     await withTenantTransaction(database, contextB, async (transaction) => {
       await sql`insert into integrations.connections (
@@ -61,6 +65,8 @@ async function main(): Promise<void> {
       )`.execute(transaction);
       await sql`update messaging.conversations set connection_id = ${connectionB}::uuid
         where id = ${conversationB}::uuid`.execute(transaction);
+      await sql`insert into crm.customers (id, tenant_id, display_name)
+        values (${customerB}::uuid, ${tenantB}::uuid, 'Consent customer B')`.execute(transaction);
     });
 
     const opaUrl = process.env.OPA_URL;
@@ -217,6 +223,17 @@ async function main(): Promise<void> {
     assert.equal(await webhook.processBatch(), 1);
     await assertStatus(databaseService, contextA, sentA.result.messageId, 'READ');
 
+    await addVerifiedConsent(databaseService, contextA, connectionA, customerA, 'EMAIL');
+    await addVerifiedConsent(databaseService, contextB, connectionB, customerB, 'WHATSAPP');
+    assert.equal(await webhook.processBatch(), 2);
+    await assertVerifiedConsent(databaseService, contextA, customerA, 'EMAIL');
+    await assertVerifiedConsent(databaseService, contextB, customerB, 'WHATSAPP');
+    await withTenantTransaction(database, contextB, async (transaction) => {
+      const hidden = await sql<{ id: string }>`select id from crm.communication_consent_evidence
+        where customer_id = ${customerA}::uuid`.execute(transaction);
+      assert.equal(hidden.rows.length, 0, 'Tenant B can read Tenant A consent evidence');
+    });
+
     const failure = await messaging.send(contextB, 'lifecycle-failure', conversationB, 'FAIL B');
     assert.equal(await outbound.processBatch(), 1);
     await assertStatus(databaseService, contextB, failure.result.messageId, 'FAILED');
@@ -270,6 +287,48 @@ async function addReceipt(
       ${JSON.stringify({ kind: 'messaging.delivery_receipt', providerMessageId: `provider-${messageId}`, status })}::jsonb,
       ${`receipt-${messageId}-${status}`}
     )`.execute(transaction);
+  });
+}
+
+async function addVerifiedConsent(
+  databaseService: ApiDatabaseService,
+  tenantContext: TenantRequestContext,
+  connectionId: string,
+  customerId: string,
+  channel: 'EMAIL' | 'WHATSAPP',
+): Promise<void> {
+  await withTenantTransaction(databaseService.database, tenantContext, async (transaction) => {
+    await sql`insert into integrations.webhook_deliveries (
+      tenant_id, connection_id, provider_delivery_id, event_type,
+      signature_valid, payload, dedupe_key
+    ) values (
+      ${tenantContext.tenantId}::uuid, ${connectionId}::uuid,
+      ${`consent-${customerId}-${channel}`}, 'customer.consent.updated', true,
+      ${JSON.stringify({
+        kind: 'crm.communication_consent_verified',
+        customerId,
+        channel,
+        providerConsentId: `provider-consent-${customerId}-${channel}`,
+      })}::jsonb,
+      ${`consent-${customerId}-${channel}`}
+    )`.execute(transaction);
+  });
+}
+
+async function assertVerifiedConsent(
+  databaseService: ApiDatabaseService,
+  tenantContext: TenantRequestContext,
+  customerId: string,
+  channel: 'EMAIL' | 'WHATSAPP',
+): Promise<void> {
+  await withTenantTransaction(databaseService.database, tenantContext, async (transaction) => {
+    const preference = await sql<{ status: string; source: string }>`select status, source
+      from crm.communication_preferences where customer_id = ${customerId}::uuid
+        and channel = ${channel}`.execute(transaction);
+    assert.deepEqual(preference.rows[0], { status: 'OPTED_IN', source: 'provider_webhook' });
+    const evidence = await sql<{ id: string }>`select id from crm.communication_consent_evidence
+      where customer_id = ${customerId}::uuid and channel = ${channel}`.execute(transaction);
+    assert.equal(evidence.rows.length, 1);
   });
 }
 

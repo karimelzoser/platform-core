@@ -2,6 +2,7 @@ import {
   ConnectorRegistry,
   parseInboundMessagingWebhook,
   parseMessagingDeliveryReceipt,
+  parseVerifiedConsentWebhook,
   type WebhookEnvelope,
 } from '@platform/connectors';
 import { sql, withTenantTransaction, type PlatformDatabase } from '@platform/database';
@@ -56,7 +57,98 @@ export class MessagingWebhookProcessor {
     if (inbound) return this.persistInbound(delivery, connectorKey, envelope, inbound);
     const receipt = parseMessagingDeliveryReceipt(envelope);
     if (receipt) return this.persistDeliveryReceipt(delivery, connectorKey, envelope, receipt);
+    const consent = parseVerifiedConsentWebhook(envelope);
+    if (consent) return this.persistVerifiedConsent(delivery, connectorKey, envelope, consent);
     await this.reject(delivery, connectorKey, envelope);
+  }
+
+  private async persistVerifiedConsent(
+    delivery: ClaimedWebhookDelivery,
+    connectorKey: string,
+    envelope: WebhookEnvelope,
+    consent: NonNullable<ReturnType<typeof parseVerifiedConsentWebhook>>,
+  ): Promise<void> {
+    await withTenantTransaction(
+      this.database,
+      {
+        tenantId: delivery.tenant_id,
+        actorId: null,
+        subject: `worker:webhook:${connectorKey}`,
+        requestId: delivery.id,
+      },
+      async (transaction) => {
+        const lease = await sql<{ id: string }>`select id from integrations.webhook_deliveries
+          where id = ${delivery.id}::uuid and state = 'PROCESSING' and claimed_by = ${this.workerId}
+          for update`.execute(transaction);
+        if (!lease.rows[0]) return;
+        const customer = await sql<{ id: string }>`select id from crm.customers
+          where id = ${consent.customerId}::uuid and status = 'ACTIVE'`.execute(transaction);
+        if (!customer.rows[0])
+          throw new Error('Active customer was not found for verified consent');
+
+        const occurredAt = consent.occurredAt ?? delivery.received_at.toISOString();
+        const evidence = await sql<{ id: string }>`insert into crm.communication_consent_evidence (
+          tenant_id, customer_id, channel, webhook_delivery_id, provider_consent_id, occurred_at, metadata
+        ) values (
+          ${delivery.tenant_id}::uuid, ${consent.customerId}::uuid, ${consent.channel},
+          ${delivery.id}::uuid, ${consent.providerConsentId}, ${occurredAt}::timestamptz,
+          ${JSON.stringify({ connectorKey })}::jsonb
+        ) on conflict (tenant_id, customer_id, channel, provider_consent_id) do nothing returning id`.execute(
+          transaction,
+        );
+        const evidenceId = evidence.rows[0]?.id;
+        if (evidenceId) {
+          await sql`insert into crm.communication_preferences (
+            tenant_id, customer_id, channel, status, source, captured_at, suppressed_until, reason, metadata
+          ) values (
+            ${delivery.tenant_id}::uuid, ${consent.customerId}::uuid, ${consent.channel},
+            'OPTED_IN', 'provider_webhook', ${occurredAt}::timestamptz, null,
+            'Verified provider consent event',
+            ${JSON.stringify({ evidenceType: 'VERIFIED_PROVIDER_WEBHOOK', webhookDeliveryId: delivery.id })}::jsonb
+          ) on conflict (tenant_id, customer_id, channel) do update set
+            status = case when crm.communication_preferences.captured_at is null
+              or crm.communication_preferences.captured_at <= excluded.captured_at
+              then 'OPTED_IN' else crm.communication_preferences.status end,
+            source = case when crm.communication_preferences.captured_at is null
+              or crm.communication_preferences.captured_at <= excluded.captured_at
+              then excluded.source else crm.communication_preferences.source end,
+            captured_at = greatest(crm.communication_preferences.captured_at, excluded.captured_at),
+            suppressed_until = case when crm.communication_preferences.captured_at is null
+              or crm.communication_preferences.captured_at <= excluded.captured_at
+              then null else crm.communication_preferences.suppressed_until end,
+            reason = case when crm.communication_preferences.captured_at is null
+              or crm.communication_preferences.captured_at <= excluded.captured_at
+              then excluded.reason else crm.communication_preferences.reason end,
+            metadata = case when crm.communication_preferences.captured_at is null
+              or crm.communication_preferences.captured_at <= excluded.captured_at
+              then excluded.metadata else crm.communication_preferences.metadata end,
+            updated_at = now()`.execute(transaction);
+        }
+        await sql`update integrations.webhook_deliveries
+          set state = 'PROCESSED', processed_at = now(), normalized_event = ${JSON.stringify(envelope)}::jsonb,
+              last_error = null, claimed_at = null, claimed_by = null
+          where id = ${delivery.id}::uuid and state = 'PROCESSING' and claimed_by = ${this.workerId}`.execute(
+          transaction,
+        );
+        if (!evidenceId) return;
+        await sql`insert into platform.audit_log (
+          tenant_id, actor_type, action, resource_type, resource_id, request_id, correlation_id, metadata
+        ) values (
+          ${delivery.tenant_id}::uuid, 'INTEGRATION', 'crm.customer.communication.verified_opt_in',
+          'crm.customer', ${consent.customerId}, ${delivery.id}, ${delivery.id},
+          ${JSON.stringify({ evidenceId, webhookDeliveryId: delivery.id, channel: consent.channel })}::jsonb
+        )`.execute(transaction);
+        await sql`insert into platform.outbox_events (
+          tenant_id, event_type, source, correlation_id, causation_id, actor_type,
+          resource_type, resource_id, data, dedupe_key
+        ) values (
+          ${delivery.tenant_id}::uuid, 'crm.customer.communication.opted_in', 'crm-consent-webhook-worker',
+          ${delivery.id}, ${delivery.id}, 'INTEGRATION', 'crm.customer', ${consent.customerId},
+          ${JSON.stringify({ customerId: consent.customerId, channel: consent.channel, evidenceId })}::jsonb,
+          ${`crm:consent:${evidenceId}`}
+        )`.execute(transaction);
+      },
+    );
   }
 
   private async persistInbound(

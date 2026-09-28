@@ -2,6 +2,7 @@ import assert from 'node:assert/strict';
 import test from 'node:test';
 import {
   parseMessagingDeliveryReceipt,
+  parseVerifiedConsentWebhook,
   outboundMessageResultSchema,
   parseInboundMessagingWebhook,
   type WebhookEnvelope,
@@ -57,6 +58,33 @@ void test('parses a bounded canonical outbound delivery receipt', () => {
 void test('does not treat unrelated webhook payloads as inbound messages', () => {
   assert.equal(
     parseInboundMessagingWebhook({ ...envelope, payload: { kind: 'commerce.order.updated' } }),
+    undefined,
+  );
+});
+
+void test('parses only a bounded provider-verified communication consent payload', () => {
+  assert.deepEqual(
+    parseVerifiedConsentWebhook({
+      ...envelope,
+      payload: {
+        kind: 'crm.communication_consent_verified',
+        customerId: 'aaaaaaaa-0000-0000-0000-000000000401',
+        channel: 'EMAIL',
+        providerConsentId: 'provider-consent-1',
+      },
+    }),
+    {
+      kind: 'crm.communication_consent_verified',
+      customerId: 'aaaaaaaa-0000-0000-0000-000000000401',
+      channel: 'EMAIL',
+      providerConsentId: 'provider-consent-1',
+    },
+  );
+  assert.equal(
+    parseVerifiedConsentWebhook({
+      ...envelope,
+      payload: { kind: 'crm.communication_consent_verified', channel: 'EMAIL' },
+    }),
     undefined,
   );
 });
