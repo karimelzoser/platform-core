@@ -12,6 +12,7 @@ const environmentSchema = z.object({
   DATABASE_URL: z.string().url(),
   NATS_URL: z.string().url(),
   WORKER_HEALTH_PORT: z.coerce.number().default(3002),
+  SLA_EVALUATION_INTERVAL_MS: z.coerce.number().int().min(1_000).max(300_000).default(10_000),
 });
 
 async function main(): Promise<void> {
@@ -24,6 +25,7 @@ async function main(): Promise<void> {
   const webhookProcessor = new MessagingWebhookProcessor(db, connectors, workerId);
   const outboundMessageProcessor = new OutboundMessageProcessor(db, connectors, workerId);
   const ticketSlaProcessor = new TicketSlaProcessor(db);
+  let nextSlaEvaluationAt = 0;
   await publisher.ensureEventStream();
   console.log(
     JSON.stringify({ level: 'info', message: 'worker_started', natsServer: nats.getServer() }),
@@ -40,7 +42,10 @@ async function main(): Promise<void> {
     const published = await publisher.publishBatch();
     const processed = await webhookProcessor.processBatch();
     const dispatched = await outboundMessageProcessor.processBatch();
-    const evaluatedSla = await ticketSlaProcessor.processBatch();
+    const now = Date.now();
+    const evaluatedSla = now >= nextSlaEvaluationAt ? await ticketSlaProcessor.processBatch() : 0;
+    if (now >= nextSlaEvaluationAt)
+      nextSlaEvaluationAt = now + environment.SLA_EVALUATION_INTERVAL_MS;
     if (published === 0 && processed === 0 && dispatched === 0 && evaluatedSla === 0)
       await new Promise<void>((resolve) => setTimeout(resolve, 250));
   }

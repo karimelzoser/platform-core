@@ -44,6 +44,7 @@ export function TicketMutationForms({
   const canAssign = permissions.includes('tickets.assign');
   const canResolve = permissions.includes('tickets.close');
   const hasSla = ticket.slaPolicyId !== null;
+  const canManageSlaClock = canUpdate && hasSla && ['OPEN', 'PENDING'].includes(ticket.status);
   if (!canUpdate && !canAssign && !canResolve)
     return <p className="muted">You have read-only access to this ticket.</p>;
 
@@ -119,7 +120,7 @@ export function TicketMutationForms({
         </section>
       ) : null}
 
-      {canUpdate && hasSla ? (
+      {canManageSlaClock ? (
         <section className="customer-card" aria-labelledby="ticket-sla-control-heading">
           <h2 id="ticket-sla-control-heading">SLA clock</h2>
           <form action={slaAction} className="customer-form">
@@ -127,16 +128,16 @@ export function TicketMutationForms({
             <input
               name="status"
               type="hidden"
-              value={ticket.status === 'PENDING' ? 'OPEN' : 'PENDING'}
+              value={ticket.slaPausedAt ? 'OPEN' : 'PENDING'}
               readOnly
             />
             <p className="muted">
-              {ticket.status === 'PENDING'
+              {ticket.slaPausedAt
                 ? 'This SLA clock is paused. Resume it when active work continues.'
                 : 'Pause this SLA clock only while the ticket is formally pending.'}
             </p>
             <button className="action" type="submit">
-              {ticket.status === 'PENDING' ? 'Resume SLA clock' : 'Pause SLA clock'}
+              {ticket.slaPausedAt ? 'Resume SLA clock' : 'Pause SLA clock'}
             </button>
             <FormState state={slaState} success="SLA clock updated." />
           </form>
