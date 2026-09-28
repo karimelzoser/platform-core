@@ -187,6 +187,7 @@ async function main(): Promise<void> {
     });
     const slaProcessor = new TicketSlaProcessor(database);
     assert.equal(await slaProcessor.processBatch(), 1);
+    assert.equal(await slaProcessor.processBatch(), 0);
     const breached = await tickets.get(contextA, ticketA);
     assert.ok(breached);
     assert.ok(breached.slaEvents.some((event) => event.eventType === 'RESOLUTION_BREACHED'));
