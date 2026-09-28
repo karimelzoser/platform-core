@@ -141,7 +141,8 @@ async function login(page: Page, username: string, password: string) {
       .getByRole('alert')
       .waitFor({ state: 'visible' })
       .then(async () => {
-        throw new Error(`Preview login failed: ${await page.getByRole('alert').textContent()}`);
+        const message = (await page.getByRole('alert').textContent()) ?? 'no error text';
+        throw new Error(`Preview login failed: ${message}`);
       }),
   ]);
 }
