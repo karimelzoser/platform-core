@@ -1,6 +1,7 @@
 import { connect } from 'nats';
 import { ConnectorRegistry } from '@platform/connectors';
 import { createDatabase, destroyDatabase } from '@platform/database';
+import { createServer } from 'node:http';
 import { hostname } from 'node:os';
 import { z } from 'zod';
 import { MessagingWebhookProcessor } from './messaging-webhook-processor.js';
@@ -26,14 +27,39 @@ async function main(): Promise<void> {
   const outboundMessageProcessor = new OutboundMessageProcessor(db, connectors, workerId);
   const ticketSlaProcessor = new TicketSlaProcessor(db);
   let nextSlaEvaluationAt = 0;
+  const startedAt = new Date().toISOString();
+  const healthServer = createServer((request, response) => {
+    if (request.url !== '/health') {
+      response.writeHead(404).end();
+      return;
+    }
+    response.writeHead(200, { 'content-type': 'application/json; charset=utf-8' });
+    response.end(JSON.stringify({ status: 'ok', service: 'worker', startedAt }));
+  });
+  await new Promise<void>((resolve, reject) => {
+    healthServer.once('error', reject);
+    healthServer.listen(environment.WORKER_HEALTH_PORT, resolve);
+  });
   await publisher.ensureEventStream();
   console.log(
-    JSON.stringify({ level: 'info', message: 'worker_started', natsServer: nats.getServer() }),
+    JSON.stringify({
+      level: 'info',
+      message: 'worker_started',
+      natsServer: nats.getServer(),
+      healthPort: environment.WORKER_HEALTH_PORT,
+      slaEvaluationIntervalMs: environment.SLA_EVALUATION_INTERVAL_MS,
+    }),
   );
   const shutdown = new AbortController();
   const close = async (): Promise<void> => {
     shutdown.abort();
-    await Promise.all([nats.drain(), destroyDatabase(db)]);
+    await Promise.all([
+      nats.drain(),
+      destroyDatabase(db),
+      new Promise<void>((resolve, reject) =>
+        healthServer.close((error) => (error ? reject(error) : resolve())),
+      ),
+    ]);
   };
   process.once('SIGTERM', () => void close());
   process.once('SIGINT', () => void close());
