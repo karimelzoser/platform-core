@@ -2,9 +2,16 @@
 
 import { useActionState } from 'react';
 import { useFormStatus } from 'react-dom';
-import { createDynamicSegment, createStaticSegment, type CreateSegmentState } from './actions';
+import {
+  createDynamicSegment,
+  createStaticSegment,
+  evaluateDynamicSegment,
+  type CreateSegmentState,
+  type EvaluateSegmentState,
+} from './actions';
 
 const initialState: CreateSegmentState = {};
+const initialEvaluationState: EvaluateSegmentState = {};
 
 export function CreateSegmentForm() {
   const [state, action] = useActionState(createStaticSegment, initialState);
@@ -58,8 +65,27 @@ export function CreateDynamicSegmentForm() {
       ) : null}
       {state.created ? (
         <p className="merge-success" role="status">
-          Dynamic segment created. Evaluate it through the API until scheduled evaluation is
-          implemented.
+          Dynamic segment created. Use its evaluation control below to update rule members.
+        </p>
+      ) : null}
+    </form>
+  );
+}
+
+export function EvaluateDynamicSegmentForm({ segmentId }: { segmentId: string }) {
+  const [state, action] = useActionState(evaluateDynamicSegment, initialEvaluationState);
+  return (
+    <form action={action} className="inline-action-form">
+      <input type="hidden" name="segmentId" value={segmentId} />
+      <EvaluateSubmit />
+      {state.error ? (
+        <p className="form-error" role="alert">
+          {state.error}
+        </p>
+      ) : null}
+      {state.memberCount !== undefined ? (
+        <p className="merge-success" role="status">
+          Rule evaluated: {state.memberCount} matching customer{state.memberCount === 1 ? '' : 's'}.
         </p>
       ) : null}
     </form>
@@ -71,6 +97,15 @@ function Submit({ label }: { label: string }) {
   return (
     <button className="action" type="submit" disabled={pending}>
       {pending ? 'Creating…' : label}
+    </button>
+  );
+}
+
+function EvaluateSubmit() {
+  const { pending } = useFormStatus();
+  return (
+    <button className="action" type="submit" disabled={pending}>
+      {pending ? 'Evaluating…' : 'Evaluate tag rule'}
     </button>
   );
 }

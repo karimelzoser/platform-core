@@ -10,10 +10,10 @@ dependency-ready item.
 
 ## CURRENT
 
-- **CRM completion:** add verified opt-in evidence flow; tag-rule segment UI
-  evaluation action; CSV import quoted-field integration tests; and complete
-  two-tenant CRM/RLS, approval, merge, import/export, accessibility, and E2E
-  suites.
+- **CRM validation closure:** add a two-tenant application lifecycle suite for
+  customer creation/import, tag-rule segment evaluation, merge approvals,
+  verified consent/opt-out behavior, audit/outbox, and RLS. Then complete the
+  remaining CRM accessibility and browser E2E evidence.
 
 ## VERIFICATION PENDING
 
@@ -107,6 +107,11 @@ dependency-ready item.
   idempotent breach/escalation events, outbox/audit behavior, protected UI, and
   two-tenant integration coverage. Temporal workflow, browser E2E, RTL/LTR,
   accessibility, and full ticket acceptance remain pending.
+- CRM verified-consent evidence in green GitHub Actions run #115 for commit
+  `b6471cc`: bounded canonical provider consent payloads, immutable
+  tenant-scoped evidence, monotonic preference updates, audit/outbox records,
+  and two-tenant webhook-worker coverage. The protected segment evaluation UI
+  and quoted-field CSV parser tests are implemented; CRM is still partial.
 
 ## Release evidence
 

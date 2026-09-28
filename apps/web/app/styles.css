@@ -231,6 +231,16 @@ a {
   cursor: progress;
   opacity: 0.65;
 }
+.inline-action-form {
+  margin-top: 0.75rem;
+}
+.inline-action-form .action {
+  cursor: pointer;
+}
+.inline-action-form .action:disabled {
+  cursor: progress;
+  opacity: 0.65;
+}
 .form-error {
   margin: 0;
   color: #aa2c2c;

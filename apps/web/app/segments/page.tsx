@@ -1,5 +1,9 @@
 import { cookies } from 'next/headers';
-import { CreateDynamicSegmentForm, CreateSegmentForm } from './create-segment-form';
+import {
+  CreateDynamicSegmentForm,
+  CreateSegmentForm,
+  EvaluateDynamicSegmentForm,
+} from './create-segment-form';
 
 export const dynamic = 'force-dynamic';
 
@@ -12,8 +16,14 @@ interface Segment {
   memberCount: number;
 }
 
+interface SessionAccess {
+  permissions: string[];
+}
+
 export default async function SegmentsPage() {
-  const result = await loadSegments();
+  const [result, access] = await Promise.all([loadSegments(), loadAccess()]);
+  const canManageSegments =
+    access.kind === 'success' && access.access.permissions.includes('crm.segments.manage');
   return (
     <main className="customers-page">
       <header className="customers-header">
@@ -44,6 +54,11 @@ export default async function SegmentsPage() {
                     <small>
                       {segment.mode} · {segment.status} · {segment.memberCount} members
                     </small>
+                    {canManageSegments &&
+                    segment.mode === 'DYNAMIC' &&
+                    segment.status === 'ACTIVE' ? (
+                      <EvaluateDynamicSegmentForm segmentId={segment.id} />
+                    ) : null}
                   </li>
                 ))}
               </ul>
@@ -57,6 +72,26 @@ export default async function SegmentsPage() {
       </div>
     </main>
   );
+}
+
+async function loadAccess(): Promise<
+  { kind: 'success'; access: SessionAccess } | { kind: 'error' }
+> {
+  const store = await cookies();
+  const token = store.get('platform_access_token')?.value;
+  const tenantId = store.get('platform_tenant_id')?.value;
+  const baseUrl = process.env.API_INTERNAL_URL;
+  if (!token || !tenantId || !baseUrl) return { kind: 'error' };
+  try {
+    const response = await fetch(new URL('/v1/session', baseUrl), {
+      headers: { authorization: `Bearer ${token}`, 'x-tenant-id': tenantId },
+    });
+    return response.ok
+      ? { kind: 'success', access: (await response.json()) as SessionAccess }
+      : { kind: 'error' };
+  } catch {
+    return { kind: 'error' };
+  }
 }
 
 async function loadSegments(): Promise<
