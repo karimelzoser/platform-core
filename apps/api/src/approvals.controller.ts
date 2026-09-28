@@ -11,6 +11,7 @@ import {
 import { ApprovalError, ApprovalService } from './approval.service.js';
 import { AuthenticatedContextService } from './authenticated-context.service.js';
 import { CustomerService } from '@platform/crm';
+import { TicketsService } from './tickets.service.js';
 
 @Controller('v1/approvals')
 export class ApprovalsController {
@@ -18,6 +19,7 @@ export class ApprovalsController {
     private readonly authentication: AuthenticatedContextService,
     private readonly approvals: ApprovalService,
     private readonly customers: CustomerService,
+    private readonly tickets: TicketsService,
   ) {}
 
   @Get()
@@ -43,6 +45,27 @@ export class ApprovalsController {
       const context = await this.context(authorization, tenantId, correlationId);
       const merge = await this.approvals.executableMerge(context, approvalId);
       return this.customers.merge(context, idempotencyKey ?? '', merge, approvalId);
+    });
+  }
+
+  @Post(':approvalId/execute-sla-policy')
+  public async executeSlaPolicy(
+    @Param('approvalId') approvalId: string,
+    @Headers('authorization') authorization: string | undefined,
+    @Headers('x-tenant-id') tenantId: string | undefined,
+    @Headers('x-correlation-id') correlationId: string | undefined,
+    @Headers('idempotency-key') idempotencyKey: string | undefined,
+  ) {
+    return this.invoke(async () => {
+      const context = await this.context(authorization, tenantId, correlationId);
+      const policy = await this.approvals.executableSlaPolicy(context, approvalId);
+      return this.tickets.createSlaPolicy(
+        context,
+        idempotencyKey ?? '',
+        policy.input,
+        approvalId,
+        policy.slaPolicyId,
+      );
     });
   }
 
@@ -74,6 +97,22 @@ export class ApprovalsController {
     if (!Buffer.isBuffer(body)) throw new BadRequestException('Approval body must be JSON');
     return this.invoke(async () =>
       this.approvals.requestMerge(
+        await this.context(authorization, tenantId, correlationId),
+        JSON.parse(body.toString('utf8')),
+      ),
+    );
+  }
+
+  @Post('ticket-sla-policy-request')
+  public async requestSlaPolicy(
+    @Body() body: unknown,
+    @Headers('authorization') authorization: string | undefined,
+    @Headers('x-tenant-id') tenantId: string | undefined,
+    @Headers('x-correlation-id') correlationId: string | undefined,
+  ) {
+    if (!Buffer.isBuffer(body)) throw new BadRequestException('Approval body must be JSON');
+    return this.invoke(async () =>
+      this.approvals.requestSlaPolicy(
         await this.context(authorization, tenantId, correlationId),
         JSON.parse(body.toString('utf8')),
       ),

@@ -3,6 +3,7 @@ import { CommandAuthorizer, OpaClient } from '@platform/authorization';
 import { CommandExecutor, type TenantRequestContext } from '@platform/command-execution';
 import { sql, withTenantTransaction } from '@platform/database';
 import { ApiDatabaseService } from '../../apps/api/src/api-database.service.js';
+import { ApprovalService } from '../../apps/api/src/approval.service.js';
 import { TicketsService } from '../../apps/api/src/tickets.service.js';
 import { TicketSlaProcessor } from '../../apps/worker/src/ticket-sla-processor.js';
 
@@ -47,6 +48,7 @@ async function main(): Promise<void> {
       ),
     );
     const tickets = new TicketsService(databaseService, commands);
+    const approvals = new ApprovalService(databaseService);
     await withTenantTransaction(database, contextA, async (transaction) => {
       await sql`insert into identity.memberships (tenant_id, user_id, status)
         values (${tenantA}::uuid, ${contextA.actorId}::uuid, 'ACTIVE')`.execute(transaction);
@@ -59,14 +61,35 @@ async function main(): Promise<void> {
       await sql`insert into crm.customers (id, tenant_id, display_name)
         values (${customerB}::uuid, ${tenantB}::uuid, 'Lifecycle customer B')`.execute(transaction);
     });
-    await withTenantTransaction(database, contextA, async (transaction) => {
-      await sql`insert into tickets.sla_policies (
-        tenant_id, name, priority, first_response_minutes, resolution_minutes, escalation_minutes
-      ) values (
-        ${tenantA}::uuid, 'High priority lifecycle', 'HIGH', 5, 5, 1
-      )`.execute(transaction);
+    const slaRequester: TenantRequestContext = {
+      ...contextA,
+      permissions: [...contextA.permissions, 'tickets.sla.manage'],
+    };
+    const slaDecider: TenantRequestContext = {
+      ...contextB,
+      permissions: ['policy.approvals.decide'],
+    };
+    const approval = await approvals.requestSlaPolicy(slaRequester, {
+      name: 'High priority lifecycle',
+      priority: 'HIGH',
+      firstResponseMinutes: 5,
+      resolutionMinutes: 5,
+      escalationMinutes: 1,
     });
-    assert.deepEqual(await tickets.listSlaPolicies(contextB), []);
+    await approvals.decide(slaDecider, approval.approvalId, { decision: 'APPROVED' });
+    const executablePolicy = await approvals.executableSlaPolicy(slaRequester, approval.approvalId);
+    const createdPolicy = await tickets.createSlaPolicy(
+      slaRequester,
+      'ticket-lifecycle-policy-a',
+      executablePolicy.input,
+      approval.approvalId,
+      executablePolicy.slaPolicyId,
+    );
+    assert.equal(createdPolicy.result.slaPolicyId, executablePolicy.slaPolicyId);
+    const tenantBPolicies = await tickets.listSlaPolicies(contextB);
+    assert.equal(tenantBPolicies.length, 1);
+    assert.equal(tenantBPolicies[0]?.id, 'bbbbbbbb-0000-0000-0000-000000000301');
+    assert.ok(!tenantBPolicies.some((policy) => policy.id === executablePolicy.slaPolicyId));
 
     const createdA = await tickets.create(contextA, 'ticket-lifecycle-create-a', {
       title: 'Investigate A',

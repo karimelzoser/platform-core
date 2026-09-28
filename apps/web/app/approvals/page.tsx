@@ -1,6 +1,7 @@
 import { cookies } from 'next/headers';
 import { decideApproval } from './actions';
 import { ExecuteMergeForm } from './execute-merge-form';
+import { ExecuteSlaPolicyForm } from './execute-sla-policy-form';
 export const dynamic = 'force-dynamic';
 interface Approval {
   id: string;
@@ -52,6 +53,10 @@ export default async function ApprovalsPage() {
                   ) : null}
                   {approval.status === 'APPROVED' && approval.action === 'crm.customer.merge' ? (
                     <ExecuteMergeForm approvalId={approval.id} />
+                  ) : null}
+                  {approval.status === 'APPROVED' &&
+                  approval.action === 'tickets.sla_policy.create' ? (
+                    <ExecuteSlaPolicyForm approvalId={approval.id} />
                   ) : null}
                 </li>
               ))}

@@ -192,8 +192,10 @@ export class TicketsService {
     context: TenantRequestContext,
     idempotencyKey: string,
     input: TicketSlaPolicyInput,
+    approvalId?: string,
+    policyId?: string,
   ): Promise<CommandResult<{ slaPolicyId: string }>> {
-    const slaPolicyId = randomUUID();
+    const slaPolicyId = policyId ?? randomUUID();
     return this.commands.execute(
       {
         action: 'tickets.sla_policy.create',
@@ -225,6 +227,7 @@ export class TicketsService {
             : { escalationMinutes: input.escalationMinutes }),
         },
         idempotencyKey,
+        ...(approvalId ? { approvalId } : {}),
       },
     );
   }
@@ -423,7 +426,12 @@ export class TicketsService {
             sla_policy_id: string | null;
           }>`update tickets.records set
             status = ${status},
-            resolved_at = case when ${status} = 'RESOLVED' then now() else null end
+            resolved_at = case when ${status} = 'RESOLVED' then now() else null end,
+            sla_paused_seconds = sla_paused_seconds + case
+              when ${status} = 'RESOLVED' and sla_paused_at is not null
+                then extract(epoch from now() - sla_paused_at)::integer
+              else 0 end,
+            sla_paused_at = case when ${status} = 'RESOLVED' then null else sla_paused_at end
             where id = ${ticketId}::uuid returning id, sla_policy_id`.execute(transaction);
           const ticket = updated.rows[0];
           if (!ticket) throw new Error('Ticket was not found');

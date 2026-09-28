@@ -86,10 +86,16 @@ export class TicketsController {
     @Headers('x-tenant-id') tenantId: string | undefined,
     @Headers('x-correlation-id') correlationId: string | undefined,
     @Headers('idempotency-key') idempotencyKey: string | undefined,
+    @Headers('x-approval-id') approvalId: string | undefined,
   ) {
     const context = await this.context(authorization, tenantId, correlationId);
     this.assertPermission(context.permissions, 'tickets.sla.manage');
-    return this.tickets.createSlaPolicy(context, idempotencyKey ?? '', parseSlaPolicy(body));
+    return this.tickets.createSlaPolicy(
+      context,
+      idempotencyKey ?? '',
+      parseSlaPolicy(body),
+      approvalId,
+    );
   }
 
   @Get(':ticketId')

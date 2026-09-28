@@ -1,5 +1,6 @@
 import { cookies } from 'next/headers';
 import { CreateTicketForm } from './create-ticket-form';
+import { SlaPolicyRequestForm } from './sla-policy-request-form';
 
 export const dynamic = 'force-dynamic';
 
@@ -15,10 +16,26 @@ interface SessionAccess {
   permissions: string[];
 }
 
+interface SlaPolicy {
+  id: string;
+  name: string;
+  priority: string;
+  firstResponseMinutes: number;
+  resolutionMinutes: number;
+  escalationMinutes: number | null;
+  active: boolean;
+}
+
 export default async function TicketsPage() {
-  const [result, access] = await Promise.all([loadTickets(), loadAccess()]);
+  const [result, access, policies] = await Promise.all([
+    loadTickets(),
+    loadAccess(),
+    loadSlaPolicies(),
+  ]);
   const canCreate =
     access.kind === 'success' && access.access.permissions.includes('tickets.create');
+  const canManageSla =
+    access.kind === 'success' && access.access.permissions.includes('tickets.sla.manage');
   return (
     <main className="customers-page">
       <header className="customer-profile-header">
@@ -29,6 +46,32 @@ export default async function TicketsPage() {
         </div>
       </header>
       {canCreate ? <CreateTicketForm /> : null}
+      {canManageSla ? <SlaPolicyRequestForm /> : null}
+      {policies.kind === 'success' && policies.items.length ? (
+        <section
+          className="customer-card customer-card-wide"
+          aria-labelledby="sla-policies-heading"
+        >
+          <h2 id="sla-policies-heading">SLA policies</h2>
+          <ul className="detail-list">
+            {policies.items.map((policy) => (
+              <li key={policy.id}>
+                <strong>
+                  {policy.name} · {policy.priority}
+                </strong>
+                <span>
+                  First response {policy.firstResponseMinutes} min · Resolution{' '}
+                  {policy.resolutionMinutes} min
+                  {policy.escalationMinutes
+                    ? ` · Escalate after ${String(policy.escalationMinutes)} min`
+                    : ''}
+                </span>
+                <small>{policy.active ? 'ACTIVE' : 'ARCHIVED'}</small>
+              </li>
+            ))}
+          </ul>
+        </section>
+      ) : null}
       {result.kind === 'success' ? (
         result.items.length ? (
           <section className="customer-card customer-card-wide">
@@ -98,5 +141,25 @@ async function loadTickets(): Promise<
       : { kind: 'error', detail: 'Ticket API request failed.' };
   } catch {
     return { kind: 'error', detail: 'Ticket API is unavailable.' };
+  }
+}
+
+async function loadSlaPolicies(): Promise<
+  { kind: 'success'; items: SlaPolicy[] } | { kind: 'error' }
+> {
+  const store = await cookies();
+  const token = store.get('platform_access_token')?.value;
+  const tenantId = store.get('platform_tenant_id')?.value;
+  const baseUrl = process.env.API_INTERNAL_URL;
+  if (!token || !tenantId || !baseUrl) return { kind: 'error' };
+  try {
+    const response = await fetch(new URL('/v1/tickets/sla-policies', baseUrl), {
+      headers: { authorization: `Bearer ${token}`, 'x-tenant-id': tenantId },
+    });
+    return response.ok
+      ? { kind: 'success', items: (await response.json()) as SlaPolicy[] }
+      : { kind: 'error' };
+  } catch {
+    return { kind: 'error' };
   }
 }

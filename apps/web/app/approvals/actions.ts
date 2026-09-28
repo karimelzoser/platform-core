@@ -67,3 +67,37 @@ export async function executeMergeApproval(
     return { error: 'The approval service is currently unavailable.' };
   }
 }
+
+export async function executeSlaPolicyApproval(
+  _state: ExecuteApprovalState,
+  formData: FormData,
+): Promise<ExecuteApprovalState> {
+  const approvalId = formData.get('approvalId');
+  if (typeof approvalId !== 'string' || !approvalId) return { error: 'Invalid approval request.' };
+  const store = await cookies();
+  const token = store.get('platform_access_token')?.value;
+  const tenantId = store.get('platform_tenant_id')?.value;
+  const baseUrl = process.env.API_INTERNAL_URL;
+  if (!token || !tenantId || !baseUrl)
+    return { error: 'Sign in and select an organization before executing the SLA policy.' };
+  try {
+    const response = await fetch(
+      new URL(`/v1/approvals/${encodeURIComponent(approvalId)}/execute-sla-policy`, baseUrl),
+      {
+        method: 'POST',
+        headers: {
+          authorization: `Bearer ${token}`,
+          'idempotency-key': `approval-execution:${approvalId}`,
+          'x-tenant-id': tenantId,
+        },
+      },
+    );
+    if (!response.ok)
+      return {
+        error: 'The approved SLA policy could not be created. Verify its status and permission.',
+      };
+    return { completed: true };
+  } catch {
+    return { error: 'The approval service is currently unavailable.' };
+  }
+}

@@ -28,6 +28,57 @@ export async function createTicket(
   });
 }
 
+export async function requestSlaPolicy(
+  _previousState: TicketActionState,
+  formData: FormData,
+): Promise<TicketActionState> {
+  const name = requiredText(formData, 'name');
+  const priority = requiredText(formData, 'priority');
+  const firstResponseMinutes = boundedWholeNumber(formData, 'firstResponseMinutes', 10080);
+  const resolutionMinutes = boundedWholeNumber(formData, 'resolutionMinutes', 43200);
+  const escalationValue = optionalText(formData, 'escalationMinutes');
+  const escalationMinutes = optionalBoundedWholeNumber(formData, 'escalationMinutes', 43200);
+  if (
+    !name ||
+    !priority ||
+    !['LOW', 'NORMAL', 'HIGH', 'URGENT'].includes(priority) ||
+    firstResponseMinutes === undefined ||
+    resolutionMinutes === undefined ||
+    (escalationValue !== undefined && escalationMinutes === undefined)
+  )
+    return { error: 'Provide a name, priority, and valid whole-minute SLA clocks.' };
+  const store = await cookies();
+  const token = store.get('platform_access_token')?.value;
+  const tenantId = store.get('platform_tenant_id')?.value;
+  const baseUrl = process.env.API_INTERNAL_URL;
+  if (!token || !tenantId)
+    return { error: 'Sign in and select an organization before requesting an SLA policy.' };
+  if (!baseUrl) return { error: 'Ticket workspace configuration is incomplete.' };
+  try {
+    const response = await fetch(new URL('/v1/approvals/ticket-sla-policy-request', baseUrl), {
+      method: 'POST',
+      headers: {
+        authorization: `Bearer ${token}`,
+        'content-type': 'application/json',
+        'x-tenant-id': tenantId,
+      },
+      body: JSON.stringify({
+        name,
+        priority,
+        firstResponseMinutes,
+        resolutionMinutes,
+        ...(escalationMinutes === undefined ? {} : { escalationMinutes }),
+      }),
+    });
+    if (response.status === 401 || response.status === 403)
+      return { error: 'Your session no longer has permission to request this SLA policy.' };
+    if (!response.ok) return { error: 'The SLA policy approval request could not be recorded.' };
+  } catch {
+    return { error: 'The approval API is unavailable.' };
+  }
+  return { completed: true };
+}
+
 export async function updateTicket(
   _previousState: TicketActionState,
   formData: FormData,
@@ -162,4 +213,20 @@ function requiredText(formData: FormData, key: string): string | undefined {
 function optionalText(formData: FormData, key: string): string | undefined {
   const value = formData.get(key);
   return typeof value === 'string' && value.trim() ? value.trim() : undefined;
+}
+
+function boundedWholeNumber(formData: FormData, key: string, maximum: number): number | undefined {
+  const value = optionalText(formData, key);
+  if (!value) return undefined;
+  const parsed = Number(value);
+  return Number.isInteger(parsed) && parsed >= 1 && parsed <= maximum ? parsed : undefined;
+}
+
+function optionalBoundedWholeNumber(
+  formData: FormData,
+  key: string,
+  maximum: number,
+): number | undefined {
+  const value = optionalText(formData, key);
+  return value ? boundedWholeNumber(formData, key, maximum) : undefined;
 }

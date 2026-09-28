@@ -5,6 +5,7 @@ import { sql, withTenantTransaction } from '@platform/database';
 import { Injectable } from '@nestjs/common';
 import { z } from 'zod';
 import { ApiDatabaseService } from './api-database.service.js';
+import type { TicketSlaPolicyInput } from './tickets.service.js';
 
 const mergeRequestSchema = z.object({
   sourceCustomerId: z.string().uuid(),
@@ -13,6 +14,13 @@ const mergeRequestSchema = z.object({
 });
 
 const decisionSchema = z.object({ decision: z.enum(['APPROVED', 'REJECTED']) });
+const slaPolicyRequestSchema = z.object({
+  name: z.string().trim().min(1).max(120),
+  priority: z.enum(['LOW', 'NORMAL', 'HIGH', 'URGENT']),
+  firstResponseMinutes: z.number().int().min(1).max(10080),
+  resolutionMinutes: z.number().int().min(1).max(43200),
+  escalationMinutes: z.number().int().min(1).max(43200).optional(),
+});
 
 export class ApprovalError extends Error {}
 
@@ -63,6 +71,45 @@ export class ApprovalService {
         expiresAt: approval.expires_at,
         actionDigest: digest,
       };
+    });
+  }
+
+  public async requestSlaPolicy(context: TenantRequestContext, input: unknown) {
+    this.require(context, 'tickets.sla.manage');
+    const request = slaPolicyRequestSchema.parse(input);
+    const slaPolicyId = randomUUID();
+    const action: ApprovalAction = {
+      action: 'tickets.sla_policy.create',
+      permission: 'tickets.sla.manage',
+      risk: 'HIGH',
+      resource: { type: 'ticket_sla_policy', id: slaPolicyId, tenantId: context.tenantId },
+      input: request,
+    };
+    const digest = approvalActionDigest(action);
+    return withTenantTransaction(this.database.database, context, async (transaction) => {
+      const result = await sql<{
+        id: string;
+        status: string;
+        expires_at: Date;
+      }>`insert into policy.approval_requests (
+        id, tenant_id, requested_by, action, permission, risk, resource_type, resource_id,
+        action_digest, request_snapshot, policy_reason, status, expires_at
+      ) values (
+        ${randomUUID()}::uuid, ${context.tenantId}::uuid, ${context.actorId}::uuid,
+        ${action.action}, ${action.permission}, ${action.risk}, ${action.resource.type}, ${action.resource.id},
+        ${digest}, ${JSON.stringify(action)}::jsonb, 'approval_required', 'REQUESTED', now() + interval '24 hours'
+      ) on conflict (tenant_id, action_digest, status) do update set updated_at = now()
+      returning id, status, expires_at`.execute(transaction);
+      const approval = result.rows[0];
+      if (!approval) throw new ApprovalError('SLA policy approval request could not be stored');
+      await sql`insert into platform.audit_log (
+        tenant_id, actor_type, actor_id, action, resource_type, resource_id, request_id, correlation_id, metadata
+      ) values (
+        ${context.tenantId}::uuid, ${context.actorType}, ${context.actorId}::uuid,
+        'policy.approval.request', ${action.resource.type}, ${action.resource.id},
+        ${context.requestId}, ${context.correlationId}, ${JSON.stringify({ approvalId: approval.id, actionDigest: digest })}::jsonb
+      )`.execute(transaction);
+      return { approvalId: approval.id, status: approval.status, expiresAt: approval.expires_at };
     });
   }
 
@@ -117,6 +164,47 @@ export class ApprovalService {
         throw new ApprovalError('Merge approval is not executable');
       const snapshot = approval.request_snapshot as { input?: unknown };
       return mergeRequestSchema.parse(snapshot.input);
+    });
+  }
+
+  public async executableSlaPolicy(
+    context: TenantRequestContext,
+    approvalId: string,
+  ): Promise<{ slaPolicyId: string; input: TicketSlaPolicyInput }> {
+    this.require(context, 'tickets.sla.manage');
+    return withTenantTransaction(this.database.database, context, async (transaction) => {
+      const result = await sql<{
+        request_snapshot: unknown;
+        status: string;
+      }>`select request_snapshot, status from policy.approval_requests
+        where id = ${approvalId}::uuid and action = 'tickets.sla_policy.create'`.execute(
+        transaction,
+      );
+      const approval = result.rows[0];
+      if (!approval || approval.status !== 'APPROVED')
+        throw new ApprovalError('SLA policy approval is not executable');
+      const snapshot = approval.request_snapshot as {
+        input?: unknown;
+        resource?: { id?: unknown; type?: unknown };
+      };
+      if (
+        snapshot.resource?.type !== 'ticket_sla_policy' ||
+        typeof snapshot.resource.id !== 'string'
+      )
+        throw new ApprovalError('SLA policy approval snapshot is invalid');
+      const input = slaPolicyRequestSchema.parse(snapshot.input);
+      return {
+        slaPolicyId: snapshot.resource.id,
+        input: {
+          name: input.name,
+          priority: input.priority,
+          firstResponseMinutes: input.firstResponseMinutes,
+          resolutionMinutes: input.resolutionMinutes,
+          ...(input.escalationMinutes === undefined
+            ? {}
+            : { escalationMinutes: input.escalationMinutes }),
+        },
+      };
     });
   }
 
