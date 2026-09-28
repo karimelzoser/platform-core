@@ -54,7 +54,7 @@ test.describe('CRM disposable development preview', () => {
       ),
     });
     await ownerPage.getByRole('button', { name: 'Import CSV' }).click();
-    await expect(ownerPage.getByRole('status')).toHaveText('Imported 2 customer(s).');
+    await expect(ownerPage.getByText('Imported 2 customer(s).', { exact: true })).toBeVisible();
 
     await ownerPage.goto('/segments');
     const dynamicSegment = ownerPage
