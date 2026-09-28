@@ -6,14 +6,20 @@
       "id": "33333333-3333-3333-3333-333333333333",
       "username": "preview-owner",
       "enabled": true,
+      "email": "preview-owner@example.test",
       "emailVerified": true,
+      "firstName": "Preview",
+      "lastName": "Owner",
       "credentials": [{ "type": "password", "value": "preview-owner-password", "temporary": false }]
     },
     {
       "id": "44444444-4444-4444-4444-444444444444",
       "username": "preview-approver",
       "enabled": true,
+      "email": "preview-approver@example.test",
       "emailVerified": true,
+      "firstName": "Preview",
+      "lastName": "Approver",
       "credentials": [
         { "type": "password", "value": "preview-approver-password", "temporary": false }
       ]

@@ -134,9 +134,15 @@ async function login(page: Page, username: string, password: string) {
   await page.goto('/preview-login');
   await page.getByLabel('Username').fill(username);
   await page.getByLabel('Password').fill(password);
-  await Promise.all([
-    page.waitForURL(/\/customers$/),
-    page.getByRole('button', { name: 'Sign in' }).click(),
+  await page.getByRole('button', { name: 'Sign in' }).click();
+  await Promise.race([
+    page.waitForURL(/\/customers$/, { waitUntil: 'domcontentloaded' }),
+    page
+      .getByRole('alert')
+      .waitFor({ state: 'visible' })
+      .then(async () => {
+        throw new Error(`Preview login failed: ${await page.getByRole('alert').textContent()}`);
+      }),
   ]);
 }
 
