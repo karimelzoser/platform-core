@@ -10,10 +10,10 @@ dependency-ready item.
 
 ## CURRENT
 
-- **CRM validation closure:** add a two-tenant application lifecycle suite for
-  customer creation/import, tag-rule segment evaluation, merge approvals,
-  verified consent/opt-out behavior, audit/outbox, and RLS. Then complete the
-  remaining CRM accessibility and browser E2E evidence.
+- **CRM visual acceptance:** add and execute browser E2E coverage for the
+  protected customer, import, segment-evaluation, and merge-approval journeys;
+  then record RTL/LTR, responsive, and accessibility evidence. Do not claim
+  CRM complete until those acceptance checks are objective.
 
 ## VERIFICATION PENDING
 
@@ -112,6 +112,11 @@ dependency-ready item.
   tenant-scoped evidence, monotonic preference updates, audit/outbox records,
   and two-tenant webhook-worker coverage. The protected segment evaluation UI
   and quoted-field CSV parser tests are implemented; CRM is still partial.
+- CRM lifecycle evidence in green GitHub Actions run #119 for commit
+  `2d7c13d`: tenant-scoped create/import, idempotency, tag-rule evaluation,
+  opt-out, approval-bound merge, export/audit/outbox behavior, direct-ID RLS
+  isolation, and the migration `0023` reconciliation privilege repair.
+  Browser E2E and full RTL/LTR/accessibility acceptance remain pending.
 
 ## Release evidence
 
