@@ -41,6 +41,7 @@ platform-github-baseline.tar.gz
 node_modules/
 .pnpm-store/
 .next/
+test-results/
 dist/
 build/
 coverage/
