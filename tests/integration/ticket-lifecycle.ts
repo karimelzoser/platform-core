@@ -9,6 +9,7 @@ import { TicketSlaProcessor } from '../../apps/worker/src/ticket-sla-processor.j
 
 const tenantA = 'aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa';
 const tenantB = 'bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb';
+const tenantAApprover = '33333333-3333-3333-3333-333333333333';
 const conversationA = 'aaaaaaaa-0000-0000-0000-000000000101';
 const conversationB = 'bbbbbbbb-0000-0000-0000-000000000101';
 const customerA = 'aaaaaaaa-0000-0000-0000-000000000201';
@@ -34,6 +35,7 @@ function context(tenantId: string, actorId: string): TenantRequestContext {
 
 const contextA = context(tenantA, '11111111-1111-1111-1111-111111111111');
 const contextB = context(tenantB, '22222222-2222-2222-2222-222222222222');
+const contextAApprover = context(tenantA, tenantAApprover);
 
 async function main(): Promise<void> {
   const databaseService = new ApiDatabaseService();
@@ -50,8 +52,14 @@ async function main(): Promise<void> {
     const tickets = new TicketsService(databaseService, commands);
     const approvals = new ApprovalService(databaseService);
     await withTenantTransaction(database, contextA, async (transaction) => {
+      await sql`insert into identity.users (id, keycloak_subject, email)
+        values (${tenantAApprover}::uuid, 'ticket-lifecycle-approver', 'approver@example.test')`.execute(
+        transaction,
+      );
       await sql`insert into identity.memberships (tenant_id, user_id, status)
         values (${tenantA}::uuid, ${contextA.actorId}::uuid, 'ACTIVE')`.execute(transaction);
+      await sql`insert into identity.memberships (tenant_id, user_id, status)
+        values (${tenantA}::uuid, ${tenantAApprover}::uuid, 'ACTIVE')`.execute(transaction);
       await sql`insert into crm.customers (id, tenant_id, display_name)
         values (${customerA}::uuid, ${tenantA}::uuid, 'Lifecycle customer A')`.execute(transaction);
     });
@@ -66,7 +74,7 @@ async function main(): Promise<void> {
       permissions: [...contextA.permissions, 'tickets.sla.manage'],
     };
     const slaDecider: TenantRequestContext = {
-      ...contextB,
+      ...contextAApprover,
       permissions: ['policy.approvals.decide'],
     };
     const approval = await approvals.requestSlaPolicy(slaRequester, {
