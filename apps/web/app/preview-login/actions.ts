@@ -20,6 +20,7 @@ export async function previewLogin(
   const tenantId = process.env.PREVIEW_TENANT_ID;
   if (!username || !password || !issuer || !clientId || !tenantId)
     return { error: 'Preview authentication is not configured.' };
+  let accessToken: string;
   try {
     const response = await fetch(new URL('protocol/openid-connect/token', `${issuer}/`), {
       method: 'POST',
@@ -35,22 +36,26 @@ export async function previewLogin(
     const body = (await response.json()) as { access_token?: unknown };
     if (typeof body.access_token !== 'string')
       return { error: 'Keycloak returned an invalid token.' };
-    const store = await cookies();
-    store.set('platform_access_token', body.access_token, {
-      httpOnly: true,
-      sameSite: 'lax',
-      secure: false,
-      path: '/',
-    });
-    store.set('platform_tenant_id', tenantId, {
-      httpOnly: true,
-      sameSite: 'lax',
-      secure: false,
-      path: '/',
-    });
+    accessToken = body.access_token;
   } catch {
     return { error: 'Development Keycloak is unavailable.' };
   }
+  // `redirect` deliberately throws in Next.js. Keep it outside the request
+  // failure boundary so a successful Keycloak grant cannot be misreported as
+  // an unavailable development identity service.
+  const store = await cookies();
+  store.set('platform_access_token', accessToken, {
+    httpOnly: true,
+    sameSite: 'lax',
+    secure: false,
+    path: '/',
+  });
+  store.set('platform_tenant_id', tenantId, {
+    httpOnly: true,
+    sameSite: 'lax',
+    secure: false,
+    path: '/',
+  });
   redirect('/customers');
 }
 function read(value: unknown): string | undefined {
