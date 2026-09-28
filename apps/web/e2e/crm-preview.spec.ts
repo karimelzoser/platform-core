@@ -12,6 +12,11 @@ test.describe('CRM disposable development preview', () => {
   test('runs protected customer lifecycle, approval, accessibility, responsive, and RTL checks', async ({
     browser,
   }, testInfo) => {
+    // The disposable preview starts Next in development mode. First visits to
+    // distinct protected routes compile their route modules, so this complete
+    // multi-route acceptance journey needs more than Playwright's short
+    // default without weakening any individual assertion.
+    testInfo.setTimeout(180_000);
     requireDisposablePreview();
     const consoleErrors: string[] = [];
     const ownerContext = await browser.newContext({ viewport: { width: 1440, height: 960 } });
