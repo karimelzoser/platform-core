@@ -24,7 +24,7 @@ test.describe('CRM disposable development preview', () => {
     monitorBrowserErrors(ownerPage, consoleErrors);
 
     await login(ownerPage, owner, ownerPassword);
-    await expect(ownerPage.getByRole('heading', { name: 'Customers' })).toBeVisible();
+    await expect(ownerPage.getByRole('heading', { name: 'Customers', exact: true })).toBeVisible();
     await expect(ownerPage.getByRole('link', { name: 'Create customer' })).toBeVisible();
     await ownerPage.keyboard.press('Tab');
     await expect(ownerPage.locator(':focus')).toBeVisible();
@@ -165,7 +165,7 @@ async function assertResponsiveAndRtl(page: Page, testInfo: TestInfo) {
   await page.goto('/customers');
   await expect(page.locator('html')).toHaveAttribute('dir', 'ltr');
   await page.setViewportSize({ width: 1440, height: 960 });
-  await expect(page.getByRole('heading', { name: 'Customers' })).toBeVisible();
+  await expect(page.getByRole('heading', { name: 'Customers', exact: true })).toBeVisible();
   await page.setViewportSize({ width: 768, height: 1024 });
   await expect(page.getByRole('search')).toBeVisible();
   await page.setViewportSize({ width: 390, height: 844 });
