@@ -22,4 +22,16 @@ void test('integration connection endpoints require dedicated permissions', asyn
     controller.list('Bearer token', context.tenantId, undefined),
     ForbiddenException,
   );
+  await assert.rejects(
+    controller.requestWebhookSubscription(
+      context.tenantId,
+      Buffer.from('{"callbackUrl":"https://preview.example.test/webhook"}'),
+      'Bearer token',
+      context.tenantId,
+      undefined,
+      'idempotency-key',
+      undefined,
+    ),
+    ForbiddenException,
+  );
 });

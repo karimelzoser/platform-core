@@ -90,6 +90,15 @@ INSERT INTO integrations.sync_runs (
   'INITIAL',
   'integration-sync-a'
 );
+
+INSERT INTO integrations.webhook_subscriptions (
+  id, tenant_id, connection_id, callback_url
+) VALUES (
+  'aaaaaaaa-0000-0000-0000-000000000106',
+  'aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa',
+  'aaaaaaaa-0000-0000-0000-000000000002',
+  'https://preview.example.test/v1/webhooks/test-connector/connection-a'
+);
 COMMIT;
 
 BEGIN;
@@ -150,6 +159,9 @@ BEGIN
   END IF;
   IF EXISTS (SELECT 1 FROM integrations.secret_references WHERE id = 'aaaaaaaa-0000-0000-0000-000000000001') THEN
     RAISE EXCEPTION 'Tenant B can read Tenant A secret reference';
+  END IF;
+  IF EXISTS (SELECT 1 FROM integrations.webhook_subscriptions WHERE id = 'aaaaaaaa-0000-0000-0000-000000000106') THEN
+    RAISE EXCEPTION 'Tenant B can read Tenant A webhook subscription';
   END IF;
   IF EXISTS (SELECT 1 FROM policy.approval_requests WHERE id = 'aaaaaaaa-0000-0000-0000-000000000005') THEN
     RAISE EXCEPTION 'Tenant B can read Tenant A approval';
@@ -307,6 +319,31 @@ BEGIN
   IF claimed IS NULL THEN RAISE EXCEPTION 'Worker did not claim committed outbox event'; END IF;
   IF NOT platform.mark_outbox_published(claimed, 'integration-test-worker') THEN
     RAISE EXCEPTION 'Worker could not acknowledge its own outbox claim';
+  END IF;
+END;
+$$;
+COMMIT;
+
+BEGIN;
+SELECT platform.set_request_context(
+  'aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa',
+  '11111111-1111-1111-1111-111111111111',
+  'test-subject-a',
+  'webhook-subscription-worker-claim'
+);
+
+DO $$
+DECLARE claimed uuid;
+BEGIN
+  SELECT id INTO claimed
+  FROM integrations.claim_webhook_subscriptions('integration-test-worker', 1, 60)
+  WHERE id = 'aaaaaaaa-0000-0000-0000-000000000106';
+  IF claimed IS NULL THEN RAISE EXCEPTION 'Worker did not claim webhook subscription'; END IF;
+  IF NOT EXISTS (
+    SELECT 1 FROM integrations.webhook_subscriptions
+    WHERE id = claimed AND claimed_by = 'integration-test-worker' AND state = 'PENDING_REGISTER'
+  ) THEN
+    RAISE EXCEPTION 'Webhook subscription claim did not record a lease';
   END IF;
 END;
 $$;

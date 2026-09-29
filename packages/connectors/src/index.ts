@@ -119,6 +119,21 @@ export const integrationSyncResultSchema = z.object({
 
 export type IntegrationSyncResult = z.infer<typeof integrationSyncResultSchema>;
 
+export const webhookSubscriptionRequestSchema = z.object({
+  connectionId: z.string().uuid(),
+  callbackUrl: z.string().url().max(2_000),
+  settings: z.record(z.unknown()).default({}),
+  secretReference: z.string().min(1).max(500),
+});
+
+export type WebhookSubscriptionRequest = z.infer<typeof webhookSubscriptionRequestSchema>;
+
+export const webhookSubscriptionResultSchema = z.object({
+  providerSubscriptionId: z.string().min(1).max(500),
+});
+
+export type WebhookSubscriptionResult = z.infer<typeof webhookSubscriptionResultSchema>;
+
 export interface Connector {
   readonly manifest: ConnectorManifest;
   verifyWebhook(input: { headers: Headers; rawBody: Uint8Array }): Promise<boolean>;
@@ -141,6 +156,10 @@ export interface Connector {
     secretReference: string;
   }): Promise<readonly ProviderAsset[]>;
   sync?(input: IntegrationSyncRequest): Promise<IntegrationSyncResult>;
+  registerWebhook?(input: WebhookSubscriptionRequest): Promise<WebhookSubscriptionResult>;
+  unregisterWebhook?(
+    input: WebhookSubscriptionRequest & { providerSubscriptionId: string },
+  ): Promise<void>;
 }
 
 /** Provider adapters that can dispatch a persisted outbound inbox message. */

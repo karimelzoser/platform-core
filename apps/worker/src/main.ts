@@ -9,6 +9,7 @@ import { IntegrationSyncProcessor } from './integration-sync-processor.js';
 import { OutboundMessageProcessor } from './outbound-message-processor.js';
 import { OutboxPublisher } from './outbox-publisher.js';
 import { TicketSlaProcessor } from './ticket-sla-processor.js';
+import { WebhookSubscriptionProcessor } from './webhook-subscription-processor.js';
 
 const environmentSchema = z.object({
   APP_ENV: z.enum(['development', 'test', 'production']).default('development'),
@@ -34,6 +35,7 @@ async function main(): Promise<void> {
   const webhookProcessor = new MessagingWebhookProcessor(db, connectors, workerId);
   const outboundMessageProcessor = new OutboundMessageProcessor(db, connectors, workerId);
   const integrationSyncProcessor = new IntegrationSyncProcessor(db, connectors, workerId);
+  const webhookSubscriptionProcessor = new WebhookSubscriptionProcessor(db, connectors, workerId);
   const ticketSlaProcessor = new TicketSlaProcessor(db);
   let nextSlaEvaluationAt = 0;
   const startedAt = new Date().toISOString();
@@ -81,6 +83,7 @@ async function main(): Promise<void> {
     const processed = await webhookProcessor.processBatch();
     const dispatched = await outboundMessageProcessor.processBatch();
     const synchronized = await integrationSyncProcessor.processBatch();
+    const subscriptions = await webhookSubscriptionProcessor.processBatch();
     const now = Date.now();
     const evaluatedSla = now >= nextSlaEvaluationAt ? await ticketSlaProcessor.processBatch() : 0;
     if (now >= nextSlaEvaluationAt)
@@ -90,6 +93,7 @@ async function main(): Promise<void> {
       processed === 0 &&
       dispatched === 0 &&
       synchronized === 0 &&
+      subscriptions === 0 &&
       evaluatedSla === 0
     )
       await new Promise<void>((resolve) => setTimeout(resolve, 250));

@@ -1,4 +1,5 @@
 import { createHash, randomUUID } from 'node:crypto';
+import { isIP } from 'node:net';
 import {
   CommandExecutor,
   type CommandResult,
@@ -42,6 +43,12 @@ const syncRunInputSchema = z.object({
 
 export type CreateIntegrationSyncRunInput = z.input<typeof syncRunInputSchema>;
 
+const webhookSubscriptionInputSchema = z.object({
+  callbackUrl: z.string().url().max(2_000),
+});
+
+export type CreateWebhookSubscriptionInput = z.input<typeof webhookSubscriptionInputSchema>;
+
 export interface IntegrationConnection {
   id: string;
   connectorKey: string;
@@ -75,6 +82,16 @@ export interface IntegrationSyncRun {
   temporalWorkflowId: string | null;
   startedAt: Date | null;
   finishedAt: Date | null;
+  lastError: string | null;
+}
+
+export interface IntegrationWebhookSubscription {
+  id: string;
+  callbackUrl: string;
+  providerSubscriptionId: string | null;
+  state: 'PENDING_REGISTER' | 'ACTIVE' | 'PENDING_UNREGISTER' | 'FAILED' | 'REMOVED';
+  operation: 'REGISTER' | 'UNREGISTER';
+  attempts: number;
   lastError: string | null;
 }
 
@@ -305,6 +322,134 @@ export class IntegrationService {
         lastError: run.last_error,
       }));
     });
+  }
+
+  public async listWebhookSubscriptions(
+    context: TenantRequestContext,
+    connectionId: string,
+  ): Promise<readonly IntegrationWebhookSubscription[]> {
+    const id = z.string().uuid().parse(connectionId);
+    return withTenantTransaction(this.database, context, async (transaction) => {
+      const result = await sql<{
+        id: string;
+        callback_url: string;
+        provider_subscription_id: string | null;
+        state: IntegrationWebhookSubscription['state'];
+        operation: IntegrationWebhookSubscription['operation'];
+        attempts: number;
+        last_error: string | null;
+      }>`select id, callback_url, provider_subscription_id, state, operation, attempts, last_error
+        from integrations.webhook_subscriptions where connection_id = ${id}::uuid
+        order by created_at desc, id desc limit 100`.execute(transaction);
+      return result.rows.map((subscription) => ({
+        id: subscription.id,
+        callbackUrl: subscription.callback_url,
+        providerSubscriptionId: subscription.provider_subscription_id,
+        state: subscription.state,
+        operation: subscription.operation,
+        attempts: subscription.attempts,
+        lastError: subscription.last_error,
+      }));
+    });
+  }
+
+  public async requestWebhookSubscription(
+    context: TenantRequestContext,
+    idempotencyKey: string,
+    connectionId: string,
+    input: CreateWebhookSubscriptionInput,
+    approvalId?: string,
+  ): Promise<CommandResult<{ subscriptionId: string; state: 'PENDING_REGISTER' }>> {
+    const id = z.string().uuid().parse(connectionId);
+    const validated = webhookSubscriptionInputSchema.parse(input);
+    assertPublicHttpsCallback(validated.callbackUrl);
+    const subscriptionId = randomUUID();
+    return this.commands.execute(
+      {
+        action: 'integrations.webhook.subscribe',
+        permission: 'integrations.manage',
+        risk: 'HIGH',
+        resource: () => ({ type: 'integration.connection', id }),
+        event: {
+          type: 'integrations.webhook.subscription_requested',
+          data: (_input, result) => ({ ...result, connectionId: id }),
+          dedupeKey: () => `integration:webhook:subscription-requested:${subscriptionId}`,
+        },
+        audit: { afterState: (_input, result) => ({ ...result, connectionId: id }) },
+        execute: async (transaction) => {
+          const connection = await sql<{ connector_key: string }>`select connector_key
+            from integrations.connections
+            where id = ${id}::uuid and status in ('CONNECTED', 'DEGRADED')
+            for share`.execute(transaction);
+          if (!connection.rows[0]) throw new Error('A connected integration is required');
+          const connector = this.connectors.get(connection.rows[0].connector_key);
+          if (!supportsWebhookSubscription(connector))
+            throw new Error('Connector does not support webhook subscriptions');
+          const inserted = await sql<{
+            id: string;
+          }>`insert into integrations.webhook_subscriptions (
+            id, tenant_id, connection_id, callback_url, operation, state
+          ) values (
+            ${subscriptionId}::uuid, ${context.tenantId}::uuid, ${id}::uuid,
+            ${validated.callbackUrl}, 'REGISTER', 'PENDING_REGISTER'
+          ) on conflict (tenant_id, connection_id, callback_url) do update
+            set provider_subscription_id = null, operation = 'REGISTER', state = 'PENDING_REGISTER',
+                attempts = 0, claimed_by = null, claimed_at = null, next_attempt_at = now(),
+                last_error = null, removed_at = null, updated_at = now()
+          where integrations.webhook_subscriptions.state = 'REMOVED'
+          returning id`.execute(transaction);
+          if (!inserted.rows[0]) throw new Error('Webhook callback is already registered');
+          return { subscriptionId: inserted.rows[0].id, state: 'PENDING_REGISTER' as const };
+        },
+      },
+      {
+        context,
+        input: { connectionId: id, callbackUrl: validated.callbackUrl },
+        idempotencyKey,
+        ...(approvalId ? { approvalId } : {}),
+      },
+    );
+  }
+
+  public async requestWebhookUnsubscription(
+    context: TenantRequestContext,
+    idempotencyKey: string,
+    connectionId: string,
+    subscriptionId: string,
+    approvalId?: string,
+  ): Promise<CommandResult<{ subscriptionId: string; state: 'PENDING_UNREGISTER' }>> {
+    const id = z.string().uuid().parse(connectionId);
+    const subscription = z.string().uuid().parse(subscriptionId);
+    return this.commands.execute(
+      {
+        action: 'integrations.webhook.unsubscribe',
+        permission: 'integrations.manage',
+        risk: 'HIGH',
+        resource: () => ({ type: 'integration.webhook_subscription', id: subscription }),
+        event: {
+          type: 'integrations.webhook.unsubscription_requested',
+          data: (_input, result) => ({ ...result, connectionId: id }),
+          dedupeKey: () => `integration:webhook:unsubscription-requested:${subscription}`,
+        },
+        audit: { afterState: (_input, result) => ({ ...result, connectionId: id }) },
+        execute: async (transaction) => {
+          const updated = await sql<{ id: string }>`update integrations.webhook_subscriptions
+            set operation = 'UNREGISTER', state = 'PENDING_UNREGISTER', attempts = 0,
+                claimed_by = null, claimed_at = null, next_attempt_at = now(), last_error = null,
+                updated_at = now()
+            where id = ${subscription}::uuid and connection_id = ${id}::uuid and state = 'ACTIVE'
+            returning id`.execute(transaction);
+          if (!updated.rows[0]) throw new Error('Active webhook subscription was not found');
+          return { subscriptionId: subscription, state: 'PENDING_UNREGISTER' as const };
+        },
+      },
+      {
+        context,
+        input: { connectionId: id, subscriptionId: subscription },
+        idempotencyKey,
+        ...(approvalId ? { approvalId } : {}),
+      },
+    );
   }
 
   public async requestSyncRun(
@@ -610,4 +755,26 @@ function supportsAssetDiscovery(
   connector: Connector,
 ): connector is Connector & Required<Pick<Connector, 'discoverAssets'>> {
   return typeof connector.discoverAssets === 'function';
+}
+
+function supportsWebhookSubscription(
+  connector: Connector,
+): connector is Connector & Required<Pick<Connector, 'registerWebhook' | 'unregisterWebhook'>> {
+  return (
+    typeof connector.registerWebhook === 'function' &&
+    typeof connector.unregisterWebhook === 'function'
+  );
+}
+
+function assertPublicHttpsCallback(callbackUrl: string): void {
+  const url = new URL(callbackUrl);
+  if (
+    url.protocol !== 'https:' ||
+    url.username ||
+    url.password ||
+    url.hostname === 'localhost' ||
+    isIP(url.hostname) !== 0 ||
+    url.hostname.includes(':')
+  )
+    throw new Error('Webhook callback must be a public HTTPS hostname');
 }

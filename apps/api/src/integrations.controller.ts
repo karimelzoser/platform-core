@@ -17,6 +17,7 @@ import { AuthenticatedContextService } from './authenticated-context.service.js'
 import {
   IntegrationService,
   type CreateIntegrationSyncRunInput,
+  type CreateWebhookSubscriptionInput,
   type ConnectIntegrationInput,
   type SecretRotationInput,
 } from './integration.service.js';
@@ -94,6 +95,64 @@ export class IntegrationsController {
     const context = await this.context(authorization, tenantId, correlationId);
     this.require(context.permissions, 'integrations.read');
     return this.integrations.listSyncRuns(context, connectionId);
+  }
+
+  @Get('connections/:connectionId/webhook-subscriptions')
+  public async listWebhookSubscriptions(
+    @Param('connectionId') connectionId: string,
+    @Headers('authorization') authorization: string | undefined,
+    @Headers('x-tenant-id') tenantId: string | undefined,
+    @Headers('x-correlation-id') correlationId: string | undefined,
+  ) {
+    const context = await this.context(authorization, tenantId, correlationId);
+    this.require(context.permissions, 'integrations.read');
+    return this.integrations.listWebhookSubscriptions(context, connectionId);
+  }
+
+  @Post('connections/:connectionId/webhook-subscriptions')
+  public async requestWebhookSubscription(
+    @Param('connectionId') connectionId: string,
+    @Body() body: unknown,
+    @Headers('authorization') authorization: string | undefined,
+    @Headers('x-tenant-id') tenantId: string | undefined,
+    @Headers('x-correlation-id') correlationId: string | undefined,
+    @Headers('idempotency-key') idempotencyKey: string | undefined,
+    @Headers('x-approval-id') approvalId: string | undefined,
+  ) {
+    const context = await this.context(authorization, tenantId, correlationId);
+    this.require(context.permissions, 'integrations.manage');
+    return this.execute(() =>
+      this.integrations.requestWebhookSubscription(
+        context,
+        idempotencyKey ?? '',
+        connectionId,
+        parseWebhookSubscriptionBody(body),
+        approvalId,
+      ),
+    );
+  }
+
+  @Post('connections/:connectionId/webhook-subscriptions/:subscriptionId/unregister')
+  public async requestWebhookUnsubscription(
+    @Param('connectionId') connectionId: string,
+    @Param('subscriptionId') subscriptionId: string,
+    @Headers('authorization') authorization: string | undefined,
+    @Headers('x-tenant-id') tenantId: string | undefined,
+    @Headers('x-correlation-id') correlationId: string | undefined,
+    @Headers('idempotency-key') idempotencyKey: string | undefined,
+    @Headers('x-approval-id') approvalId: string | undefined,
+  ) {
+    const context = await this.context(authorization, tenantId, correlationId);
+    this.require(context.permissions, 'integrations.manage');
+    return this.execute(() =>
+      this.integrations.requestWebhookUnsubscription(
+        context,
+        idempotencyKey ?? '',
+        connectionId,
+        subscriptionId,
+        approvalId,
+      ),
+    );
   }
 
   @Post('connections/:connectionId/sync-runs')
@@ -240,5 +299,19 @@ function parseSyncRunBody(body: unknown): CreateIntegrationSyncRunInput {
     return parsed as CreateIntegrationSyncRunInput;
   } catch {
     throw new BadRequestException('Sync run body must be a JSON object');
+  }
+}
+
+function parseWebhookSubscriptionBody(body: unknown): CreateWebhookSubscriptionInput {
+  if (!Buffer.isBuffer(body))
+    throw new BadRequestException('Webhook subscription body must be JSON');
+  try {
+    const parsed: unknown = JSON.parse(body.toString('utf8'));
+    if (parsed === null || Array.isArray(parsed) || typeof parsed !== 'object') {
+      throw new Error('JSON object required');
+    }
+    return parsed as CreateWebhookSubscriptionInput;
+  } catch {
+    throw new BadRequestException('Webhook subscription body must be a JSON object');
   }
 }

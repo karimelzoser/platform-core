@@ -14,6 +14,13 @@ creates a tenant-scoped dead-letter record. An abandoned worker lease can be
 reclaimed safely. No connector receives a database transaction or plaintext
 credential.
 
+Webhook registration and unregistration follow the same desired-state model.
+The protected API accepts only a public HTTPS callback URL, records a
+tenant-scoped subscription request with audit/outbox evidence, and a leased
+worker invokes the typed connector after commit. Connector results store only a
+bounded provider subscription identifier. Retry failures do not expose provider
+responses or credential references; terminal failures create a dead letter.
+
 Connection list, connect, and disconnect APIs are tenant-scoped. Connect and
 disconnect are HIGH-risk, idempotent commands that require `integrations.manage`,
 OPA authorization, and—when policy requires it—digest-bound approval evidence.

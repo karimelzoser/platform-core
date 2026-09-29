@@ -91,6 +91,19 @@ export const developmentWebChatConnector: MessagingConnector = {
     });
   },
 
+  registerWebhook(input) {
+    return Promise.resolve({
+      providerSubscriptionId: `development-webhook-${createHash('sha256')
+        .update(`${input.connectionId}:${input.callbackUrl}`)
+        .digest('hex')
+        .slice(0, 32)}`,
+    });
+  },
+
+  unregisterWebhook() {
+    return Promise.resolve();
+  },
+
   sendMessage(input: OutboundMessageRequest) {
     const providerMessageId = `development-${createHash('sha256')
       .update(`${input.connectionId}:${input.idempotencyKey}`)

@@ -180,6 +180,20 @@ void test('the development Web Chat fixture signs webhooks and preserves outboun
       hasMore: false,
     },
   );
+  const webhookSubscription = await developmentWebChatConnector.registerWebhook?.({
+    connectionId: request.connectionId,
+    callbackUrl: 'https://preview.example.test/v1/webhooks/development-web-chat/connection',
+    settings: { allowDevelopmentFixture: true },
+    secretReference: 'development://web-chat/preview',
+  });
+  assert.match(webhookSubscription?.providerSubscriptionId ?? '', /^development-webhook-/u);
+  await developmentWebChatConnector.unregisterWebhook?.({
+    connectionId: request.connectionId,
+    callbackUrl: 'https://preview.example.test/v1/webhooks/development-web-chat/connection',
+    settings: { allowDevelopmentFixture: true },
+    secretReference: 'development://web-chat/preview',
+    providerSubscriptionId: webhookSubscription?.providerSubscriptionId ?? 'missing',
+  });
 
   const registry = new ConnectorRegistry();
   registry.register(developmentWebChatConnector);
