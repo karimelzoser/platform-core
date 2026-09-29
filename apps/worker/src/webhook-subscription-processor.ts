@@ -1,5 +1,6 @@
 import {
   webhookSubscriptionResultSchema,
+  toConnectorError,
   type Connector,
   type ConnectorRegistry,
 } from '@platform/connectors';
@@ -46,8 +47,8 @@ export class WebhookSubscriptionProcessor {
     for (const subscription of claimed.rows) {
       try {
         await this.process(subscription);
-      } catch {
-        await this.recordFailure(subscription);
+      } catch (error) {
+        await this.recordFailure(subscription, error);
       }
     }
     return claimed.rows.length;
@@ -159,7 +160,8 @@ export class WebhookSubscriptionProcessor {
     );
   }
 
-  private async recordFailure(subscription: ClaimedSubscription): Promise<void> {
+  private async recordFailure(subscription: ClaimedSubscription, error: unknown): Promise<void> {
+    const failureDetail = toConnectorError(error);
     await withTenantTransaction(
       this.database,
       {
@@ -170,9 +172,10 @@ export class WebhookSubscriptionProcessor {
       },
       async (transaction) => {
         const updated = await sql<{ attempts: number }>`update integrations.webhook_subscriptions
-          set attempts = attempts + 1, state = 'FAILED', last_error = 'CONNECTOR_WEBHOOK_SUBSCRIPTION_FAILED',
+          set attempts = case when ${failureDetail.retryable} then attempts + 1 else ${maximumSubscriptionAttempts} end,
+              state = 'FAILED', last_error = ${failureDetail.code},
               claimed_by = null, claimed_at = null, updated_at = now(),
-              next_attempt_at = case when attempts + 1 >= ${maximumSubscriptionAttempts} then 'infinity'::timestamptz
+              next_attempt_at = case when not ${failureDetail.retryable} or attempts + 1 >= ${maximumSubscriptionAttempts} then 'infinity'::timestamptz
                 else now() + make_interval(secs => least(3600, 2 ^ least(attempts + 1, 10))) end
           where id = ${subscription.id}::uuid and claimed_by = ${this.workerId}
           returning attempts`.execute(transaction);
@@ -184,7 +187,12 @@ export class WebhookSubscriptionProcessor {
           ${subscription.tenant_id}::uuid, 'webhook-subscription-worker',
           'integrations.webhook.subscription_requested', ${subscription.id},
           ${JSON.stringify({ connectionId: subscription.connection_id, operation: subscription.operation })}::jsonb,
-          'WEBHOOK_SUBSCRIPTION_MAX_ATTEMPTS', 'CONNECTOR_WEBHOOK_SUBSCRIPTION_FAILED', ${failure.attempts}
+          ${
+            failureDetail.retryable
+              ? 'WEBHOOK_SUBSCRIPTION_MAX_ATTEMPTS'
+              : 'WEBHOOK_SUBSCRIPTION_NON_RETRYABLE'
+          },
+          ${failureDetail.code}, ${failure.attempts}
         )`.execute(transaction);
       },
     );

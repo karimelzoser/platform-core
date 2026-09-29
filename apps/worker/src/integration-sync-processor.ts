@@ -1,5 +1,6 @@
 import {
   integrationSyncResultSchema,
+  toConnectorError,
   type Connector,
   type ConnectorRegistry,
 } from '@platform/connectors';
@@ -47,8 +48,8 @@ export class IntegrationSyncProcessor {
     for (const run of claimed.rows) {
       try {
         await this.process(run);
-      } catch {
-        await this.recordFailure(run);
+      } catch (error) {
+        await this.recordFailure(run, error);
       }
     }
     return claimed.rows.length;
@@ -143,7 +144,8 @@ export class IntegrationSyncProcessor {
     );
   }
 
-  private async recordFailure(run: ClaimedSyncRun): Promise<void> {
+  private async recordFailure(run: ClaimedSyncRun, error: unknown): Promise<void> {
+    const failureDetail = toConnectorError(error);
     await withTenantTransaction(
       this.database,
       {
@@ -154,13 +156,13 @@ export class IntegrationSyncProcessor {
       },
       async (transaction) => {
         const updated = await sql<{ attempts: number }>`update integrations.sync_runs
-          set attempts = attempts + 1,
+          set attempts = case when ${failureDetail.retryable} then attempts + 1 else ${maximumSyncAttempts} end,
               state = 'FAILED',
-              last_error = 'CONNECTOR_SYNC_FAILED',
+              last_error = ${failureDetail.code},
               claimed_by = null, claimed_at = null,
-              next_attempt_at = case when attempts + 1 >= ${maximumSyncAttempts} then 'infinity'::timestamptz
+              next_attempt_at = case when not ${failureDetail.retryable} or attempts + 1 >= ${maximumSyncAttempts} then 'infinity'::timestamptz
                 else now() + make_interval(secs => least(3600, 2 ^ least(attempts + 1, 10))) end,
-              finished_at = case when attempts + 1 >= ${maximumSyncAttempts} then now() else null end
+              finished_at = case when not ${failureDetail.retryable} or attempts + 1 >= ${maximumSyncAttempts} then now() else null end
           where id = ${run.id}::uuid and claimed_by = ${this.workerId}
           returning attempts`.execute(transaction);
         const failure = updated.rows[0];
@@ -171,7 +173,8 @@ export class IntegrationSyncProcessor {
         ) values (
           ${run.tenant_id}::uuid, 'integration-sync-worker', 'integration.sync.requested', ${run.id},
           ${JSON.stringify({ connectionId: run.connection_id, kind: run.kind })}::jsonb,
-          'INTEGRATION_SYNC_MAX_ATTEMPTS', 'CONNECTOR_SYNC_FAILED', ${failure.attempts}
+          ${failureDetail.retryable ? 'INTEGRATION_SYNC_MAX_ATTEMPTS' : 'INTEGRATION_SYNC_NON_RETRYABLE'},
+          ${failureDetail.code}, ${failure.attempts}
         )`.execute(transaction);
         await sql`insert into platform.outbox_events (
           tenant_id, event_type, source, correlation_id, causation_id, actor_type,

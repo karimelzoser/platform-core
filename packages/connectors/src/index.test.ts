@@ -2,11 +2,13 @@ import assert from 'node:assert/strict';
 import test from 'node:test';
 import {
   ConnectorRegistry,
+  ConnectorError,
   developmentWebChatConnector,
   parseMessagingDeliveryReceipt,
   parseVerifiedConsentWebhook,
   outboundMessageResultSchema,
   parseInboundMessagingWebhook,
+  toConnectorError,
   type WebhookEnvelope,
 } from './index.js';
 import { signDevelopmentWebChatWebhook } from './development-web-chat.js';
@@ -108,6 +110,16 @@ void test('requires a bounded provider result for an outbound dispatch', () => {
       .success,
     false,
   );
+});
+
+void test('maps unknown provider failures to a safe retryable error', () => {
+  const known = new ConnectorError('RATE_LIMITED', true);
+  assert.equal(toConnectorError(known), known);
+  const mapped = toConnectorError(new Error('provider response leaked'));
+  assert.equal(mapped.name, 'ConnectorError');
+  assert.equal(mapped.message, 'UNKNOWN_PROVIDER_FAILURE');
+  assert.equal(mapped.code, 'UNKNOWN_PROVIDER_FAILURE');
+  assert.equal(mapped.retryable, true);
 });
 
 void test('the development Web Chat fixture signs webhooks and preserves outbound idempotency', async () => {

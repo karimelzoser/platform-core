@@ -21,6 +21,10 @@ worker invokes the typed connector after commit. Connector results store only a
 bounded provider subscription identifier. Retry failures do not expose provider
 responses or credential references; terminal failures create a dead letter.
 
+Connectors classify provider failures into a bounded error code and a retryable
+flag. Worker persistence and dead letters contain that code rather than a raw
+provider exception; non-retryable errors terminate safely on their first claim.
+
 Connection list, connect, and disconnect APIs are tenant-scoped. Connect and
 disconnect are HIGH-risk, idempotent commands that require `integrations.manage`,
 OPA authorization, and—when policy requires it—digest-bound approval evidence.

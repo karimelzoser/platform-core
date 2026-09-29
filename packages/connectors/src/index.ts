@@ -2,6 +2,34 @@ import { connectorManifestSchema, type ConnectorManifest } from '@platform/contr
 import { outboundAttachmentSchema } from '@platform/media';
 import { z } from 'zod';
 
+export const connectorErrorCodeSchema = z.enum([
+  'AUTHENTICATION_FAILED',
+  'INVALID_REQUEST',
+  'RATE_LIMITED',
+  'PROVIDER_UNAVAILABLE',
+  'UNSUPPORTED_OPERATION',
+  'UNKNOWN_PROVIDER_FAILURE',
+]);
+
+export type ConnectorErrorCode = z.infer<typeof connectorErrorCodeSchema>;
+
+/** A bounded error that provider adapters may safely return to worker policy. */
+export class ConnectorError extends Error {
+  public override readonly name = 'ConnectorError';
+
+  public constructor(
+    public readonly code: ConnectorErrorCode,
+    public readonly retryable: boolean,
+  ) {
+    super(code);
+  }
+}
+
+export function toConnectorError(error: unknown): ConnectorError {
+  if (error instanceof ConnectorError) return error;
+  return new ConnectorError('UNKNOWN_PROVIDER_FAILURE', true);
+}
+
 export const webhookEnvelopeSchema = z.object({
   deliveryId: z.string().min(1),
   eventType: z.string().min(1),
