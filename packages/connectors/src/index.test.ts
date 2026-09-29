@@ -1,12 +1,15 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
 import {
+  ConnectorRegistry,
+  developmentWebChatConnector,
   parseMessagingDeliveryReceipt,
   parseVerifiedConsentWebhook,
   outboundMessageResultSchema,
   parseInboundMessagingWebhook,
   type WebhookEnvelope,
 } from './index.js';
+import { signDevelopmentWebChatWebhook } from './development-web-chat.js';
 
 const envelope: WebhookEnvelope = {
   deliveryId: 'provider-delivery-1',
@@ -105,4 +108,45 @@ void test('requires a bounded provider result for an outbound dispatch', () => {
       .success,
     false,
   );
+});
+
+void test('the development Web Chat fixture signs webhooks and preserves outbound idempotency', async () => {
+  const rawBody = Buffer.from(JSON.stringify(envelope));
+  assert.equal(
+    await developmentWebChatConnector.verifyWebhook({
+      headers: new Headers({
+        'x-platform-development-signature': signDevelopmentWebChatWebhook(rawBody),
+      }),
+      rawBody,
+    }),
+    true,
+  );
+  assert.equal(
+    await developmentWebChatConnector.verifyWebhook({ headers: new Headers(), rawBody }),
+    false,
+  );
+  await developmentWebChatConnector.validateConnection({
+    settings: { allowDevelopmentFixture: true },
+    secretReference: 'development://web-chat/preview',
+  });
+  await assert.rejects(
+    developmentWebChatConnector.validateConnection({
+      settings: { allowDevelopmentFixture: true },
+      secretReference: 'provider://not-development',
+    }),
+  );
+  const request = {
+    connectionId: 'aaaaaaaa-0000-0000-0000-000000000001',
+    providerConversationId: 'development-conversation-1',
+    idempotencyKey: 'message-idempotency-key',
+    body: 'Hello from a fixture',
+    attachments: [],
+  };
+  const first = await developmentWebChatConnector.sendMessage(request);
+  const retry = await developmentWebChatConnector.sendMessage(request);
+  assert.equal(first.providerMessageId, retry.providerMessageId);
+
+  const registry = new ConnectorRegistry();
+  registry.register(developmentWebChatConnector);
+  assert.deepEqual(registry.keys(), ['development-web-chat']);
 });

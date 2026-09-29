@@ -10,10 +10,18 @@ dependency-ready item.
 
 ## CURRENT
 
-- **CRM visual acceptance:** add and execute browser E2E coverage for the
-  protected customer, import, segment-evaluation, and merge-approval journeys;
-  then record RTL/LTR, responsive, and accessibility evidence. Do not claim
-  CRM complete until those acceptance checks are objective.
+- **Integration SDK completion:** connection lifecycle (connect/disconnect),
+  credential validation and rotation through encrypted secret references,
+  provider assets, webhook registration/unregistration and signature
+  verification, normalization, initial backfill, incremental sync with
+  cursors/high-water marks, reconciliation, health, throttling/rate limits,
+  error mapping, typed provider actions, and connector fixtures/emulators.
+  Implement explicit provider boundaries for Meta account/assets and Embedded
+  Signup; WhatsApp; Instagram; Messenger; Email; Web Chat; API; Shopify public
+  app lifecycle/webhooks/backfill/sync/reconciliation/actions; and WooCommerce
+  lifecycle/webhooks/sync/reconciliation/actions. Production credentials and
+  provider accounts remain deliberately out of scope; use development fixtures
+  and emulators only.
 
 ## VERIFICATION PENDING
 
@@ -23,57 +31,45 @@ dependency-ready item.
 
 ## NEXT
 
-1. Integration SDK completion: connection lifecycle (connect/disconnect),
-   credential validation and rotation through encrypted secret references,
-   provider assets, webhook registration/unregistration and signature
-   verification, normalization, initial backfill, incremental sync with
-   cursors/high-water marks, reconciliation, health, throttling/rate limits,
-   error mapping, typed provider actions, and connector fixtures/emulators.
-   Implement explicit provider boundaries for Meta account/assets and Embedded
-   Signup; WhatsApp; Instagram; Messenger; Email; Web Chat; API; Shopify public
-   app lifecycle/webhooks/backfill/sync/reconciliation/actions; and WooCommerce
-   lifecycle/webhooks/sync/reconciliation/actions. Production credentials and
-   provider accounts remain deliberately out of scope; use development fixtures
-   and emulators only.
-2. Commerce schema and service: catalog, inventory, orders, payments,
+1. Commerce schema and service: catalog, inventory, orders, payments,
    fulfillment, canonical provider mapping, commands, audit/outbox, RLS tests.
-3. Order workflows: confirmation, duplicate detection, modification,
+2. Order workflows: confirmation, duplicate detection, modification,
    cancellation, payment/fulfillment guards, provider activity boundaries, UI,
    Temporal tests.
-4. Shipping: carrier abstraction, shipment normalization, tracking updates,
+3. Shipping: carrier abstraction, shipment normalization, tracking updates,
    delivery rescue, tenant tests, operational UI.
-5. Returns/recovery: returns, exchanges, refunds, recovery attribution and
+4. Returns/recovery: returns, exchanges, refunds, recovery attribution and
    commands/workflows, UI, provider contracts, tenant tests.
-6. Sales: lead/pipeline/opportunity schema, services, UI, permissions,
+5. Sales: lead/pipeline/opportunity schema, services, UI, permissions,
    audit/outbox, tests.
-7. Campaigns: audience/suppression, batching, provider cost/conversion,
+6. Campaigns: audience/suppression, batching, provider cost/conversion,
    approval controls, worker/workflow and UI tests.
-8. Temporal baseline: all release-critical workflow/activity contracts,
+7. Temporal baseline: all release-critical workflow/activity contracts,
    retries, timeouts, signals, deterministic replay, restart tests.
-9. Automation Studio: typed triggers/actions, version/publish, durable runs,
+8. Automation Studio: typed triggers/actions, version/publish, durable runs,
    approval-aware actions, UI and Temporal verification.
-10. AI Gateway: provider abstraction, safe routing, typed tool registry,
-    approval-bound actions, cost records, fallback/escalation, API/UI tests.
-11. Knowledge/RAG and AI evaluation: ingestion, tenant retrieval boundaries,
+9. AI Gateway: provider abstraction, safe routing, typed tool registry,
+   approval-bound actions, cost records, fallback/escalation, API/UI tests.
+10. Knowledge/RAG and AI evaluation: ingestion, tenant retrieval boundaries,
     citations, prompt-injection/sensitive-data fixtures, evaluation thresholds.
-12. Custom Data: tables/fields/records, import/export, permissions, APIs/UI,
+11. Custom Data: tables/fields/records, import/export, permissions, APIs/UI,
     RLS and contract tests.
-13. Analytics/Billing: aggregates, dashboards, usage/metering, provider cost,
+12. Analytics/Billing: aggregates, dashboards, usage/metering, provider cost,
     subscription state, tenant/UI/performance tests.
-14. Developer Platform: tenant API keys, scoped outbound webhooks, signing,
+13. Developer Platform: tenant API keys, scoped outbound webhooks, signing,
     retries/dead letters, developer UI/docs/tests.
-15. Admin Control Center: tenant/integration/workflow health, failed webhooks,
+14. Admin Control Center: tenant/integration/workflow health, failed webhooks,
     stuck outbox, usage/spend, audited remediation commands, UI.
-16. Identity/RBAC/approval closure: onboarding, invitations, organization
+15. Identity/RBAC/approval closure: onboarding, invitations, organization
     selection, role editor/lifecycle, approval observability, auth/security E2E.
-17. Full UX closure: every surface English LTR and Arabic RTL, responsive,
+16. Full UX closure: every surface English LTR and Arabic RTL, responsive,
     accessible, loading/error/empty/forbidden states, visual/E2E scans.
-18. Observability/performance/security hardening: structured logs/traces/metrics,
+17. Observability/performance/security hardening: structured logs/traces/metrics,
     threat-model refresh, dependency/security scan, benchmarks and thresholds.
-19. Release engineering: immutable images, production Compose overlays, migration
+18. Release engineering: immutable images, production Compose overlays, migration
     upgrade fixture, backup/restore/rollback validation, smoke tooling, runbook,
     release notes and release checklist.
-20. Complete release acceptance: execute every mandatory gate in
+19. Complete release acceptance: execute every mandatory gate in
     `TESTING_AND_ACCEPTANCE.md`, inspect green CI, and record evidence.
 
 ## BLOCKED
@@ -126,6 +122,11 @@ dependency-ready item.
   opt-out, approval-bound merge, export/audit/outbox behavior, direct-ID RLS
   isolation, and the migration `0023` reconciliation privilege repair.
   Browser E2E and full RTL/LTR/accessibility acceptance remain pending.
+- CRM protected browser acceptance evidence in green GitHub Actions run #137
+  for commit `4634601`: owner/approver Keycloak login, customer creation,
+  quoted CSV import, segment evaluation, approval-bound merge execution, and
+  responsive, RTL, and accessibility checks. CRM remains partial until its
+  full Definition of Done is satisfied.
 
 ## Release evidence
 

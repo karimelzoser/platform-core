@@ -1,5 +1,5 @@
 import { connect } from 'nats';
-import { ConnectorRegistry } from '@platform/connectors';
+import { ConnectorRegistry, developmentWebChatConnector } from '@platform/connectors';
 import { createDatabase, destroyDatabase } from '@platform/database';
 import { createServer } from 'node:http';
 import { hostname } from 'node:os';
@@ -10,6 +10,11 @@ import { OutboxPublisher } from './outbox-publisher.js';
 import { TicketSlaProcessor } from './ticket-sla-processor.js';
 
 const environmentSchema = z.object({
+  APP_ENV: z.enum(['development', 'test', 'production']).default('development'),
+  ENABLE_DEVELOPMENT_CONNECTOR_FIXTURES: z
+    .enum(['true', 'false'])
+    .default('false')
+    .transform((value) => value === 'true'),
   DATABASE_URL: z.string().url(),
   NATS_URL: z.string().url(),
   WORKER_HEALTH_PORT: z.coerce.number().default(3002),
@@ -23,6 +28,8 @@ async function main(): Promise<void> {
   const publisher = new OutboxPublisher(db, nats, `${hostname()}-${String(process.pid)}`);
   const workerId = `${hostname()}-${String(process.pid)}`;
   const connectors = new ConnectorRegistry();
+  if (environment.APP_ENV !== 'production' && environment.ENABLE_DEVELOPMENT_CONNECTOR_FIXTURES)
+    connectors.register(developmentWebChatConnector);
   const webhookProcessor = new MessagingWebhookProcessor(db, connectors, workerId);
   const outboundMessageProcessor = new OutboundMessageProcessor(db, connectors, workerId);
   const ticketSlaProcessor = new TicketSlaProcessor(db);

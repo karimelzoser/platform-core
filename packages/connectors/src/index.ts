@@ -129,4 +129,13 @@ export class ConnectorRegistry {
     if (!connector) throw new Error(`Unknown connector: ${key}`);
     return connector;
   }
+
+  public keys(): readonly string[] {
+    return [...this.connectors.keys()].sort();
+  }
 }
+
+export {
+  developmentWebChatConnector,
+  signDevelopmentWebChatWebhook,
+} from './development-web-chat.js';

@@ -1,7 +1,7 @@
 # Implementation Status
 
-**Last updated:** 2026-09-28
-**Branch/workstream:** `main` / CRM completion
+**Last updated:** 2026-09-29
+**Branch/workstream:** `main` / Integration SDK completion
 **Release status:** IN PROGRESS — this is not yet a release candidate.
 
 ## Baseline and controls
@@ -52,6 +52,10 @@ No overall completion percentage is recorded: the required release gate is a bin
   segment evaluation, opt-out, approval-bound merge, export/audit/outbox, and
   direct-ID RLS isolation. Migration `0023` grants only the dependent-record
   reconciliation deletes needed by an approved merge; customer deletion remains
-  unavailable to the runtime role. CRM’s browser E2E, RTL/LTR, responsive, and
-  accessibility acceptance remains incomplete.
+  unavailable to the runtime role. GitHub Actions run #137 for commit
+  `4634601` passed the protected browser acceptance path: owner/approver
+  Keycloak login, customer creation, quoted CSV import, dynamic segment
+  evaluation, approval-bound merge execution, and responsive, RTL, and
+  accessibility checks. CRM remains IN PROGRESS until its full Definition of
+  Done is satisfied.
 - Messaging has tenant-scoped conversations/messages, a read inbox, protected handover, assignment, and close/reopen controls; its canonical inbound worker persists normalized messages through the outbox. The outbound command persists a pending message and its worker has a leased, post-commit typed connector dispatch boundary with provider IDs, sent/dead-letter states, bounded exponential retries, and outbox events. Canonical provider receipts update status monotonically through the persisted webhook worker. The inbox has permission-aware compose, template selection, and template list/create UI backed by protected tenant APIs. Bounded attachment references have tenant RLS, size/count limits, API persistence, and typed post-commit connector dispatch. Development-only local-media upload registration and inbox compose controls are implemented, with a bounded 700 KB browser upload route. Migration `0019` registers tenant-owned uploads and the send transaction claims each uploaded reference once, rejecting expired, reused, mismatched, or cross-tenant references. GitHub Actions run #101 passed the two-tenant application messaging lifecycle suite, migrations/RLS, the API image build, quality, AI gateway, and secret scan. Production provider adapters remain incomplete. Tickets have tenant-scoped schema; protected list/detail/create/comment/update/assignment/resolve/reopen APIs; authorization tests; permission-aware create/detail UI; and GitHub Actions run #104 two-tenant application lifecycle evidence. Migration `0014_messaging_ticket_schema_usage.sql` is present, and migrations `0020`–`0021` add SLA policies with approval-bound create/archive, response/resolution clocks, pause/resume, idempotent worker breach/escalation events, a private worker health endpoint, and protected ticket/approval UI. GitHub Actions run #114 passed the full two-tenant SLA lifecycle, migrations/RLS, quality, API image, AI gateway, and secret scan. Messaging/ticket migrations now extend through `0023`. Temporal workflow coverage, browser E2E, Arabic RTL/LTR visual checks, accessibility, and the full acceptance suites remain incomplete.

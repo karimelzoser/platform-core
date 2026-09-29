@@ -1,7 +1,7 @@
 import { Controller, Get, Module } from '@nestjs/common';
 import { CommandAuthorizer, OpaClient } from '@platform/authorization';
 import { CommandExecutor } from '@platform/command-execution';
-import { ConnectorRegistry } from '@platform/connectors';
+import { ConnectorRegistry, developmentWebChatConnector } from '@platform/connectors';
 import { CustomerService } from '@platform/crm';
 import { LocalMediaStore } from '@platform/media';
 import { ApprovalService } from './approval.service.js';
@@ -28,6 +28,14 @@ class HealthController {
   }
 }
 
+function createRuntimeConnectorRegistry(): ConnectorRegistry {
+  const registry = new ConnectorRegistry();
+  const config = loadApiConfig();
+  if (config.APP_ENV !== 'production' && config.ENABLE_DEVELOPMENT_CONNECTOR_FIXTURES)
+    registry.register(developmentWebChatConnector);
+  return registry;
+}
+
 @Module({
   controllers: [
     HealthController,
@@ -51,7 +59,7 @@ class HealthController {
       provide: LocalMediaStore,
       useFactory: () => new LocalMediaStore(loadApiConfig().MEDIA_LOCAL_ROOT),
     },
-    { provide: ConnectorRegistry, useValue: new ConnectorRegistry() },
+    { provide: ConnectorRegistry, useFactory: createRuntimeConnectorRegistry },
     {
       provide: CommandExecutor,
       useFactory: (database: ApiDatabaseService) =>

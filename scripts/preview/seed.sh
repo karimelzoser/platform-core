@@ -47,6 +47,54 @@ WHERE m.tenant_id='cccccccc-cccc-cccc-cccc-cccccccccccc'
     SELECT 1 FROM identity.membership_roles existing
     WHERE existing.tenant_id = m.tenant_id AND existing.membership_id = m.id AND existing.role_id = r.id
   );
+INSERT INTO integrations.connector_definitions (key, version, category, display_name, manifest)
+VALUES (
+  'development-web-chat',
+  '1.0.0',
+  'MESSAGING',
+  'Development Web Chat',
+  '{"key":"development-web-chat","version":"1.0.0","category":"MESSAGING","capabilities":["messaging.inbound","messaging.outbound","webhooks"],"credentialSchema":{"type":"development-fixture"},"settingsSchema":{"type":"object","required":["allowDevelopmentFixture"]}}'::jsonb
+)
+ON CONFLICT (key) DO UPDATE
+SET version = EXCLUDED.version,
+    category = EXCLUDED.category,
+    display_name = EXCLUDED.display_name,
+    manifest = EXCLUDED.manifest,
+    enabled = true,
+    updated_at = now();
+INSERT INTO integrations.secret_references (id, tenant_id, provider, reference, key_version, metadata)
+VALUES (
+  '66666666-6666-6666-6666-666666666666',
+  'cccccccc-cccc-cccc-cccc-cccccccccccc',
+  'development-web-chat',
+  'development://web-chat/preview',
+  'development-only',
+  '{"developmentOnly":true}'::jsonb
+)
+ON CONFLICT (tenant_id, provider, reference) DO NOTHING;
+INSERT INTO integrations.connections (
+  id, tenant_id, connector_key, secret_reference_id, display_name, status, settings, capabilities, last_validated_at
+)
+VALUES (
+  '77777777-7777-7777-7777-777777777777',
+  'cccccccc-cccc-cccc-cccc-cccccccccccc',
+  'development-web-chat',
+  '66666666-6666-6666-6666-666666666666',
+  'Development Web Chat',
+  'CONNECTED',
+  '{"allowDevelopmentFixture":true}'::jsonb,
+  '["messaging.inbound","messaging.outbound","webhooks"]'::jsonb,
+  now()
+)
+ON CONFLICT (id) DO UPDATE
+SET connector_key = EXCLUDED.connector_key,
+    secret_reference_id = EXCLUDED.secret_reference_id,
+    display_name = EXCLUDED.display_name,
+    status = EXCLUDED.status,
+    settings = EXCLUDED.settings,
+    capabilities = EXCLUDED.capabilities,
+    last_validated_at = EXCLUDED.last_validated_at,
+    updated_at = now();
 INSERT INTO crm.tags (id, tenant_id, name, description)
 VALUES (
   '55555555-5555-5555-5555-555555555555',
