@@ -1,6 +1,7 @@
 'use server';
 
 import { cookies } from 'next/headers';
+import { revalidatePath } from 'next/cache';
 
 export async function decideApproval(formData: FormData): Promise<void> {
   const approvalId = formData.get('approvalId');
@@ -25,6 +26,7 @@ export async function decideApproval(formData: FormData): Promise<void> {
     },
   );
   if (!response.ok) throw new Error('Approval decision could not be recorded');
+  revalidatePath('/approvals');
 }
 
 export interface ExecuteApprovalState {
