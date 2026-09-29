@@ -34,6 +34,8 @@ All non-public endpoints require a valid Keycloak access token, an active applic
 | `POST /v1/integrations/connections/:id/secret-rotations`       | Implemented | CRITICAL, approval-aware opaque-reference rotation; plaintext credentials are never accepted               |
 | `GET /v1/integrations/connections/:id/assets`                  | Implemented | Tenant-scoped persisted provider-asset catalog                                                             |
 | `POST /v1/integrations/connections/:id/assets/refresh`         | Implemented | Idempotent, OPA-authorized provider-asset discovery and persistence                                        |
+| `GET /v1/integrations/connections/:id/sync-runs`               | Implemented | Tenant-scoped durable integration sync-run history                                                         |
+| `POST /v1/integrations/connections/:id/sync-runs`              | Implemented | Idempotent, OPA-authorized request persisted for post-commit sync processing                               |
 
 Responses for operational failures include a correlation ID. Secret values never appear in API responses or logs.
 

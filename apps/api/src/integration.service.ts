@@ -35,6 +35,13 @@ const secretRotationInputSchema = z.object({
 
 export type SecretRotationInput = z.input<typeof secretRotationInputSchema>;
 
+const syncRunInputSchema = z.object({
+  kind: z.enum(['INITIAL', 'INCREMENTAL', 'BACKFILL', 'RECONCILIATION', 'MANUAL']),
+  cursor: z.record(z.unknown()).default({}),
+});
+
+export type CreateIntegrationSyncRunInput = z.input<typeof syncRunInputSchema>;
+
 export interface IntegrationConnection {
   id: string;
   connectorKey: string;
@@ -57,6 +64,18 @@ export interface IntegrationProviderAsset {
   name: string | null;
   state: string;
   attributes: Record<string, unknown>;
+}
+
+export interface IntegrationSyncRun {
+  id: string;
+  kind: 'INITIAL' | 'INCREMENTAL' | 'BACKFILL' | 'RECONCILIATION' | 'MANUAL';
+  state: 'QUEUED' | 'RUNNING' | 'SUCCEEDED' | 'FAILED' | 'CANCELED';
+  cursor: Record<string, unknown>;
+  progress: Record<string, unknown>;
+  temporalWorkflowId: string | null;
+  startedAt: Date | null;
+  finishedAt: Date | null;
+  lastError: string | null;
 }
 
 /**
@@ -253,6 +272,89 @@ export class IntegrationService {
         attributes: asset.attributes,
       }));
     });
+  }
+
+  public async listSyncRuns(
+    context: TenantRequestContext,
+    connectionId: string,
+  ): Promise<readonly IntegrationSyncRun[]> {
+    const id = z.string().uuid().parse(connectionId);
+    return withTenantTransaction(this.database, context, async (transaction) => {
+      const result = await sql<{
+        id: string;
+        kind: IntegrationSyncRun['kind'];
+        state: IntegrationSyncRun['state'];
+        cursor: Record<string, unknown>;
+        progress: Record<string, unknown>;
+        temporal_workflow_id: string | null;
+        started_at: Date | null;
+        finished_at: Date | null;
+        last_error: string | null;
+      }>`select id, kind, state, cursor, progress, temporal_workflow_id, started_at, finished_at, last_error
+        from integrations.sync_runs where connection_id = ${id}::uuid
+        order by created_at desc, id desc limit 100`.execute(transaction);
+      return result.rows.map((run) => ({
+        id: run.id,
+        kind: run.kind,
+        state: run.state,
+        cursor: run.cursor,
+        progress: run.progress,
+        temporalWorkflowId: run.temporal_workflow_id,
+        startedAt: run.started_at,
+        finishedAt: run.finished_at,
+        lastError: run.last_error,
+      }));
+    });
+  }
+
+  public async requestSyncRun(
+    context: TenantRequestContext,
+    idempotencyKey: string,
+    connectionId: string,
+    input: CreateIntegrationSyncRunInput,
+    approvalId?: string,
+  ): Promise<CommandResult<{ syncRunId: string; state: 'QUEUED' }>> {
+    const id = z.string().uuid().parse(connectionId);
+    const validated = syncRunInputSchema.parse(input);
+    const syncRunId = randomUUID();
+    return this.commands.execute(
+      {
+        action: 'integrations.sync.request',
+        permission: 'integrations.sync.execute',
+        risk: 'MEDIUM',
+        resource: () => ({ type: 'integration.connection', id }),
+        event: {
+          type: 'integration.sync.requested',
+          data: (_input, result) => ({ ...result, connectionId: id, kind: validated.kind }),
+          dedupeKey: () => `integration:sync:requested:${syncRunId}`,
+        },
+        audit: {
+          afterState: (_input, result) => ({ ...result, connectionId: id, kind: validated.kind }),
+        },
+        execute: async (transaction) => {
+          const connection = await sql<{ id: string }>`select id from integrations.connections
+            where id = ${id}::uuid and status in ('CONNECTED', 'DEGRADED') for share`.execute(
+            transaction,
+          );
+          if (!connection.rows[0])
+            throw new Error('A connected integration is required to request sync');
+          await sql`insert into integrations.sync_runs (
+            id, tenant_id, connection_id, kind, cursor, progress, idempotency_key, temporal_workflow_id
+          ) values (
+            ${syncRunId}::uuid, ${context.tenantId}::uuid, ${id}::uuid, ${validated.kind},
+            ${JSON.stringify(validated.cursor)}::jsonb, '{"pages":0,"items":0}'::jsonb,
+            ${idempotencyKey.trim()}, ${`integration-sync:${syncRunId}`}
+          )`.execute(transaction);
+          return { syncRunId, state: 'QUEUED' as const };
+        },
+      },
+      {
+        context,
+        input: { connectionId: id, kind: validated.kind, cursor: validated.cursor },
+        idempotencyKey,
+        ...(approvalId ? { approvalId } : {}),
+      },
+    );
   }
 
   public async refreshAssets(
