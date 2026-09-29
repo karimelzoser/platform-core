@@ -53,7 +53,7 @@ VALUES (
   '1.0.0',
   'MESSAGING',
   'Development Web Chat',
-  '{"key":"development-web-chat","version":"1.0.0","category":"MESSAGING","capabilities":["messaging.inbound","messaging.outbound","webhooks"],"credentialSchema":{"type":"development-fixture"},"settingsSchema":{"type":"object","required":["allowDevelopmentFixture"]}}'::jsonb
+  '{"key":"development-web-chat","version":"1.0.0","category":"MESSAGING","capabilities":["messaging.inbound","messaging.outbound","webhooks","sync"],"credentialSchema":{"type":"development-fixture"},"settingsSchema":{"type":"object","required":["allowDevelopmentFixture"]}}'::jsonb
 )
 ON CONFLICT (key) DO UPDATE
 SET version = EXCLUDED.version,
@@ -84,6 +84,54 @@ VALUES (
   'CONNECTED',
   '{"allowDevelopmentFixture":true}'::jsonb,
   '["messaging.inbound","messaging.outbound","webhooks"]'::jsonb,
+  now()
+)
+ON CONFLICT (id) DO UPDATE
+SET connector_key = EXCLUDED.connector_key,
+    secret_reference_id = EXCLUDED.secret_reference_id,
+    display_name = EXCLUDED.display_name,
+    status = EXCLUDED.status,
+    settings = EXCLUDED.settings,
+    capabilities = EXCLUDED.capabilities,
+    last_validated_at = EXCLUDED.last_validated_at,
+    updated_at = now();
+INSERT INTO integrations.connector_definitions (key, version, category, display_name, manifest)
+VALUES (
+  'development-api',
+  '1.0.0',
+  'GENERIC',
+  'Development API Channel',
+  '{"key":"development-api","version":"1.0.0","category":"GENERIC","capabilities":["messaging.inbound","messaging.outbound","webhooks","sync"],"credentialSchema":{"type":"development-fixture"},"settingsSchema":{"type":"object","required":["allowDevelopmentFixture"]}}'::jsonb
+)
+ON CONFLICT (key) DO UPDATE
+SET version = EXCLUDED.version,
+    category = EXCLUDED.category,
+    display_name = EXCLUDED.display_name,
+    manifest = EXCLUDED.manifest,
+    enabled = true,
+    updated_at = now();
+INSERT INTO integrations.secret_references (id, tenant_id, provider, reference, key_version, metadata)
+VALUES (
+  '88888888-8888-8888-8888-888888888888',
+  'cccccccc-cccc-cccc-cccc-cccccccccccc',
+  'development-api',
+  'development://api/preview',
+  'development-only',
+  '{"developmentOnly":true}'::jsonb
+)
+ON CONFLICT (tenant_id, provider, reference) DO NOTHING;
+INSERT INTO integrations.connections (
+  id, tenant_id, connector_key, secret_reference_id, display_name, status, settings, capabilities, last_validated_at
+)
+VALUES (
+  '99999999-9999-9999-9999-999999999999',
+  'cccccccc-cccc-cccc-cccc-cccccccccccc',
+  'development-api',
+  '88888888-8888-8888-8888-888888888888',
+  'Development API Channel',
+  'CONNECTED',
+  '{"allowDevelopmentFixture":true}'::jsonb,
+  '["messaging.inbound","messaging.outbound","webhooks","sync"]'::jsonb,
   now()
 )
 ON CONFLICT (id) DO UPDATE
