@@ -1,4 +1,5 @@
 import { cookies } from 'next/headers';
+import { ConnectionControls } from './connection-controls';
 
 export const dynamic = 'force-dynamic';
 
@@ -80,6 +81,9 @@ export default async function IntegrationsPage() {
                       ? ` · ${String(connection.activeWebhookCount)} active webhook(s)`
                       : ''}
                   </small>
+                  {connection.status === 'CONNECTED' || connection.status === 'DEGRADED' ? (
+                    <ConnectionControls connectionId={connection.id} />
+                  ) : null}
                 </li>
               ))}
             </ul>
