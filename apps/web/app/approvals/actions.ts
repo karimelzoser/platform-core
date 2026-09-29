@@ -3,6 +3,8 @@
 import { cookies } from 'next/headers';
 import { revalidatePath } from 'next/cache';
 
+const refreshPath = revalidatePath as (path: string) => void;
+
 export async function decideApproval(formData: FormData): Promise<void> {
   const approvalId = formData.get('approvalId');
   const decision = formData.get('decision');
@@ -26,7 +28,7 @@ export async function decideApproval(formData: FormData): Promise<void> {
     },
   );
   if (!response.ok) throw new Error('Approval decision could not be recorded');
-  revalidatePath('/approvals');
+  refreshPath('/approvals');
 }
 
 export interface ExecuteApprovalState {
