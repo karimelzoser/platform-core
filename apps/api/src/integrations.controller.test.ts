@@ -15,8 +15,8 @@ const context = {
 
 void test('integration connection endpoints require dedicated permissions', async () => {
   const controller = new IntegrationsController(
-    { resolve: async () => context } as never,
-    { list: async () => [] } as never,
+    { resolve: () => Promise.resolve(context) } as never,
+    { list: () => Promise.resolve([]) } as never,
   );
   await assert.rejects(
     controller.list('Bearer token', context.tenantId, undefined),
