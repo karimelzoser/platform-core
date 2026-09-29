@@ -477,12 +477,14 @@ export class IntegrationService {
           afterState: (_input, result) => ({ ...result, connectionId: id, kind: validated.kind }),
         },
         execute: async (transaction) => {
-          const connection = await sql<{ id: string }>`select id from integrations.connections
-            where id = ${id}::uuid and status in ('CONNECTED', 'DEGRADED') for share`.execute(
-            transaction,
-          );
+          const connection = await sql<{ connector_key: string }>`select connector_key
+            from integrations.connections
+            where id = ${id}::uuid and status in ('CONNECTED', 'DEGRADED')
+            for share`.execute(transaction);
           if (!connection.rows[0])
             throw new Error('A connected integration is required to request sync');
+          if (!supportsSync(this.connectors.get(connection.rows[0].connector_key)))
+            throw new Error('Connector does not support synchronization');
           await sql`insert into integrations.sync_runs (
             id, tenant_id, connection_id, kind, cursor, progress, idempotency_key, temporal_workflow_id
           ) values (
@@ -764,6 +766,12 @@ function supportsWebhookSubscription(
     typeof connector.registerWebhook === 'function' &&
     typeof connector.unregisterWebhook === 'function'
   );
+}
+
+function supportsSync(
+  connector: Connector,
+): connector is Connector & Required<Pick<Connector, 'sync'>> {
+  return typeof connector.sync === 'function';
 }
 
 function assertPublicHttpsCallback(callbackUrl: string): void {
