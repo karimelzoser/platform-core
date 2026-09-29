@@ -253,3 +253,55 @@ void test('the development API fixture has an isolated signature and determinist
     (await developmentWebChatConnector.sendMessage(request)).providerMessageId,
   );
 });
+
+void test('development channel emulators satisfy the common provider lifecycle contract', async () => {
+  const rawBody = Buffer.from(JSON.stringify(envelope));
+  const fixtures = [
+    {
+      connector: developmentWebChatConnector,
+      reference: 'development://web-chat/preview',
+      signature: signDevelopmentWebChatWebhook(rawBody),
+      header: 'x-platform-development-signature',
+    },
+    {
+      connector: developmentApiConnector,
+      reference: 'development://api/preview',
+      signature: signDevelopmentApiWebhook(rawBody),
+      header: 'x-platform-development-api-signature',
+    },
+  ];
+  for (const fixture of fixtures) {
+    await fixture.connector.validateConnection({
+      settings: { allowDevelopmentFixture: true },
+      secretReference: fixture.reference,
+    });
+    assert.equal(
+      await fixture.connector.verifyWebhook({
+        headers: new Headers({ [fixture.header]: fixture.signature }),
+        rawBody,
+      }),
+      true,
+    );
+    assert.equal(await fixture.connector.verifyWebhook({ headers: new Headers(), rawBody }), false);
+    assert.deepEqual(
+      await fixture.connector.normalizeWebhook({ headers: new Headers(), body: envelope }),
+      envelope,
+    );
+    const assets = await fixture.connector.discoverAssets?.({
+      connectionId: 'aaaaaaaa-0000-0000-0000-000000000001',
+      settings: { allowDevelopmentFixture: true },
+      secretReference: fixture.reference,
+    });
+    assert.equal(assets?.length, 1);
+    if (!fixture.connector.sync) assert.fail('Fixture must support synchronization');
+    const sync = await fixture.connector.sync({
+      connectionId: 'aaaaaaaa-0000-0000-0000-000000000001',
+      kind: 'RECONCILIATION',
+      cursor: { highWaterMark: '2026-09-29T00:00:00.000Z' },
+      settings: { allowDevelopmentFixture: true },
+      secretReference: fixture.reference,
+    });
+    assert.equal(sync.hasMore, false);
+    assert.equal(sync.cursor.completed, true);
+  }
+});

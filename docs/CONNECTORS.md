@@ -45,5 +45,7 @@ IDs for idempotent retries, accept the typed sync contract with an empty
 completed result, and make no provider network calls. They are never registered in a
 production runtime and are enabled only with
 `ENABLE_DEVELOPMENT_CONNECTOR_FIXTURES=true` outside production.
+Their shared contract tests cover signature verification, normalization, asset
+discovery, cursor-bearing reconciliation, and deterministic outbound dispatch.
 
 Planned adapter keys: Shopify, WooCommerce, WhatsApp Cloud API, Instagram, Messenger, email, generic shipping, generic payment, and generic REST/webhook.
