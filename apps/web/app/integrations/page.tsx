@@ -13,6 +13,22 @@ interface IntegrationConnection {
   health: { status: string; checkedAt: string; latencyMs: number | null } | null;
 }
 
+interface SyncRun {
+  state: string;
+  kind: string;
+  progress: { pages?: number; items?: number };
+  finishedAt: string | null;
+}
+
+interface WebhookSubscription {
+  state: string;
+}
+
+interface ConnectionView extends IntegrationConnection {
+  latestSync: SyncRun | null;
+  activeWebhookCount: number;
+}
+
 export default async function IntegrationsPage() {
   const result = await loadConnections();
   return (
@@ -45,6 +61,9 @@ export default async function IntegrationsPage() {
                   <span>
                     {connection.connectorKey} · {connection.status}
                     {connection.health ? ` · health ${connection.health.status}` : ''}
+                    {connection.latestSync
+                      ? ` · ${connection.latestSync.kind.toLowerCase()} sync ${connection.latestSync.state.toLowerCase()}`
+                      : ' · no sync recorded'}
                   </span>
                   <small>
                     {connection.lastValidatedAt
@@ -54,6 +73,12 @@ export default async function IntegrationsPage() {
                       ? ''
                       : ` · ${String(connection.health.latencyMs)} ms`}
                     {connection.lastErrorCode ? ` · ${connection.lastErrorCode}` : ''}
+                    {connection.latestSync
+                      ? ` · ${String(connection.latestSync.progress.items ?? 0)} item(s)`
+                      : ''}
+                    {connection.activeWebhookCount
+                      ? ` · ${String(connection.activeWebhookCount)} active webhook(s)`
+                      : ''}
                   </small>
                 </li>
               ))}
@@ -79,7 +104,7 @@ export default async function IntegrationsPage() {
 }
 
 async function loadConnections(): Promise<
-  { kind: 'success'; items: IntegrationConnection[] } | { kind: 'error'; detail: string }
+  { kind: 'success'; items: ConnectionView[] } | { kind: 'error'; detail: string }
 > {
   const store = await cookies();
   const token = store.get('platform_access_token')?.value;
@@ -91,9 +116,42 @@ async function loadConnections(): Promise<
     const response = await fetch(new URL('/v1/integrations/connections', baseUrl), {
       headers: { authorization: `Bearer ${token}`, 'x-tenant-id': tenantId },
     });
-    return response.ok
-      ? { kind: 'success', items: (await response.json()) as IntegrationConnection[] }
-      : { kind: 'error', detail: 'Integration API request failed or is not permitted.' };
+    if (!response.ok)
+      return { kind: 'error', detail: 'Integration API request failed or is not permitted.' };
+    const connections = (await response.json()) as IntegrationConnection[];
+    const items = await Promise.all(
+      connections.map(async (connection): Promise<ConnectionView> => {
+        const headers = { authorization: `Bearer ${token}`, 'x-tenant-id': tenantId };
+        const [syncResponse, webhookResponse] = await Promise.all([
+          fetch(
+            new URL(
+              `/v1/integrations/connections/${encodeURIComponent(connection.id)}/sync-runs`,
+              baseUrl,
+            ),
+            { headers },
+          ),
+          fetch(
+            new URL(
+              `/v1/integrations/connections/${encodeURIComponent(connection.id)}/webhook-subscriptions`,
+              baseUrl,
+            ),
+            { headers },
+          ),
+        ]);
+        const syncRuns = syncResponse.ok ? ((await syncResponse.json()) as SyncRun[]) : [];
+        const subscriptions = webhookResponse.ok
+          ? ((await webhookResponse.json()) as WebhookSubscription[])
+          : [];
+        return {
+          ...connection,
+          latestSync: syncRuns[0] ?? null,
+          activeWebhookCount: subscriptions.filter(
+            (subscription) => subscription.state === 'ACTIVE',
+          ).length,
+        };
+      }),
+    );
+    return { kind: 'success', items };
   } catch {
     return { kind: 'error', detail: 'Integration API is unavailable.' };
   }
