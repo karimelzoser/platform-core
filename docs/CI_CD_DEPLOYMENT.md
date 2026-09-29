@@ -6,7 +6,15 @@ GitHub is source of truth for application code.
 
 Protect `main`; do not allow force pushes.
 
-During pre-release implementation, Codex may make small reviewable commits directly to `main` when repository permissions allow it. Every pushed commit runs CI and red CI is repaired promptly. PR review may be introduced before production release without changing this autonomous implementation flow.
+During pre-release implementation, Codex may make small reviewable **local**
+commits directly on `main` when repository permissions allow it, but must batch
+them before pushing. A local commit is not a reason to push or stop. Push one
+substantial coherent workstream batch, inspect its single CI run, and repair a
+red run in a local repair batch before continuing. Push early only when remote
+Docker/PostgreSQL/RLS/Temporal/browser evidence is needed to safely continue or
+the accumulated local batch creates material integration risk. PR review may be
+introduced before production release without changing this autonomous
+implementation flow.
 
 ## PR CI
 

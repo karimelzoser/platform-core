@@ -1,5 +1,9 @@
 import { connect } from 'nats';
-import { ConnectorRegistry, developmentWebChatConnector } from '@platform/connectors';
+import {
+  ConnectorRegistry,
+  developmentApiConnector,
+  developmentWebChatConnector,
+} from '@platform/connectors';
 import { createDatabase, destroyDatabase } from '@platform/database';
 import { createServer } from 'node:http';
 import { hostname } from 'node:os';
@@ -30,8 +34,10 @@ async function main(): Promise<void> {
   const publisher = new OutboxPublisher(db, nats, `${hostname()}-${String(process.pid)}`);
   const workerId = `${hostname()}-${String(process.pid)}`;
   const connectors = new ConnectorRegistry();
-  if (environment.APP_ENV !== 'production' && environment.ENABLE_DEVELOPMENT_CONNECTOR_FIXTURES)
+  if (environment.APP_ENV !== 'production' && environment.ENABLE_DEVELOPMENT_CONNECTOR_FIXTURES) {
+    connectors.register(developmentApiConnector);
     connectors.register(developmentWebChatConnector);
+  }
   const webhookProcessor = new MessagingWebhookProcessor(db, connectors, workerId);
   const outboundMessageProcessor = new OutboundMessageProcessor(db, connectors, workerId);
   const integrationSyncProcessor = new IntegrationSyncProcessor(db, connectors, workerId);

@@ -16,7 +16,26 @@ At the beginning of every implementation turn: read `docs/CODEX_EXECUTION_QUEUE.
 
 When CURRENT is objectively complete: run required validation; update `docs/IMPLEMENTATION_STATUS.md`; move CURRENT to DONE; promote the next dependency-ready NEXT item; and perform a concrete implementation/tool action on it before ending the turn.
 
-A normal implementation turn must not end only with a progress summary, plan, handoff, “next I will,” or a completed-commit announcement. Reviewable commits are checkpoints, not stopping points. Make local implementation changes, run the relevant local checks, and create reviewable local commits as coherent work completes. Push a substantial coherent batch once, inspect its CI result, repair any failures, and continue CURRENT or promote the next item. Do not create a remote CI run for every individual local commit.
+A normal implementation turn must not end only with a progress summary, plan, handoff, “next I will,” or a completed-commit announcement. Reviewable commits are checkpoints, not stopping points.
+
+## Local commit and remote CI batching
+
+Create small, reviewable **local** commits after coherent implementation slices
+and continue work locally. A local commit is neither a reason to push nor a
+reason to stop.
+
+Use this cadence: implementation → relevant local validation → local commit →
+continue implementation → local validation → another local commit → run the
+full locally available validation suite at a substantial coherent batch
+boundary → push all accumulated commits once → inspect one GitHub Actions run
+→ repair any CI failures in a local repair batch → push that repair batch.
+
+Push only when a substantial workstream/major-module checkpoint is complete,
+when remote Docker/PostgreSQL/RLS/Temporal/browser evidence is needed to safely
+continue, when accumulated local change materially increases integration risk,
+or when validating a final acceptance/release checkpoint. Do not push because a
+single file, endpoint, migration, component, small feature, or local commit is
+complete. Do not defer CI until the whole product is complete.
 
 Only stop before release completion for a genuine external decision/input, an irreversible external action requiring authorization, Codex/system limits, or after the complete release gate in `docs/TESTING_AND_ACCEPTANCE.md` passes. If an item is blocked and another dependency-ready item exists, move the blocked item to BLOCKED and continue it. Do not ask the user to say “continue” between ordinary workstreams.
 

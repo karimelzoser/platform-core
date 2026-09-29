@@ -3,6 +3,7 @@ import test from 'node:test';
 import {
   ConnectorRegistry,
   ConnectorError,
+  developmentApiConnector,
   developmentWebChatConnector,
   parseMessagingDeliveryReceipt,
   parseVerifiedConsentWebhook,
@@ -12,6 +13,7 @@ import {
   type WebhookEnvelope,
 } from './index.js';
 import { signDevelopmentWebChatWebhook } from './development-web-chat.js';
+import { signDevelopmentApiWebhook } from './development-api.js';
 
 const envelope: WebhookEnvelope = {
   deliveryId: 'provider-delivery-1',
@@ -210,6 +212,44 @@ void test('the development Web Chat fixture signs webhooks and preserves outboun
   });
 
   const registry = new ConnectorRegistry();
+  registry.register(developmentApiConnector);
   registry.register(developmentWebChatConnector);
-  assert.deepEqual(registry.keys(), ['development-web-chat']);
+  assert.deepEqual(registry.keys(), ['development-api', 'development-web-chat']);
+});
+
+void test('the development API fixture has an isolated signature and deterministic outbound identity', async () => {
+  const rawBody = Buffer.from(JSON.stringify(envelope));
+  assert.equal(
+    await developmentApiConnector.verifyWebhook({
+      headers: new Headers({
+        'x-platform-development-api-signature': signDevelopmentApiWebhook(rawBody),
+      }),
+      rawBody,
+    }),
+    true,
+  );
+  await developmentApiConnector.validateConnection({
+    settings: { allowDevelopmentFixture: true },
+    secretReference: 'development://api/preview',
+  });
+  await assert.rejects(
+    developmentApiConnector.validateConnection({
+      settings: { allowDevelopmentFixture: true },
+      secretReference: 'development://web-chat/preview',
+    }),
+  );
+  const request = {
+    connectionId: 'aaaaaaaa-0000-0000-0000-000000000001',
+    providerConversationId: 'development-api-conversation-1',
+    idempotencyKey: 'api-message-idempotency-key',
+    body: 'Hello from the API fixture',
+    attachments: [],
+  };
+  const first = await developmentApiConnector.sendMessage(request);
+  const retry = await developmentApiConnector.sendMessage(request);
+  assert.equal(first.providerMessageId, retry.providerMessageId);
+  assert.notEqual(
+    first.providerMessageId,
+    (await developmentWebChatConnector.sendMessage(request)).providerMessageId,
+  );
 });

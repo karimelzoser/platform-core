@@ -21,7 +21,12 @@ Codex should:
 - maintain `docs/IMPLEMENTATION_STATUS.md`
 - maintain `docs/CODEX_EXECUTION_QUEUE.md`
 - make small reviewable commits directly to `main` when permissions allow
-- run CI for every pushed commit and repair red CI promptly
+- batch multiple coherent local commits before one push; a local commit is not
+  a reason to push or stop
+- push at substantial workstream checkpoints, when remote integration evidence
+  is needed, when a local batch becomes risky, or for release validation
+- run and inspect one CI workflow per pushed batch; repair red CI promptly in a
+  local repair batch before the next workstream
 - never force push
 - never deploy production unless explicitly instructed
 
