@@ -120,6 +120,8 @@ void test('maps unknown provider failures to a safe retryable error', () => {
   assert.equal(mapped.message, 'UNKNOWN_PROVIDER_FAILURE');
   assert.equal(mapped.code, 'UNKNOWN_PROVIDER_FAILURE');
   assert.equal(mapped.retryable, true);
+  assert.equal(new ConnectorError('RATE_LIMITED', true, 120).retryAfterSeconds, 120);
+  assert.equal(new ConnectorError('RATE_LIMITED', true, 3_601).retryAfterSeconds, null);
 });
 
 void test('the development Web Chat fixture signs webhooks and preserves outbound idempotency', async () => {

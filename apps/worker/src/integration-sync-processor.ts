@@ -161,7 +161,9 @@ export class IntegrationSyncProcessor {
               last_error = ${failureDetail.code},
               claimed_by = null, claimed_at = null,
               next_attempt_at = case when not ${failureDetail.retryable} or attempts + 1 >= ${maximumSyncAttempts} then 'infinity'::timestamptz
-                else now() + make_interval(secs => least(3600, 2 ^ least(attempts + 1, 10))) end,
+                else now() + make_interval(secs => greatest(
+                  ${failureDetail.retryAfterSeconds ?? 0}, least(3600, 2 ^ least(attempts + 1, 10))
+                )) end,
               finished_at = case when not ${failureDetail.retryable} or attempts + 1 >= ${maximumSyncAttempts} then now() else null end
           where id = ${run.id}::uuid and claimed_by = ${this.workerId}
           returning attempts`.execute(transaction);

@@ -16,12 +16,21 @@ export type ConnectorErrorCode = z.infer<typeof connectorErrorCodeSchema>;
 /** A bounded error that provider adapters may safely return to worker policy. */
 export class ConnectorError extends Error {
   public override readonly name = 'ConnectorError';
+  public readonly retryAfterSeconds: number | null;
 
   public constructor(
     public readonly code: ConnectorErrorCode,
     public readonly retryable: boolean,
+    retryAfterSeconds?: number,
   ) {
     super(code);
+    this.retryAfterSeconds =
+      typeof retryAfterSeconds === 'number' &&
+      Number.isInteger(retryAfterSeconds) &&
+      retryAfterSeconds >= 1 &&
+      retryAfterSeconds <= 3_600
+        ? retryAfterSeconds
+        : null;
   }
 }
 

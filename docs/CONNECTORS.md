@@ -24,6 +24,8 @@ responses or credential references; terminal failures create a dead letter.
 Connectors classify provider failures into a bounded error code and a retryable
 flag. Worker persistence and dead letters contain that code rather than a raw
 provider exception; non-retryable errors terminate safely on their first claim.
+A retryable rate-limit error may provide a bounded retry-after interval; workers
+use the longer of that interval and exponential backoff.
 
 Connection list, connect, and disconnect APIs are tenant-scoped. Connect and
 disconnect are HIGH-risk, idempotent commands that require `integrations.manage`,

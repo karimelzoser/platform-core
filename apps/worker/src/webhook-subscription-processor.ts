@@ -176,7 +176,9 @@ export class WebhookSubscriptionProcessor {
               state = 'FAILED', last_error = ${failureDetail.code},
               claimed_by = null, claimed_at = null, updated_at = now(),
               next_attempt_at = case when not ${failureDetail.retryable} or attempts + 1 >= ${maximumSubscriptionAttempts} then 'infinity'::timestamptz
-                else now() + make_interval(secs => least(3600, 2 ^ least(attempts + 1, 10))) end
+                else now() + make_interval(secs => greatest(
+                  ${failureDetail.retryAfterSeconds ?? 0}, least(3600, 2 ^ least(attempts + 1, 10))
+                )) end
           where id = ${subscription.id}::uuid and claimed_by = ${this.workerId}
           returning attempts`.execute(transaction);
         const failure = updated.rows[0];
