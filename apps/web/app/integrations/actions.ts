@@ -34,6 +34,44 @@ export async function requestInitialSync(
   );
 }
 
+export async function requestWebhookSubscription(
+  _previousState: IntegrationActionState,
+  formData: FormData,
+): Promise<IntegrationActionState> {
+  const connectionId = idFrom(formData);
+  const callbackUrl = textFrom(formData, 'callbackUrl');
+  if (!connectionId || !callbackUrl)
+    return { error: 'A connection and HTTPS callback URL are required.' };
+  try {
+    if (new URL(callbackUrl).protocol !== 'https:')
+      return { error: 'Webhook callbacks must use HTTPS.' };
+  } catch {
+    return { error: 'Webhook callback URL is invalid.' };
+  }
+  return sendConnectionCommand(
+    connectionId,
+    '/webhook-subscriptions',
+    { callbackUrl },
+    'Webhook subscription requested.',
+  );
+}
+
+export async function requestWebhookUnsubscription(
+  _previousState: IntegrationActionState,
+  formData: FormData,
+): Promise<IntegrationActionState> {
+  const connectionId = idFrom(formData);
+  const subscriptionId = textFrom(formData, 'subscriptionId');
+  if (!connectionId || !subscriptionId || subscriptionId.length !== 36)
+    return { error: 'The webhook subscription could not be identified.' };
+  return sendConnectionCommand(
+    connectionId,
+    `/webhook-subscriptions/${encodeURIComponent(subscriptionId)}/unregister`,
+    undefined,
+    'Webhook unregistration requested.',
+  );
+}
+
 async function sendConnectionCommand(
   connectionId: string,
   suffix: string,
@@ -75,4 +113,9 @@ async function sendConnectionCommand(
 function idFrom(formData: FormData): string | undefined {
   const value = formData.get('connectionId');
   return typeof value === 'string' && value.length === 36 ? value : undefined;
+}
+
+function textFrom(formData: FormData, key: string): string | undefined {
+  const value = formData.get(key);
+  return typeof value === 'string' && value.trim() ? value.trim() : undefined;
 }

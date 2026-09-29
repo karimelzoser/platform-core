@@ -1,5 +1,6 @@
 import { cookies } from 'next/headers';
 import { ConnectionControls } from './connection-controls';
+import { WebhookSubscriptionControls } from './webhook-subscription-controls';
 
 export const dynamic = 'force-dynamic';
 
@@ -22,12 +23,15 @@ interface SyncRun {
 }
 
 interface WebhookSubscription {
+  id: string;
+  callbackUrl: string;
   state: string;
 }
 
 interface ConnectionView extends IntegrationConnection {
   latestSync: SyncRun | null;
   activeWebhookCount: number;
+  webhookSubscriptions: WebhookSubscription[];
 }
 
 export default async function IntegrationsPage() {
@@ -82,7 +86,13 @@ export default async function IntegrationsPage() {
                       : ''}
                   </small>
                   {connection.status === 'CONNECTED' || connection.status === 'DEGRADED' ? (
-                    <ConnectionControls connectionId={connection.id} />
+                    <>
+                      <ConnectionControls connectionId={connection.id} />
+                      <WebhookSubscriptionControls
+                        connectionId={connection.id}
+                        subscriptions={connection.webhookSubscriptions}
+                      />
+                    </>
                   ) : null}
                 </li>
               ))}
@@ -149,6 +159,7 @@ async function loadConnections(): Promise<
         return {
           ...connection,
           latestSync: syncRuns[0] ?? null,
+          webhookSubscriptions: subscriptions,
           activeWebhookCount: subscriptions.filter(
             (subscription) => subscription.state === 'ACTIVE',
           ).length,
