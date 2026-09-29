@@ -67,6 +67,21 @@ export class IntegrationsController {
     );
   }
 
+  @Post('connections/:connectionId/health-check')
+  public async checkHealth(
+    @Param('connectionId') connectionId: string,
+    @Headers('authorization') authorization: string | undefined,
+    @Headers('x-tenant-id') tenantId: string | undefined,
+    @Headers('x-correlation-id') correlationId: string | undefined,
+    @Headers('idempotency-key') idempotencyKey: string | undefined,
+  ) {
+    const context = await this.context(authorization, tenantId, correlationId);
+    this.require(context.permissions, 'integrations.read');
+    return this.execute(() =>
+      this.integrations.checkHealth(context, idempotencyKey ?? '', connectionId),
+    );
+  }
+
   private async context(
     authorization: string | undefined,
     tenantId: string | undefined,

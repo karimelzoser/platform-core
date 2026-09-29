@@ -200,6 +200,85 @@ export class IntegrationService {
       },
     );
   }
+
+  public async checkHealth(
+    context: TenantRequestContext,
+    idempotencyKey: string,
+    connectionId: string,
+  ): Promise<
+    CommandResult<{
+      connectionId: string;
+      status: 'HEALTHY' | 'UNHEALTHY';
+      latencyMs: number | null;
+    }>
+  > {
+    const id = z.string().uuid().parse(connectionId);
+    const target = await withTenantTransaction(this.database, context, async (transaction) => {
+      const result = await sql<{
+        connector_key: string;
+        settings: Record<string, unknown>;
+        reference: string | null;
+      }>`select connection.connector_key, connection.settings, secret.reference
+        from integrations.connections as connection
+        left join integrations.secret_references as secret
+          on secret.tenant_id = connection.tenant_id and secret.id = connection.secret_reference_id
+        where connection.id = ${id}::uuid
+        for share`.execute(transaction);
+      return result.rows[0];
+    });
+    if (!target?.reference) throw new Error('Connection was not found or has no secret reference');
+    const connector = this.connectors.get(target.connector_key);
+    let status: 'HEALTHY' | 'UNHEALTHY' = 'HEALTHY';
+    let latencyMs: number | null = null;
+    try {
+      latencyMs = (
+        await connector.health({
+          settings: target.settings,
+          secretReference: target.reference,
+        })
+      ).latencyMs;
+    } catch {
+      status = 'UNHEALTHY';
+    }
+    return this.commands.execute(
+      {
+        action: 'integrations.connection.health_check',
+        permission: 'integrations.read',
+        risk: 'LOW',
+        resource: () => ({ type: 'integration.connection', id }),
+        event: {
+          type: 'integration.connection.health_recorded',
+          data: (_input, result) => result,
+          dedupeKey: () => `integration:connection:health:${id}:${idempotencyKey.trim()}`,
+        },
+        audit: { afterState: (_input, result) => result },
+        execute: async (transaction) => {
+          await sql`insert into integrations.connection_health (
+            tenant_id, connection_id, status, checked_at, latency_ms, detail
+          ) values (
+            ${context.tenantId}::uuid, ${id}::uuid, ${status}, now(), ${latencyMs},
+            ${JSON.stringify(status === 'HEALTHY' ? {} : { code: 'CONNECTOR_HEALTH_CHECK_FAILED' })}::jsonb
+          ) on conflict (tenant_id, connection_id) do update
+            set status = excluded.status, checked_at = excluded.checked_at,
+                latency_ms = excluded.latency_ms, detail = excluded.detail`.execute(transaction);
+          const updated = await sql<{ id: string }>`update integrations.connections
+            set status = case
+                  when status in ('CONNECTED', 'DEGRADED') and ${status} = 'HEALTHY' then 'CONNECTED'
+                  when status in ('CONNECTED', 'DEGRADED') and ${status} = 'UNHEALTHY' then 'DEGRADED'
+                  else status end,
+                last_error_code = case when ${status} = 'UNHEALTHY'
+                  then 'CONNECTOR_HEALTH_CHECK_FAILED' else null end,
+                last_error_detail = null,
+                updated_at = now()
+            where id = ${id}::uuid
+            returning id`.execute(transaction);
+          if (!updated.rows[0]) throw new Error('Connection was not found');
+          return { connectionId: id, status, latencyMs };
+        },
+      },
+      { context, input: { connectionId: id }, idempotencyKey },
+    );
+  }
 }
 
 function parseCapabilities(value: unknown): readonly string[] {
