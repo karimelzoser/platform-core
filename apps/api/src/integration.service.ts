@@ -1,4 +1,4 @@
-import { randomUUID } from 'node:crypto';
+import { createHash, randomUUID } from 'node:crypto';
 import {
   CommandExecutor,
   type CommandResult,
@@ -17,6 +17,13 @@ const connectInputSchema = z.object({
 });
 
 export type ConnectIntegrationInput = z.input<typeof connectInputSchema>;
+
+const secretRotationInputSchema = z.object({
+  secretReference: z.string().trim().min(1).max(500),
+  keyVersion: z.string().trim().min(1).max(100),
+});
+
+export type SecretRotationInput = z.input<typeof secretRotationInputSchema>;
 
 export interface IntegrationConnection {
   id: string;
@@ -156,6 +163,7 @@ export class IntegrationService {
           connectorKey: validated.connectorKey,
           displayName: validated.displayName,
           keyVersion: validated.keyVersion,
+          secretReferenceFingerprint: secretReferenceFingerprint(validated.secretReference),
           settings: validated.settings,
         },
         idempotencyKey,
@@ -195,6 +203,89 @@ export class IntegrationService {
       {
         context,
         input: { connectionId: id },
+        idempotencyKey,
+        ...(approvalId ? { approvalId } : {}),
+      },
+    );
+  }
+
+  public async rotateSecret(
+    context: TenantRequestContext,
+    idempotencyKey: string,
+    connectionId: string,
+    input: SecretRotationInput,
+    approvalId?: string,
+  ): Promise<CommandResult<{ connectionId: string; keyVersion: string }>> {
+    const id = z.string().uuid().parse(connectionId);
+    const validated = secretRotationInputSchema.parse(input);
+    const target = await withTenantTransaction(this.database, context, async (transaction) => {
+      const result = await sql<{
+        connector_key: string;
+        settings: Record<string, unknown>;
+        secret_reference_id: string;
+      }>`select connector_key, settings, secret_reference_id
+        from integrations.connections where id = ${id}::uuid for share`.execute(transaction);
+      return result.rows[0];
+    });
+    if (!target?.secret_reference_id)
+      throw new Error('Connection was not found or has no secret reference');
+    const connector = this.connectors.get(target.connector_key);
+    await connector.validateConnection({
+      settings: target.settings,
+      secretReference: validated.secretReference,
+    });
+    const newReferenceId = randomUUID();
+    return this.commands.execute(
+      {
+        action: 'integrations.connection.secret.rotate',
+        permission: 'integrations.secrets.rotate',
+        risk: 'CRITICAL',
+        resource: () => ({ type: 'integration.connection', id }),
+        event: {
+          type: 'integration.connection.secret_rotated',
+          data: (_input, result) => result,
+          dedupeKey: () => `integration:connection:secret-rotated:${id}:${newReferenceId}`,
+        },
+        audit: {
+          afterState: (_input, result) => result,
+          metadata: () => ({ connectorKey: target.connector_key }),
+        },
+        execute: async (transaction) => {
+          await sql`insert into integrations.secret_references (
+            id, tenant_id, provider, reference, key_version, state, metadata, rotated_at
+          ) values (
+            ${newReferenceId}::uuid, ${context.tenantId}::uuid, ${target.connector_key},
+            ${validated.secretReference}, ${validated.keyVersion}, 'ACTIVE',
+            '{"referenceOnly":true}'::jsonb, now()
+          )`.execute(transaction);
+          const updated = await sql<{
+            id: string;
+            secret_reference_id: string;
+          }>`update integrations.connections
+            set secret_reference_id = ${newReferenceId}::uuid, last_validated_at = now(),
+                last_error_code = null, last_error_detail = null, updated_at = now()
+            where id = ${id}::uuid and secret_reference_id = ${target.secret_reference_id}::uuid
+            returning id, secret_reference_id`.execute(transaction);
+          if (!updated.rows[0]) throw new Error('Connection changed during secret rotation');
+          const remaining = await sql<{ count: number }>`select count(*)::integer as count
+            from integrations.connections where secret_reference_id = ${target.secret_reference_id}::uuid`.execute(
+            transaction,
+          );
+          await sql`update integrations.secret_references
+            set state = case when ${remaining.rows[0]?.count ?? 0} = 0 then 'REVOKED' else 'ACTIVE' end,
+                revoked_at = case when ${remaining.rows[0]?.count ?? 0} = 0 then now() else null end,
+                rotated_at = now()
+            where id = ${target.secret_reference_id}::uuid`.execute(transaction);
+          return { connectionId: id, keyVersion: validated.keyVersion };
+        },
+      },
+      {
+        context,
+        input: {
+          connectionId: id,
+          keyVersion: validated.keyVersion,
+          secretReferenceFingerprint: secretReferenceFingerprint(validated.secretReference),
+        },
         idempotencyKey,
         ...(approvalId ? { approvalId } : {}),
       },
@@ -284,4 +375,8 @@ export class IntegrationService {
 function parseCapabilities(value: unknown): readonly string[] {
   if (!Array.isArray(value)) return [];
   return value.filter((capability): capability is string => typeof capability === 'string');
+}
+
+function secretReferenceFingerprint(reference: string): string {
+  return createHash('sha256').update(reference).digest('hex');
 }

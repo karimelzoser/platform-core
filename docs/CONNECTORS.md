@@ -10,6 +10,12 @@ OPA authorization, and—when policy requires it—digest-bound approval evidenc
 Connection validation runs before the database transaction. The transaction then
 records only the opaque secret reference, audit entry, and outbox event.
 
+Secret rotation accepts a replacement opaque reference and key version, validates
+it before the transaction, atomically repoints the requested connection, and
+revokes the prior reference only when no tenant connection still uses it. Rotation
+is CRITICAL, approval-aware, and records a reference fingerprint rather than the
+reference itself in the idempotency input.
+
 `development-web-chat` is an opt-in disposable-preview/test emulator. It signs
 fixture webhooks, produces deterministic provider-message IDs for idempotent
 retries, and makes no provider network calls. It is never registered in a

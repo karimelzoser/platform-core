@@ -31,6 +31,7 @@ All non-public endpoints require a valid Keycloak access token, an active applic
 | `POST /v1/integrations/connections`                            | Implemented | HIGH-risk, approval-aware connection creation using opaque secret references only                          |
 | `POST /v1/integrations/connections/:id/disconnect`             | Implemented | HIGH-risk, approval-aware logical disconnect with audit and outbox evidence                                |
 | `POST /v1/integrations/connections/:id/health-check`           | Implemented | Idempotent, tenant-scoped health check that records bounded health status and latency                      |
+| `POST /v1/integrations/connections/:id/secret-rotations`       | Implemented | CRITICAL, approval-aware opaque-reference rotation; plaintext credentials are never accepted               |
 
 Responses for operational failures include a correlation ID. Secret values never appear in API responses or logs.
 

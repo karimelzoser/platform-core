@@ -14,7 +14,11 @@ import {
 } from '@nestjs/common';
 import { CommandExecutionError } from '@platform/command-execution';
 import { AuthenticatedContextService } from './authenticated-context.service.js';
-import { IntegrationService, type ConnectIntegrationInput } from './integration.service.js';
+import {
+  IntegrationService,
+  type ConnectIntegrationInput,
+  type SecretRotationInput,
+} from './integration.service.js';
 
 @Controller('v1/integrations')
 export class IntegrationsController {
@@ -64,6 +68,29 @@ export class IntegrationsController {
     this.require(context.permissions, 'integrations.manage');
     return this.execute(() =>
       this.integrations.disconnect(context, idempotencyKey ?? '', connectionId, approvalId),
+    );
+  }
+
+  @Post('connections/:connectionId/secret-rotations')
+  public async rotateSecret(
+    @Param('connectionId') connectionId: string,
+    @Body() body: unknown,
+    @Headers('authorization') authorization: string | undefined,
+    @Headers('x-tenant-id') tenantId: string | undefined,
+    @Headers('x-correlation-id') correlationId: string | undefined,
+    @Headers('idempotency-key') idempotencyKey: string | undefined,
+    @Headers('x-approval-id') approvalId: string | undefined,
+  ) {
+    const context = await this.context(authorization, tenantId, correlationId);
+    this.require(context.permissions, 'integrations.secrets.rotate');
+    return this.execute(() =>
+      this.integrations.rotateSecret(
+        context,
+        idempotencyKey ?? '',
+        connectionId,
+        parseSecretRotationBody(body),
+        approvalId,
+      ),
     );
   }
 
@@ -123,5 +150,18 @@ function parseConnectBody(body: unknown): ConnectIntegrationInput {
     return parsed as ConnectIntegrationInput;
   } catch {
     throw new BadRequestException('Connection body must be a JSON object');
+  }
+}
+
+function parseSecretRotationBody(body: unknown): SecretRotationInput {
+  if (!Buffer.isBuffer(body)) throw new BadRequestException('Secret rotation body must be JSON');
+  try {
+    const parsed: unknown = JSON.parse(body.toString('utf8'));
+    if (parsed === null || Array.isArray(parsed) || typeof parsed !== 'object') {
+      throw new Error('JSON object required');
+    }
+    return parsed as SecretRotationInput;
+  } catch {
+    throw new BadRequestException('Secret rotation body must be a JSON object');
   }
 }
