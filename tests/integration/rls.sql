@@ -80,6 +80,16 @@ INSERT INTO integrations.webhook_deliveries (
   '{"event":"message.created"}'::jsonb,
   'webhook-delivery-a'
 );
+
+INSERT INTO integrations.sync_runs (
+  id, tenant_id, connection_id, kind, idempotency_key
+) VALUES (
+  'aaaaaaaa-0000-0000-0000-000000000105',
+  'aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa',
+  'aaaaaaaa-0000-0000-0000-000000000002',
+  'INITIAL',
+  'integration-sync-a'
+);
 COMMIT;
 
 BEGIN;
@@ -297,6 +307,32 @@ BEGIN
   IF claimed IS NULL THEN RAISE EXCEPTION 'Worker did not claim committed outbox event'; END IF;
   IF NOT platform.mark_outbox_published(claimed, 'integration-test-worker') THEN
     RAISE EXCEPTION 'Worker could not acknowledge its own outbox claim';
+  END IF;
+END;
+$$;
+COMMIT;
+
+BEGIN;
+SELECT platform.set_request_context(
+  'aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa',
+  '11111111-1111-1111-1111-111111111111',
+  'test-subject-a',
+  'sync-worker-claim'
+);
+
+DO $$
+DECLARE claimed uuid;
+BEGIN
+  SELECT id INTO claimed
+  FROM integrations.claim_sync_runs('integration-test-worker', 1, 60)
+  WHERE id = 'aaaaaaaa-0000-0000-0000-000000000105';
+  IF claimed IS NULL THEN RAISE EXCEPTION 'Worker did not claim integration sync run'; END IF;
+  IF NOT EXISTS (
+    SELECT 1 FROM integrations.sync_runs
+    WHERE id = claimed AND state = 'RUNNING' AND attempts = 0
+      AND claimed_by = 'integration-test-worker' AND started_at IS NOT NULL
+  ) THEN
+    RAISE EXCEPTION 'Integration sync claim did not record a processing lease';
   END IF;
 END;
 $$;

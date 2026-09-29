@@ -5,6 +5,7 @@ import { createServer } from 'node:http';
 import { hostname } from 'node:os';
 import { z } from 'zod';
 import { MessagingWebhookProcessor } from './messaging-webhook-processor.js';
+import { IntegrationSyncProcessor } from './integration-sync-processor.js';
 import { OutboundMessageProcessor } from './outbound-message-processor.js';
 import { OutboxPublisher } from './outbox-publisher.js';
 import { TicketSlaProcessor } from './ticket-sla-processor.js';
@@ -32,6 +33,7 @@ async function main(): Promise<void> {
     connectors.register(developmentWebChatConnector);
   const webhookProcessor = new MessagingWebhookProcessor(db, connectors, workerId);
   const outboundMessageProcessor = new OutboundMessageProcessor(db, connectors, workerId);
+  const integrationSyncProcessor = new IntegrationSyncProcessor(db, connectors, workerId);
   const ticketSlaProcessor = new TicketSlaProcessor(db);
   let nextSlaEvaluationAt = 0;
   const startedAt = new Date().toISOString();
@@ -78,11 +80,18 @@ async function main(): Promise<void> {
     const published = await publisher.publishBatch();
     const processed = await webhookProcessor.processBatch();
     const dispatched = await outboundMessageProcessor.processBatch();
+    const synchronized = await integrationSyncProcessor.processBatch();
     const now = Date.now();
     const evaluatedSla = now >= nextSlaEvaluationAt ? await ticketSlaProcessor.processBatch() : 0;
     if (now >= nextSlaEvaluationAt)
       nextSlaEvaluationAt = now + environment.SLA_EVALUATION_INTERVAL_MS;
-    if (published === 0 && processed === 0 && dispatched === 0 && evaluatedSla === 0)
+    if (
+      published === 0 &&
+      processed === 0 &&
+      dispatched === 0 &&
+      synchronized === 0 &&
+      evaluatedSla === 0
+    )
       await new Promise<void>((resolve) => setTimeout(resolve, 250));
   }
 }

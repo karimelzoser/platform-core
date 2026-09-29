@@ -100,6 +100,25 @@ export const providerAssetSchema = z.object({
 
 export type ProviderAsset = z.infer<typeof providerAssetSchema>;
 
+export const integrationSyncRequestSchema = z.object({
+  connectionId: z.string().uuid(),
+  kind: z.enum(['INITIAL', 'INCREMENTAL', 'BACKFILL', 'RECONCILIATION', 'MANUAL']),
+  cursor: z.record(z.unknown()).default({}),
+  settings: z.record(z.unknown()).default({}),
+  secretReference: z.string().min(1).max(500),
+});
+
+export type IntegrationSyncRequest = z.infer<typeof integrationSyncRequestSchema>;
+
+export const integrationSyncResultSchema = z.object({
+  cursor: z.record(z.unknown()).default({}),
+  pages: z.number().int().min(0).max(10_000),
+  items: z.number().int().min(0).max(1_000_000),
+  hasMore: z.boolean(),
+});
+
+export type IntegrationSyncResult = z.infer<typeof integrationSyncResultSchema>;
+
 export interface Connector {
   readonly manifest: ConnectorManifest;
   verifyWebhook(input: { headers: Headers; rawBody: Uint8Array }): Promise<boolean>;
@@ -121,6 +140,7 @@ export interface Connector {
     settings: Record<string, unknown>;
     secretReference: string;
   }): Promise<readonly ProviderAsset[]>;
+  sync?(input: IntegrationSyncRequest): Promise<IntegrationSyncResult>;
 }
 
 /** Provider adapters that can dispatch a persisted outbound inbox message. */

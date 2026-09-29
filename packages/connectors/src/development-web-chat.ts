@@ -1,5 +1,11 @@
 import { createHash, createHmac, timingSafeEqual } from 'node:crypto';
-import type { MessagingConnector, OutboundMessageRequest, ProviderAsset } from './index.js';
+import type {
+  IntegrationSyncRequest,
+  IntegrationSyncResult,
+  MessagingConnector,
+  OutboundMessageRequest,
+  ProviderAsset,
+} from './index.js';
 import { webhookEnvelopeSchema, type WebhookEnvelope } from './index.js';
 
 const developmentWebhookSecret = 'platform-development-web-chat-fixture';
@@ -25,7 +31,7 @@ export const developmentWebChatConnector: MessagingConnector = {
     key: 'development-web-chat',
     version: '1.0.0',
     category: 'MESSAGING',
-    capabilities: ['messaging.inbound', 'messaging.outbound', 'webhooks'],
+    capabilities: ['messaging.inbound', 'messaging.outbound', 'webhooks', 'sync'],
     credentialSchema: { type: 'development-fixture' },
     settingsSchema: { type: 'object', required: ['allowDevelopmentFixture'] },
   },
@@ -71,6 +77,18 @@ export const developmentWebChatConnector: MessagingConnector = {
         attributes: { developmentOnly: true },
       },
     ]);
+  },
+
+  sync(input: IntegrationSyncRequest): Promise<IntegrationSyncResult> {
+    // The emulator deliberately has no remote source of truth. It still
+    // exercises the same worker boundary and cursor/result contract as a real
+    // connector without fabricating provider data.
+    return Promise.resolve({
+      cursor: { ...input.cursor, developmentFixture: true, completed: true },
+      pages: 0,
+      items: 0,
+      hasMore: false,
+    });
   },
 
   sendMessage(input: OutboundMessageRequest) {

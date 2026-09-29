@@ -161,6 +161,25 @@ void test('the development Web Chat fixture signs webhooks and preserves outboun
       },
     ],
   );
+  assert.deepEqual(
+    await developmentWebChatConnector.sync?.({
+      connectionId: request.connectionId,
+      kind: 'INITIAL',
+      cursor: { highWaterMark: '2026-01-01T00:00:00.000Z' },
+      settings: { allowDevelopmentFixture: true },
+      secretReference: 'development://web-chat/preview',
+    }),
+    {
+      cursor: {
+        highWaterMark: '2026-01-01T00:00:00.000Z',
+        developmentFixture: true,
+        completed: true,
+      },
+      pages: 0,
+      items: 0,
+      hasMore: false,
+    },
+  );
 
   const registry = new ConnectorRegistry();
   registry.register(developmentWebChatConnector);

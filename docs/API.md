@@ -35,7 +35,7 @@ All non-public endpoints require a valid Keycloak access token, an active applic
 | `GET /v1/integrations/connections/:id/assets`                  | Implemented | Tenant-scoped persisted provider-asset catalog                                                             |
 | `POST /v1/integrations/connections/:id/assets/refresh`         | Implemented | Idempotent, OPA-authorized provider-asset discovery and persistence                                        |
 | `GET /v1/integrations/connections/:id/sync-runs`               | Implemented | Tenant-scoped durable integration sync-run history                                                         |
-| `POST /v1/integrations/connections/:id/sync-runs`              | Implemented | Idempotent, OPA-authorized request persisted for post-commit sync processing                               |
+| `POST /v1/integrations/connections/:id/sync-runs`              | Implemented | Idempotent, OPA-authorized durable sync request; a leased post-commit worker invokes typed connector sync  |
 
 Responses for operational failures include a correlation ID. Secret values never appear in API responses or logs.
 

@@ -20,8 +20,8 @@
 | Repository tooling / CI           | N/A                                 | COMPLETE     | N/A         | TESTING     | IN PROGRESS   | TESTING     |
 | Identity, auth, RBAC, approvals   | Existing `0001`–`0002`              | IN PROGRESS  | IN PROGRESS | TESTING     | IN PROGRESS   | IN PROGRESS |
 | CRM / Customer 360                | Existing `0003`, permissions `0007` | IN PROGRESS  | IN PROGRESS | IN PROGRESS | IN PROGRESS   | IN PROGRESS |
-| Integrations / connector SDK      | IN PROGRESS (`0004`–`0006`)         | IN PROGRESS  | IN PROGRESS | IN PROGRESS | IN PROGRESS   | IN PROGRESS |
-| Messaging / tickets               | IN PROGRESS (`0011`–`0022`)         | IN PROGRESS  | IN PROGRESS | IN PROGRESS | IN PROGRESS   | IN PROGRESS |
+| Integrations / connector SDK      | IN PROGRESS (`0004`–`0006`, `0024`) | IN PROGRESS  | IN PROGRESS | IN PROGRESS | IN PROGRESS   | IN PROGRESS |
+| Messaging / tickets               | IN PROGRESS (`0011`–`0023`)         | IN PROGRESS  | IN PROGRESS | IN PROGRESS | IN PROGRESS   | IN PROGRESS |
 | Commerce / order operations       | NOT STARTED                         | NOT STARTED  | NOT STARTED | NOT STARTED | NOT STARTED   | NOT STARTED |
 | Shipping / returns / recovery     | NOT STARTED                         | NOT STARTED  | NOT STARTED | NOT STARTED | NOT STARTED   | NOT STARTED |
 | Sales / campaigns                 | NOT STARTED                         | NOT STARTED  | NOT STARTED | NOT STARTED | NOT STARTED   | NOT STARTED |
@@ -39,6 +39,13 @@ No overall completion percentage is recorded: the required release gate is a bin
 
 - Docker and Python 3.11+ are absent locally, so PostgreSQL/RLS, NATS, Temporal, and FastAPI integration checks require the disposable GitHub Actions workflow for objective verification.
 - Production credentials, domains, and provider applications are intentionally unavailable and are not required for repository implementation.
+- Integrations now have protected connection lifecycle, opaque reference
+  rotation, health records, provider asset refresh, and durable sync requests.
+  Migration `0024` adds worker leases, capped retries, and terminal sync
+  dead-letter behavior. The development Web Chat emulator exercises the typed
+  sync boundary without a provider network call. Real provider adapter
+  lifecycle/webhook/backfill/reconciliation implementations and integration
+  UI remain incomplete.
 - CRM has tenant-scoped customer/tag/segment/import/export/merge foundations.
   Migration `0022` adds immutable verified provider-consent evidence. Its
   canonical webhook path verifies a bounded provider payload, writes evidence
