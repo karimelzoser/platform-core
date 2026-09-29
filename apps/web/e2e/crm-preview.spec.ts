@@ -74,7 +74,9 @@ test.describe('CRM disposable development preview', () => {
     await ownerPage.goto(`/customers/${sourceId}/merge/${targetId}`);
     await ownerPage.getByLabel('Merge reason').fill('Disposable preview browser acceptance check');
     await ownerPage.getByRole('button', { name: 'Request merge approval' }).click();
-    await expect(ownerPage.getByRole('status')).toContainText('Approval request submitted:');
+    await expect(
+      ownerPage.locator('p.merge-success').filter({ hasText: 'Approval request submitted:' }),
+    ).toBeVisible();
 
     const approverContext = await browser.newContext({ viewport: { width: 1280, height: 900 } });
     const approverPage = await approverContext.newPage();
