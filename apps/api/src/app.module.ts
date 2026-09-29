@@ -19,6 +19,8 @@ import { MediaService } from './media.service.js';
 import { MediaController } from './media.controller.js';
 import { TicketsController } from './tickets.controller.js';
 import { TicketsService } from './tickets.service.js';
+import { IntegrationsController } from './integrations.controller.js';
+import { IntegrationService } from './integration.service.js';
 
 @Controller('health')
 class HealthController {
@@ -46,6 +48,7 @@ function createRuntimeConnectorRegistry(): ConnectorRegistry {
     MessagingController,
     TicketsController,
     MediaController,
+    IntegrationsController,
   ],
   providers: [
     ApiDatabaseService,
@@ -55,6 +58,15 @@ function createRuntimeConnectorRegistry(): ConnectorRegistry {
     MessagingService,
     MediaService,
     TicketsService,
+    {
+      provide: IntegrationService,
+      useFactory: (
+        database: ApiDatabaseService,
+        commands: CommandExecutor,
+        connectors: ConnectorRegistry,
+      ) => new IntegrationService(database.database, commands, connectors),
+      inject: [ApiDatabaseService, CommandExecutor, ConnectorRegistry],
+    },
     {
       provide: LocalMediaStore,
       useFactory: () => new LocalMediaStore(loadApiConfig().MEDIA_LOCAL_ROOT),
