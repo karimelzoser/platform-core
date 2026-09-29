@@ -1,5 +1,5 @@
 import { createHash, createHmac, timingSafeEqual } from 'node:crypto';
-import type { MessagingConnector, OutboundMessageRequest } from './index.js';
+import type { MessagingConnector, OutboundMessageRequest, ProviderAsset } from './index.js';
 import { webhookEnvelopeSchema, type WebhookEnvelope } from './index.js';
 
 const developmentWebhookSecret = 'platform-development-web-chat-fixture';
@@ -59,6 +59,18 @@ export const developmentWebChatConnector: MessagingConnector = {
 
   health(): Promise<{ latencyMs: number }> {
     return Promise.resolve({ latencyMs: 0 });
+  },
+
+  discoverAssets(input): Promise<readonly ProviderAsset[]> {
+    return Promise.resolve([
+      {
+        assetType: 'web_chat_channel',
+        providerId: `development-web-chat:${input.connectionId}`,
+        name: 'Development Web Chat',
+        state: 'ACTIVE',
+        attributes: { developmentOnly: true },
+      },
+    ]);
   },
 
   sendMessage(input: OutboundMessageRequest) {

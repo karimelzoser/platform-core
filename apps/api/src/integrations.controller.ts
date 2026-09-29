@@ -71,6 +71,34 @@ export class IntegrationsController {
     );
   }
 
+  @Get('connections/:connectionId/assets')
+  public async listAssets(
+    @Param('connectionId') connectionId: string,
+    @Headers('authorization') authorization: string | undefined,
+    @Headers('x-tenant-id') tenantId: string | undefined,
+    @Headers('x-correlation-id') correlationId: string | undefined,
+  ) {
+    const context = await this.context(authorization, tenantId, correlationId);
+    this.require(context.permissions, 'integrations.read');
+    return this.integrations.listAssets(context, connectionId);
+  }
+
+  @Post('connections/:connectionId/assets/refresh')
+  public async refreshAssets(
+    @Param('connectionId') connectionId: string,
+    @Headers('authorization') authorization: string | undefined,
+    @Headers('x-tenant-id') tenantId: string | undefined,
+    @Headers('x-correlation-id') correlationId: string | undefined,
+    @Headers('idempotency-key') idempotencyKey: string | undefined,
+    @Headers('x-approval-id') approvalId: string | undefined,
+  ) {
+    const context = await this.context(authorization, tenantId, correlationId);
+    this.require(context.permissions, 'integrations.manage');
+    return this.execute(() =>
+      this.integrations.refreshAssets(context, idempotencyKey ?? '', connectionId, approvalId),
+    );
+  }
+
   @Post('connections/:connectionId/secret-rotations')
   public async rotateSecret(
     @Param('connectionId') connectionId: string,

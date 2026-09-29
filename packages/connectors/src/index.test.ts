@@ -145,6 +145,22 @@ void test('the development Web Chat fixture signs webhooks and preserves outboun
   const first = await developmentWebChatConnector.sendMessage(request);
   const retry = await developmentWebChatConnector.sendMessage(request);
   assert.equal(first.providerMessageId, retry.providerMessageId);
+  assert.deepEqual(
+    await developmentWebChatConnector.discoverAssets?.({
+      connectionId: request.connectionId,
+      settings: { allowDevelopmentFixture: true },
+      secretReference: 'development://web-chat/preview',
+    }),
+    [
+      {
+        assetType: 'web_chat_channel',
+        providerId: `development-web-chat:${request.connectionId}`,
+        name: 'Development Web Chat',
+        state: 'ACTIVE',
+        attributes: { developmentOnly: true },
+      },
+    ],
+  );
 
   const registry = new ConnectorRegistry();
   registry.register(developmentWebChatConnector);

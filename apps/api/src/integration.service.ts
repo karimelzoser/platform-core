@@ -4,8 +4,18 @@ import {
   type CommandResult,
   type TenantRequestContext,
 } from '@platform/command-execution';
-import { ConnectorRegistry } from '@platform/connectors';
-import { sql, withTenantTransaction, type PlatformDatabase } from '@platform/database';
+import {
+  ConnectorRegistry,
+  providerAssetSchema,
+  type Connector,
+  type ProviderAsset,
+} from '@platform/connectors';
+import {
+  sql,
+  withTenantTransaction,
+  type PlatformDatabase,
+  type PlatformTransaction,
+} from '@platform/database';
 import { z } from 'zod';
 
 const connectInputSchema = z.object({
@@ -38,6 +48,15 @@ export interface IntegrationConnection {
     checkedAt: Date;
     latencyMs: number | null;
   } | null;
+}
+
+export interface IntegrationProviderAsset {
+  id: string;
+  assetType: string;
+  providerId: string;
+  name: string | null;
+  state: string;
+  attributes: Record<string, unknown>;
 }
 
 /**
@@ -198,6 +217,94 @@ export class IntegrationService {
             returning id`.execute(transaction);
           if (!updated.rows[0]) throw new Error('Connection was not found or has been revoked');
           return { connectionId: id, status: 'DISCONNECTED' as const };
+        },
+      },
+      {
+        context,
+        input: { connectionId: id },
+        idempotencyKey,
+        ...(approvalId ? { approvalId } : {}),
+      },
+    );
+  }
+
+  public async listAssets(
+    context: TenantRequestContext,
+    connectionId: string,
+  ): Promise<readonly IntegrationProviderAsset[]> {
+    const id = z.string().uuid().parse(connectionId);
+    return withTenantTransaction(this.database, context, async (transaction) => {
+      const result = await sql<{
+        id: string;
+        asset_type: string;
+        provider_id: string;
+        name: string | null;
+        state: string;
+        attributes: Record<string, unknown>;
+      }>`select id, asset_type, provider_id, name, state, attributes
+        from integrations.provider_assets where connection_id = ${id}::uuid
+        order by asset_type, provider_id`.execute(transaction);
+      return result.rows.map((asset) => ({
+        id: asset.id,
+        assetType: asset.asset_type,
+        providerId: asset.provider_id,
+        name: asset.name,
+        state: asset.state,
+        attributes: asset.attributes,
+      }));
+    });
+  }
+
+  public async refreshAssets(
+    context: TenantRequestContext,
+    idempotencyKey: string,
+    connectionId: string,
+    approvalId?: string,
+  ): Promise<CommandResult<{ connectionId: string; assetCount: number }>> {
+    const id = z.string().uuid().parse(connectionId);
+    const target = await withTenantTransaction(this.database, context, async (transaction) => {
+      const result = await sql<{
+        connector_key: string;
+        settings: Record<string, unknown>;
+        reference: string | null;
+      }>`select connection.connector_key, connection.settings, secret.reference
+        from integrations.connections as connection
+        left join integrations.secret_references as secret
+          on secret.tenant_id = connection.tenant_id and secret.id = connection.secret_reference_id
+        where connection.id = ${id}::uuid
+        for share`.execute(transaction);
+      return result.rows[0];
+    });
+    if (!target?.reference) throw new Error('Connection was not found or has no secret reference');
+    const connector = this.connectors.get(target.connector_key);
+    if (!supportsAssetDiscovery(connector))
+      throw new Error('Connector does not support provider asset discovery');
+    const assets = providerAssetSchema
+      .array()
+      .max(1_000)
+      .parse(
+        await connector.discoverAssets({
+          connectionId: id,
+          settings: target.settings,
+          secretReference: target.reference,
+        }),
+      );
+    return this.commands.execute(
+      {
+        action: 'integrations.connection.assets.refresh',
+        permission: 'integrations.manage',
+        risk: 'MEDIUM',
+        resource: () => ({ type: 'integration.connection', id }),
+        event: {
+          type: 'integration.connection.assets_refreshed',
+          data: (_input, result) => result,
+          dedupeKey: () => `integration:connection:assets:${id}:${idempotencyKey.trim()}`,
+        },
+        audit: { afterState: (_input, result) => result },
+        execute: async (transaction) => {
+          for (const asset of assets)
+            await this.upsertAsset(transaction, context.tenantId, id, asset);
+          return { connectionId: id, assetCount: assets.length };
         },
       },
       {
@@ -370,6 +477,22 @@ export class IntegrationService {
       { context, input: { connectionId: id }, idempotencyKey },
     );
   }
+
+  private async upsertAsset(
+    transaction: PlatformTransaction,
+    tenantId: string,
+    connectionId: string,
+    asset: ProviderAsset,
+  ): Promise<void> {
+    await sql`insert into integrations.provider_assets (
+      tenant_id, connection_id, asset_type, provider_id, name, state, attributes
+    ) values (
+      ${tenantId}::uuid, ${connectionId}::uuid, ${asset.assetType}, ${asset.providerId},
+      ${asset.name ?? null}, ${asset.state}, ${JSON.stringify(asset.attributes)}::jsonb
+    ) on conflict (tenant_id, connection_id, asset_type, provider_id) do update
+      set name = excluded.name, state = excluded.state, attributes = excluded.attributes,
+          updated_at = now()`.execute(transaction);
+  }
 }
 
 function parseCapabilities(value: unknown): readonly string[] {
@@ -379,4 +502,10 @@ function parseCapabilities(value: unknown): readonly string[] {
 
 function secretReferenceFingerprint(reference: string): string {
   return createHash('sha256').update(reference).digest('hex');
+}
+
+function supportsAssetDiscovery(
+  connector: Connector,
+): connector is Connector & Required<Pick<Connector, 'discoverAssets'>> {
+  return typeof connector.discoverAssets === 'function';
 }

@@ -90,6 +90,16 @@ export const outboundMessageResultSchema = z.object({
 
 export type OutboundMessageResult = z.infer<typeof outboundMessageResultSchema>;
 
+export const providerAssetSchema = z.object({
+  assetType: z.string().min(1).max(100),
+  providerId: z.string().min(1).max(500),
+  name: z.string().min(1).max(500).optional(),
+  state: z.string().min(1).max(100).default('ACTIVE'),
+  attributes: z.record(z.unknown()).default({}),
+});
+
+export type ProviderAsset = z.infer<typeof providerAssetSchema>;
+
 export interface Connector {
   readonly manifest: ConnectorManifest;
   verifyWebhook(input: { headers: Headers; rawBody: Uint8Array }): Promise<boolean>;
@@ -106,6 +116,11 @@ export interface Connector {
     settings: Record<string, unknown>;
     secretReference: string;
   }): Promise<{ latencyMs: number }>;
+  discoverAssets?(input: {
+    connectionId: string;
+    settings: Record<string, unknown>;
+    secretReference: string;
+  }): Promise<readonly ProviderAsset[]>;
 }
 
 /** Provider adapters that can dispatch a persisted outbound inbox message. */
