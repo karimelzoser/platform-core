@@ -58,4 +58,8 @@ discovery, cursor-bearing reconciliation, deterministic outbound dispatch, and
 an explicitly named development-only echo action. Fixture actions are not
 commerce, payment, or production messaging provider implementations.
 
-Planned adapter keys: Shopify, WooCommerce, WhatsApp Cloud API, Instagram, Messenger, email, generic shipping, generic payment, and generic REST/webhook.
+`providerBoundaries` is the explicit, test-covered contract for Meta Embedded
+Signup, WhatsApp, Instagram, Messenger, Email, Web Chat, API, Shopify public
+app, and WooCommerce. Each is intentionally marked `PLANNED` until an adapter
+has its own credential, payload, action, and emulator/contract implementation.
+The boundary declaration does not register a connector or permit provider calls.

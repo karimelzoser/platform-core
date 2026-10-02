@@ -1,0 +1,120 @@
+import { z } from 'zod';
+
+/**
+ * Provider families are an allowlisted design contract, not a claim that a
+ * production adapter is registered. Network adapters remain opt-in and must
+ * satisfy the Connector interface before they can be used at runtime.
+ */
+export const providerBoundarySchema = z.object({
+  key: z.enum([
+    'meta-embedded-signup',
+    'whatsapp-cloud-api',
+    'instagram-messaging',
+    'messenger-platform',
+    'email',
+    'web-chat',
+    'api',
+    'shopify-public-app',
+    'woocommerce',
+  ]),
+  displayName: z.string().min(1),
+  category: z.enum(['COMMERCE', 'MESSAGING', 'EMAIL', 'GENERIC']),
+  capabilities: z.array(z.string().min(1)).readonly(),
+  implementationState: z.literal('PLANNED'),
+});
+
+export type ProviderBoundary = z.infer<typeof providerBoundarySchema>;
+
+export const providerBoundaries: readonly ProviderBoundary[] = [
+  {
+    key: 'meta-embedded-signup',
+    displayName: 'Meta Embedded Signup',
+    category: 'MESSAGING',
+    capabilities: ['connection.onboarding', 'provider.assets'],
+    implementationState: 'PLANNED',
+  },
+  {
+    key: 'whatsapp-cloud-api',
+    displayName: 'WhatsApp Cloud API',
+    category: 'MESSAGING',
+    capabilities: [
+      'webhooks',
+      'sync',
+      'messaging.inbound',
+      'messaging.outbound',
+      'provider.actions',
+    ],
+    implementationState: 'PLANNED',
+  },
+  {
+    key: 'instagram-messaging',
+    displayName: 'Instagram Messaging',
+    category: 'MESSAGING',
+    capabilities: [
+      'webhooks',
+      'sync',
+      'messaging.inbound',
+      'messaging.outbound',
+      'provider.actions',
+    ],
+    implementationState: 'PLANNED',
+  },
+  {
+    key: 'messenger-platform',
+    displayName: 'Messenger Platform',
+    category: 'MESSAGING',
+    capabilities: [
+      'webhooks',
+      'sync',
+      'messaging.inbound',
+      'messaging.outbound',
+      'provider.actions',
+    ],
+    implementationState: 'PLANNED',
+  },
+  {
+    key: 'email',
+    displayName: 'Email',
+    category: 'EMAIL',
+    capabilities: ['webhooks', 'sync', 'messaging.inbound', 'messaging.outbound'],
+    implementationState: 'PLANNED',
+  },
+  {
+    key: 'web-chat',
+    displayName: 'Web Chat',
+    category: 'MESSAGING',
+    capabilities: ['webhooks', 'sync', 'messaging.inbound', 'messaging.outbound'],
+    implementationState: 'PLANNED',
+  },
+  {
+    key: 'api',
+    displayName: 'API',
+    category: 'GENERIC',
+    capabilities: ['webhooks', 'sync', 'provider.actions'],
+    implementationState: 'PLANNED',
+  },
+  {
+    key: 'shopify-public-app',
+    displayName: 'Shopify Public App',
+    category: 'COMMERCE',
+    capabilities: [
+      'connection.onboarding',
+      'webhooks',
+      'sync',
+      'provider.assets',
+      'provider.actions',
+    ],
+    implementationState: 'PLANNED',
+  },
+  {
+    key: 'woocommerce',
+    displayName: 'WooCommerce',
+    category: 'COMMERCE',
+    capabilities: ['webhooks', 'sync', 'provider.assets', 'provider.actions'],
+    implementationState: 'PLANNED',
+  },
+].map((boundary) => providerBoundarySchema.parse(boundary));
+
+export function providerBoundary(key: string): ProviderBoundary | undefined {
+  return providerBoundaries.find((boundary) => boundary.key === key);
+}

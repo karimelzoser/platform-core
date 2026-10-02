@@ -9,6 +9,8 @@ import {
   parseVerifiedConsentWebhook,
   outboundMessageResultSchema,
   parseInboundMessagingWebhook,
+  providerBoundaries,
+  providerBoundary,
   toConnectorError,
   type WebhookEnvelope,
 } from './index.js';
@@ -137,6 +139,25 @@ void test('maps unknown provider failures to a safe retryable error', () => {
   assert.equal(mapped.retryable, true);
   assert.equal(new ConnectorError('RATE_LIMITED', true, 120).retryAfterSeconds, 120);
   assert.equal(new ConnectorError('RATE_LIMITED', true, 3_601).retryAfterSeconds, null);
+});
+
+void test('declares all planned provider families without registering production adapters', () => {
+  assert.deepEqual(
+    providerBoundaries.map((boundary) => boundary.key),
+    [
+      'meta-embedded-signup',
+      'whatsapp-cloud-api',
+      'instagram-messaging',
+      'messenger-platform',
+      'email',
+      'web-chat',
+      'api',
+      'shopify-public-app',
+      'woocommerce',
+    ],
+  );
+  assert.equal(providerBoundary('shopify-public-app')?.implementationState, 'PLANNED');
+  assert.equal(providerBoundary('unknown-provider'), undefined);
 });
 
 void test('the development Web Chat fixture signs webhooks and preserves outbound idempotency', async () => {

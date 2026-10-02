@@ -263,3 +263,9 @@ export {
   developmentWebChatConnector,
   signDevelopmentWebChatWebhook,
 } from './development-web-chat.js';
+export {
+  providerBoundaries,
+  providerBoundary,
+  providerBoundarySchema,
+} from './provider-boundaries.js';
+export type { ProviderBoundary } from './provider-boundaries.js';
