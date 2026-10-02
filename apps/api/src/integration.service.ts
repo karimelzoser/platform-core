@@ -11,6 +11,7 @@ import {
   type Connector,
   type ProviderAsset,
 } from '@platform/connectors';
+import { connectorManifestSchema } from '@platform/contracts';
 import {
   sql,
   withTenantTransaction,
@@ -208,12 +209,23 @@ export class IntegrationService {
           metadata: () => ({ keyVersion: validated.keyVersion }),
         },
         execute: async (transaction) => {
-          const definition = await sql<{ key: string }>`select key
+          const definition = await sql<{
+            key: string;
+            version: string;
+            manifest: unknown;
+          }>`select key, version, manifest
             from integrations.connector_definitions
             where key = ${validated.connectorKey} and enabled
             for share`.execute(transaction);
           if (!definition.rows[0])
             throw new Error('Connector is not available in this environment');
+          const registeredDefinition = connectorManifestSchema.parse(definition.rows[0].manifest);
+          if (
+            registeredDefinition.key !== connector.manifest.key ||
+            registeredDefinition.version !== connector.manifest.version ||
+            definition.rows[0].version !== connector.manifest.version
+          )
+            throw new Error('Connector definition does not match the registered runtime adapter');
           await sql`insert into integrations.secret_references (
             id, tenant_id, provider, reference, key_version, metadata
           ) values (
