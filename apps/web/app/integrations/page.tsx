@@ -1,5 +1,6 @@
 import { cookies } from 'next/headers';
 import { ConnectionControls } from './connection-controls';
+import { DevelopmentProviderActionControls } from './development-provider-action-controls';
 import { WebhookSubscriptionControls } from './webhook-subscription-controls';
 
 export const dynamic = 'force-dynamic';
@@ -28,10 +29,18 @@ interface WebhookSubscription {
   state: string;
 }
 
+interface ProviderAction {
+  state: string;
+  actionType: string;
+  providerActionId: string | null;
+  finishedAt: string | null;
+}
+
 interface ConnectionView extends IntegrationConnection {
   latestSync: SyncRun | null;
   activeWebhookCount: number;
   webhookSubscriptions: WebhookSubscription[];
+  latestProviderAction: ProviderAction | null;
 }
 
 export default async function IntegrationsPage() {
@@ -48,9 +57,9 @@ export default async function IntegrationsPage() {
       <section className="state-panel customer-state" aria-labelledby="integration-preview-heading">
         <h2 id="integration-preview-heading">Provider adapters are under development</h2>
         <p>
-          This workspace reports real connection records only. Development Web Chat is the sole
-          disposable preview fixture; Meta, Shopify, WooCommerce, and production providers are not
-          represented as working integrations.
+          This workspace reports real connection records only. Development Web Chat and Development
+          API are disposable preview fixtures; Meta, Shopify, WooCommerce, and production providers
+          are not represented as working integrations.
         </p>
       </section>
       {result.kind === 'success' ? (
@@ -84,6 +93,9 @@ export default async function IntegrationsPage() {
                     {connection.activeWebhookCount
                       ? ` · ${String(connection.activeWebhookCount)} active webhook(s)`
                       : ''}
+                    {connection.latestProviderAction
+                      ? ` · latest action ${connection.latestProviderAction.actionType} ${connection.latestProviderAction.state.toLowerCase()}`
+                      : ''}
                   </small>
                   {connection.status === 'CONNECTED' || connection.status === 'DEGRADED' ? (
                     <>
@@ -92,6 +104,12 @@ export default async function IntegrationsPage() {
                         connectionId={connection.id}
                         subscriptions={connection.webhookSubscriptions}
                       />
+                      {isDevelopmentConnector(connection.connectorKey) ? (
+                        <DevelopmentProviderActionControls
+                          connectionId={connection.id}
+                          connectorKey={connection.connectorKey}
+                        />
+                      ) : null}
                     </>
                   ) : null}
                 </li>
@@ -136,7 +154,7 @@ async function loadConnections(): Promise<
     const items = await Promise.all(
       connections.map(async (connection): Promise<ConnectionView> => {
         const headers = { authorization: `Bearer ${token}`, 'x-tenant-id': tenantId };
-        const [syncResponse, webhookResponse] = await Promise.all([
+        const [syncResponse, webhookResponse, actionResponse] = await Promise.all([
           fetch(
             new URL(
               `/v1/integrations/connections/${encodeURIComponent(connection.id)}/sync-runs`,
@@ -151,10 +169,20 @@ async function loadConnections(): Promise<
             ),
             { headers },
           ),
+          fetch(
+            new URL(
+              `/v1/integrations/connections/${encodeURIComponent(connection.id)}/provider-actions`,
+              baseUrl,
+            ),
+            { headers },
+          ),
         ]);
         const syncRuns = syncResponse.ok ? ((await syncResponse.json()) as SyncRun[]) : [];
         const subscriptions = webhookResponse.ok
           ? ((await webhookResponse.json()) as WebhookSubscription[])
+          : [];
+        const actions = actionResponse.ok
+          ? ((await actionResponse.json()) as ProviderAction[])
           : [];
         return {
           ...connection,
@@ -163,6 +191,7 @@ async function loadConnections(): Promise<
           activeWebhookCount: subscriptions.filter(
             (subscription) => subscription.state === 'ACTIVE',
           ).length,
+          latestProviderAction: actions[0] ?? null,
         };
       }),
     );
@@ -170,4 +199,10 @@ async function loadConnections(): Promise<
   } catch {
     return { kind: 'error', detail: 'Integration API is unavailable.' };
   }
+}
+
+function isDevelopmentConnector(
+  connectorKey: string,
+): connectorKey is 'development-api' | 'development-web-chat' {
+  return connectorKey === 'development-api' || connectorKey === 'development-web-chat';
 }

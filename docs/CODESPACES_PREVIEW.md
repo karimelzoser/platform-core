@@ -56,8 +56,10 @@ The preview seeds only two development-only connections: **Development Web
 Chat** and **Development API Channel**. Both use opaque `development://`
 references, deterministic local behavior, and no provider network calls. They
 exist to exercise the real tenant/RLS, outbox, worker, health, sync, and webhook
-subscription paths. Meta, Shopify, WooCommerce, and all production adapters
-remain visibly under development.
+subscription paths. The Integrations page also offers a clearly labelled,
+harmless development echo action; it exercises the durable post-commit action
+worker without contacting a provider. Meta, Shopify, WooCommerce, and all
+production adapters remain visibly under development.
 
 ## Reset and troubleshooting
 

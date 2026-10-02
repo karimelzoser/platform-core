@@ -72,6 +72,28 @@ export async function requestWebhookUnsubscription(
   );
 }
 
+export async function requestDevelopmentProviderAction(
+  _previousState: IntegrationActionState,
+  formData: FormData,
+): Promise<IntegrationActionState> {
+  const connectionId = idFrom(formData);
+  const connectorKey = textFrom(formData, 'connectorKey');
+  const actionType =
+    connectorKey === 'development-api'
+      ? 'development.api.echo'
+      : connectorKey === 'development-web-chat'
+        ? 'development.web_chat.echo'
+        : undefined;
+  if (!connectionId || !actionType)
+    return { error: 'Development provider actions are unavailable for this connection.' };
+  return sendConnectionCommand(
+    connectionId,
+    '/provider-actions',
+    { actionType, input: { source: 'developer-preview' } },
+    'Development action queued.',
+  );
+}
+
 async function sendConnectionCommand(
   connectionId: string,
   suffix: string,

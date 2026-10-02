@@ -53,7 +53,7 @@ VALUES (
   '1.0.0',
   'MESSAGING',
   'Development Web Chat',
-  '{"key":"development-web-chat","version":"1.0.0","category":"MESSAGING","capabilities":["messaging.inbound","messaging.outbound","webhooks","sync"],"credentialSchema":{"type":"development-fixture"},"settingsSchema":{"type":"object","required":["allowDevelopmentFixture"]}}'::jsonb
+  '{"key":"development-web-chat","version":"1.0.0","category":"MESSAGING","capabilities":["messaging.inbound","messaging.outbound","webhooks","sync","provider.actions"],"credentialSchema":{"type":"development-fixture"},"settingsSchema":{"type":"object","required":["allowDevelopmentFixture"]}}'::jsonb
 )
 ON CONFLICT (key) DO UPDATE
 SET version = EXCLUDED.version,
@@ -83,7 +83,7 @@ VALUES (
   'Development Web Chat',
   'CONNECTED',
   '{"allowDevelopmentFixture":true}'::jsonb,
-  '["messaging.inbound","messaging.outbound","webhooks"]'::jsonb,
+  '["messaging.inbound","messaging.outbound","webhooks","sync","provider.actions"]'::jsonb,
   now()
 )
 ON CONFLICT (id) DO UPDATE
@@ -101,7 +101,7 @@ VALUES (
   '1.0.0',
   'GENERIC',
   'Development API Channel',
-  '{"key":"development-api","version":"1.0.0","category":"GENERIC","capabilities":["messaging.inbound","messaging.outbound","webhooks","sync"],"credentialSchema":{"type":"development-fixture"},"settingsSchema":{"type":"object","required":["allowDevelopmentFixture"]}}'::jsonb
+  '{"key":"development-api","version":"1.0.0","category":"GENERIC","capabilities":["messaging.inbound","messaging.outbound","webhooks","sync","provider.actions"],"credentialSchema":{"type":"development-fixture"},"settingsSchema":{"type":"object","required":["allowDevelopmentFixture"]}}'::jsonb
 )
 ON CONFLICT (key) DO UPDATE
 SET version = EXCLUDED.version,
@@ -131,7 +131,7 @@ VALUES (
   'Development API Channel',
   'CONNECTED',
   '{"allowDevelopmentFixture":true}'::jsonb,
-  '["messaging.inbound","messaging.outbound","webhooks","sync"]'::jsonb,
+  '["messaging.inbound","messaging.outbound","webhooks","sync","provider.actions"]'::jsonb,
   now()
 )
 ON CONFLICT (id) DO UPDATE
