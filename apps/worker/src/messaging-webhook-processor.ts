@@ -261,7 +261,9 @@ export class MessagingWebhookProcessor {
                 else delivered_at
               end,
               last_delivery_error = case
-                when ${receipt.status} = 'FAILED' then ${receipt.error ?? 'Provider delivery failed'}
+                -- A provider's raw receipt remains in the authenticated delivery
+                -- ledger; tenant message state stores only a bounded code.
+                when ${receipt.status} = 'FAILED' then 'PROVIDER_DELIVERY_FAILED'
                 else last_delivery_error
               end,
               next_delivery_attempt_at = case

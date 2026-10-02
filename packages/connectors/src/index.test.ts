@@ -57,6 +57,18 @@ void test('parses a bounded canonical outbound delivery receipt', () => {
     },
   );
   assert.equal(
+    parseMessagingDeliveryReceipt({
+      ...envelope,
+      payload: {
+        kind: 'messaging.delivery_receipt',
+        providerMessageId: 'provider-message-2',
+        status: 'FAILED',
+        error: 'Provider error retained only in the delivery ledger',
+      },
+    })?.error,
+    'Provider error retained only in the delivery ledger',
+  );
+  assert.equal(
     parseMessagingDeliveryReceipt({ ...envelope, payload: { kind: 'messaging.delivery_receipt' } }),
     undefined,
   );
