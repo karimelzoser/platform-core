@@ -5,6 +5,7 @@ import {
   ConnectorRegistry,
   developmentApiConnector,
   developmentWebChatConnector,
+  developmentWhatsAppCloudApiConnector,
 } from '@platform/connectors';
 import { CustomerService } from '@platform/crm';
 import { LocalMediaStore } from '@platform/media';
@@ -40,6 +41,7 @@ function createRuntimeConnectorRegistry(): ConnectorRegistry {
   if (config.APP_ENV !== 'production' && config.ENABLE_DEVELOPMENT_CONNECTOR_FIXTURES) {
     registry.register(developmentApiConnector);
     registry.register(developmentWebChatConnector);
+    registry.register(developmentWhatsAppCloudApiConnector);
   }
   return registry;
 }

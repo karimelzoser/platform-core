@@ -20,7 +20,7 @@ export const providerBoundarySchema = z.object({
   displayName: z.string().min(1),
   category: z.enum(['COMMERCE', 'MESSAGING', 'EMAIL', 'GENERIC']),
   capabilities: z.array(z.string().min(1)).readonly(),
-  implementationState: z.literal('PLANNED'),
+  implementationState: z.enum(['PLANNED', 'DEVELOPMENT_FIXTURE']),
 });
 
 export type ProviderBoundary = z.infer<typeof providerBoundarySchema>;
@@ -44,7 +44,7 @@ export const providerBoundaries: readonly ProviderBoundary[] = [
       'messaging.outbound',
       'provider.actions',
     ],
-    implementationState: 'PLANNED',
+    implementationState: 'DEVELOPMENT_FIXTURE',
   },
   {
     key: 'instagram-messaging',

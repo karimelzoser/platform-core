@@ -47,11 +47,15 @@ revokes the prior reference only when no tenant connection still uses it. Rotati
 is CRITICAL, approval-aware, and records a reference fingerprint rather than the
 reference itself in the idempotency input.
 
-`development-web-chat` and `development-api` are opt-in disposable-preview/test
-emulators. They sign fixture webhooks, produce deterministic provider-message
-IDs for idempotent retries, accept the typed sync contract with an empty
-completed result, and make no provider network calls. They are never registered in a
-production runtime and are enabled only with
+`development-web-chat`, `development-api`, and
+`development-whatsapp-cloud-api` are opt-in disposable-preview/test emulators.
+They sign fixture webhooks, produce deterministic provider-message IDs for
+idempotent retries, accept the typed sync contract with an empty completed
+result, and make no provider network calls. The WhatsApp fixture uses the
+Meta `x-hub-signature-256` HMAC shape and normalizes one bounded text-message
+or delivery-status event per fixture delivery; media transport is explicitly
+unsupported until its production-capable transport contract is implemented.
+They are never registered in a production runtime and are enabled only with
 `ENABLE_DEVELOPMENT_CONNECTOR_FIXTURES=true` outside production.
 Their shared contract tests cover signature verification, normalization, asset
 discovery, cursor-bearing reconciliation, deterministic outbound dispatch, and
@@ -60,6 +64,7 @@ commerce, payment, or production messaging provider implementations.
 
 `providerBoundaries` is the explicit, test-covered contract for Meta Embedded
 Signup, WhatsApp, Instagram, Messenger, Email, Web Chat, API, Shopify public
-app, and WooCommerce. Each is intentionally marked `PLANNED` until an adapter
-has its own credential, payload, action, and emulator/contract implementation.
-The boundary declaration does not register a connector or permit provider calls.
+app, and WooCommerce. WhatsApp is marked `DEVELOPMENT_FIXTURE` because its
+Meta-shaped emulator and contract tests exist; it is not a production provider
+adapter. The remaining boundaries are `PLANNED`. The boundary declaration does
+not register a production connector or permit provider calls.

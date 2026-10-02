@@ -3,6 +3,7 @@ import {
   ConnectorRegistry,
   developmentApiConnector,
   developmentWebChatConnector,
+  developmentWhatsAppCloudApiConnector,
 } from '@platform/connectors';
 import { createDatabase, destroyDatabase } from '@platform/database';
 import { createServer } from 'node:http';
@@ -38,6 +39,7 @@ async function main(): Promise<void> {
   if (environment.APP_ENV !== 'production' && environment.ENABLE_DEVELOPMENT_CONNECTOR_FIXTURES) {
     connectors.register(developmentApiConnector);
     connectors.register(developmentWebChatConnector);
+    connectors.register(developmentWhatsAppCloudApiConnector);
   }
   const webhookProcessor = new MessagingWebhookProcessor(db, connectors, workerId);
   const outboundMessageProcessor = new OutboundMessageProcessor(db, connectors, workerId);

@@ -5,6 +5,8 @@ import {
   ConnectorError,
   developmentApiConnector,
   developmentWebChatConnector,
+  developmentWhatsAppCloudApiConnector,
+  buildWhatsAppTextRequest,
   parseMessagingDeliveryReceipt,
   parseVerifiedConsentWebhook,
   outboundMessageResultSchema,
@@ -16,6 +18,7 @@ import {
 } from './index.js';
 import { signDevelopmentWebChatWebhook } from './development-web-chat.js';
 import { signDevelopmentApiWebhook } from './development-api.js';
+import { signDevelopmentWhatsAppCloudApiWebhook } from './development-whatsapp-cloud-api.js';
 
 const envelope: WebhookEnvelope = {
   deliveryId: 'provider-delivery-1',
@@ -157,6 +160,7 @@ void test('declares all planned provider families without registering production
     ],
   );
   assert.equal(providerBoundary('shopify-public-app')?.implementationState, 'PLANNED');
+  assert.equal(providerBoundary('whatsapp-cloud-api')?.implementationState, 'DEVELOPMENT_FIXTURE');
   assert.equal(providerBoundary('unknown-provider'), undefined);
 });
 
@@ -310,6 +314,151 @@ void test('the development API fixture has an isolated signature and determinist
       secretReference: 'development://api/preview',
     }),
   );
+});
+
+void test('the Meta-shaped WhatsApp fixture verifies signatures and normalizes bounded events', async () => {
+  const inbound = {
+    object: 'whatsapp_business_account',
+    entry: [
+      {
+        id: 'whatsapp-business-account-1',
+        changes: [
+          {
+            field: 'messages',
+            value: {
+              metadata: { phone_number_id: 'phone-number-1' },
+              messages: [
+                {
+                  id: 'wamid.inbound-1',
+                  from: '+201000000000',
+                  timestamp: '1780315200',
+                  type: 'text',
+                  text: { body: 'Hello from WhatsApp' },
+                },
+              ],
+            },
+          },
+        ],
+      },
+    ],
+  };
+  const rawBody = Buffer.from(JSON.stringify(inbound));
+  assert.equal(
+    await developmentWhatsAppCloudApiConnector.verifyWebhook({
+      headers: new Headers({
+        'x-hub-signature-256': signDevelopmentWhatsAppCloudApiWebhook(rawBody),
+      }),
+      rawBody,
+    }),
+    true,
+  );
+  assert.equal(
+    await developmentWhatsAppCloudApiConnector.verifyWebhook({
+      headers: new Headers({ 'x-hub-signature-256': 'sha256=not-a-valid-signature' }),
+      rawBody,
+    }),
+    false,
+  );
+  assert.deepEqual(
+    await developmentWhatsAppCloudApiConnector.normalizeWebhook({
+      headers: new Headers(),
+      body: inbound,
+    }),
+    {
+      deliveryId: 'whatsapp:whatsapp-business-account-1:message:wamid.inbound-1',
+      eventType: 'whatsapp.message.received',
+      occurredAt: '2026-06-01T12:00:00.000Z',
+      resource: { type: 'whatsapp_phone_number', providerId: 'phone-number-1' },
+      payload: {
+        kind: 'messaging.inbound_message',
+        channel: 'WHATSAPP',
+        providerConversationId: '+201000000000',
+        providerMessageId: 'wamid.inbound-1',
+        body: 'Hello from WhatsApp',
+        sentAt: '2026-06-01T12:00:00.000Z',
+      },
+    },
+  );
+  const receipt = {
+    ...inbound,
+    entry: [
+      {
+        ...inbound.entry[0],
+        changes: [
+          {
+            field: 'messages',
+            value: {
+              metadata: { phone_number_id: 'phone-number-1' },
+              statuses: [
+                {
+                  id: 'wamid.outbound-1',
+                  status: 'read',
+                  timestamp: '1780315300',
+                },
+              ],
+            },
+          },
+        ],
+      },
+    ],
+  };
+  const normalizedReceipt = await developmentWhatsAppCloudApiConnector.normalizeWebhook({
+    headers: new Headers(),
+    body: receipt,
+  });
+  assert.equal(normalizedReceipt.payload.kind, 'messaging.delivery_receipt');
+  assert.deepEqual(normalizedReceipt.payload, {
+    kind: 'messaging.delivery_receipt',
+    providerMessageId: 'wamid.outbound-1',
+    status: 'READ',
+    occurredAt: '2026-06-01T12:01:40.000Z',
+  });
+  await developmentWhatsAppCloudApiConnector.validateConnection({
+    settings: { allowDevelopmentFixture: true },
+    secretReference: 'development://whatsapp-cloud-api/preview',
+  });
+  await assert.rejects(
+    developmentWhatsAppCloudApiConnector.validateConnection({
+      settings: { allowDevelopmentFixture: true },
+      secretReference: 'development://web-chat/preview',
+    }),
+  );
+  assert.deepEqual(buildWhatsAppTextRequest({ to: '+201000000000', body: 'Test' }), {
+    messaging_product: 'whatsapp',
+    to: '201000000000',
+    type: 'text',
+    text: { body: 'Test' },
+  });
+  assert.throws(() => buildWhatsAppTextRequest({ to: 'not-a-phone', body: 'Test' }));
+  const request = {
+    connectionId: 'aaaaaaaa-0000-0000-0000-000000000001',
+    providerConversationId: '+201000000000',
+    idempotencyKey: 'whatsapp-message-idempotency-key',
+    body: 'Hello from the agent',
+    attachments: [],
+  };
+  const first = await developmentWhatsAppCloudApiConnector.sendMessage(request);
+  const retry = await developmentWhatsAppCloudApiConnector.sendMessage(request);
+  assert.equal(first.providerMessageId, retry.providerMessageId);
+  assert.match(first.providerMessageId, /^development-whatsapp-/u);
+  await assert.rejects(
+    developmentWhatsAppCloudApiConnector.sendMessage({
+      ...request,
+      attachments: [
+        {
+          storageKey: 'development/attachment-1',
+          mediaType: 'IMAGE',
+          contentType: 'image/png',
+          fileName: 'attachment.png',
+          byteSize: 1,
+        },
+      ],
+    }),
+    { code: 'UNSUPPORTED_OPERATION' },
+  );
+  const registry = new ConnectorRegistry();
+  registry.register(developmentWhatsAppCloudApiConnector);
+  assert.deepEqual(registry.keys(), ['development-whatsapp-cloud-api']);
 });
 
 void test('development channel emulators satisfy the common provider lifecycle contract', async () => {

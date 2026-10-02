@@ -143,6 +143,54 @@ SET connector_key = EXCLUDED.connector_key,
     capabilities = EXCLUDED.capabilities,
     last_validated_at = EXCLUDED.last_validated_at,
     updated_at = now();
+INSERT INTO integrations.connector_definitions (key, version, category, display_name, manifest)
+VALUES (
+  'development-whatsapp-cloud-api',
+  '1.0.0',
+  'MESSAGING',
+  'Development WhatsApp Cloud API',
+  '{"key":"development-whatsapp-cloud-api","version":"1.0.0","category":"MESSAGING","capabilities":["messaging.inbound","messaging.outbound","webhooks","sync","provider.actions"],"credentialSchema":{"type":"development-fixture"},"settingsSchema":{"type":"object","required":["allowDevelopmentFixture"]}}'::jsonb
+)
+ON CONFLICT (key) DO UPDATE
+SET version = EXCLUDED.version,
+    category = EXCLUDED.category,
+    display_name = EXCLUDED.display_name,
+    manifest = EXCLUDED.manifest,
+    enabled = true,
+    updated_at = now();
+INSERT INTO integrations.secret_references (id, tenant_id, provider, reference, key_version, metadata)
+VALUES (
+  'aaaaaaaa-1111-1111-1111-111111111111',
+  'cccccccc-cccc-cccc-cccc-cccccccccccc',
+  'development-whatsapp-cloud-api',
+  'development://whatsapp-cloud-api/preview',
+  'development-only',
+  '{"developmentOnly":true}'::jsonb
+)
+ON CONFLICT (tenant_id, provider, reference) DO NOTHING;
+INSERT INTO integrations.connections (
+  id, tenant_id, connector_key, secret_reference_id, display_name, status, settings, capabilities, last_validated_at
+)
+VALUES (
+  'aaaaaaaa-2222-2222-2222-222222222222',
+  'cccccccc-cccc-cccc-cccc-cccccccccccc',
+  'development-whatsapp-cloud-api',
+  'aaaaaaaa-1111-1111-1111-111111111111',
+  'Development WhatsApp Cloud API',
+  'CONNECTED',
+  '{"allowDevelopmentFixture":true}'::jsonb,
+  '["messaging.inbound","messaging.outbound","webhooks","sync","provider.actions"]'::jsonb,
+  now()
+)
+ON CONFLICT (id) DO UPDATE
+SET connector_key = EXCLUDED.connector_key,
+    secret_reference_id = EXCLUDED.secret_reference_id,
+    display_name = EXCLUDED.display_name,
+    status = EXCLUDED.status,
+    settings = EXCLUDED.settings,
+    capabilities = EXCLUDED.capabilities,
+    last_validated_at = EXCLUDED.last_validated_at,
+    updated_at = now();
 INSERT INTO crm.tags (id, tenant_id, name, description)
 VALUES (
   '55555555-5555-5555-5555-555555555555',

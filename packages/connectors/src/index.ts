@@ -264,6 +264,11 @@ export {
   signDevelopmentWebChatWebhook,
 } from './development-web-chat.js';
 export {
+  buildWhatsAppTextRequest,
+  developmentWhatsAppCloudApiConnector,
+  signDevelopmentWhatsAppCloudApiWebhook,
+} from './development-whatsapp-cloud-api.js';
+export {
   providerBoundaries,
   providerBoundary,
   providerBoundarySchema,
