@@ -1,6 +1,6 @@
 # Implementation Status
 
-**Last updated:** 2026-09-29
+**Last updated:** 2026-10-02
 **Branch/workstream:** `main` / Integration SDK completion
 **Release status:** IN PROGRESS — this is not yet a release candidate.
 
@@ -45,7 +45,11 @@ No overall completion percentage is recorded: the required release gate is a bin
   leases, capped retries, terminal sync/action dead-letter behavior, and
   post-commit provider webhook subscription/action lifecycle.
   Development Web Chat/API emulators exercise these typed boundaries without a
-  provider network call. The protected Integrations page lists current action
+  provider network call. Meta-shaped WhatsApp Cloud API and Instagram
+  Messaging fixtures now verify the provider HMAC header convention, normalize
+  one bounded text/receipt event per delivery, support deterministic outbound
+  text dispatch, and reject media transport until its production contract is
+  implemented; they are never registered in production. The protected Integrations page lists current action
   state and exposes only their clearly labelled harmless echo action through
   the normal request, independent approval, and exact approved execution flow;
   real provider adapter lifecycle/webhook/backfill/reconciliation
