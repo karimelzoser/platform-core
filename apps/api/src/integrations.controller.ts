@@ -17,6 +17,7 @@ import { AuthenticatedContextService } from './authenticated-context.service.js'
 import {
   IntegrationService,
   type CreateIntegrationSyncRunInput,
+  type CreateProviderActionInput,
   type CreateWebhookSubscriptionInput,
   type ConnectIntegrationInput,
   type SecretRotationInput,
@@ -107,6 +108,41 @@ export class IntegrationsController {
     const context = await this.context(authorization, tenantId, correlationId);
     this.require(context.permissions, 'integrations.read');
     return this.integrations.listWebhookSubscriptions(context, connectionId);
+  }
+
+  @Get('connections/:connectionId/provider-actions')
+  public async listProviderActions(
+    @Param('connectionId') connectionId: string,
+    @Headers('authorization') authorization: string | undefined,
+    @Headers('x-tenant-id') tenantId: string | undefined,
+    @Headers('x-correlation-id') correlationId: string | undefined,
+  ) {
+    const context = await this.context(authorization, tenantId, correlationId);
+    this.require(context.permissions, 'integrations.read');
+    return this.integrations.listProviderActions(context, connectionId);
+  }
+
+  @Post('connections/:connectionId/provider-actions')
+  public async requestProviderAction(
+    @Param('connectionId') connectionId: string,
+    @Body() body: unknown,
+    @Headers('authorization') authorization: string | undefined,
+    @Headers('x-tenant-id') tenantId: string | undefined,
+    @Headers('x-correlation-id') correlationId: string | undefined,
+    @Headers('idempotency-key') idempotencyKey: string | undefined,
+    @Headers('x-approval-id') approvalId: string | undefined,
+  ) {
+    const context = await this.context(authorization, tenantId, correlationId);
+    this.require(context.permissions, 'integrations.manage');
+    return this.execute(() =>
+      this.integrations.requestProviderAction(
+        context,
+        idempotencyKey ?? '',
+        connectionId,
+        parseProviderActionBody(body),
+        approvalId,
+      ),
+    );
   }
 
   @Post('connections/:connectionId/webhook-subscriptions')
@@ -313,5 +349,18 @@ function parseWebhookSubscriptionBody(body: unknown): CreateWebhookSubscriptionI
     return parsed as CreateWebhookSubscriptionInput;
   } catch {
     throw new BadRequestException('Webhook subscription body must be a JSON object');
+  }
+}
+
+function parseProviderActionBody(body: unknown): CreateProviderActionInput {
+  if (!Buffer.isBuffer(body)) throw new BadRequestException('Provider action body must be JSON');
+  try {
+    const parsed: unknown = JSON.parse(body.toString('utf8'));
+    if (parsed === null || Array.isArray(parsed) || typeof parsed !== 'object') {
+      throw new Error('JSON object required');
+    }
+    return parsed as CreateProviderActionInput;
+  } catch {
+    throw new BadRequestException('Provider action body must be a JSON object');
   }
 }

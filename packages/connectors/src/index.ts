@@ -171,6 +171,29 @@ export const webhookSubscriptionResultSchema = z.object({
 
 export type WebhookSubscriptionResult = z.infer<typeof webhookSubscriptionResultSchema>;
 
+/**
+ * A connector action is intentionally small and data-only. Callers persist it
+ * first; only the worker invokes this interface after the command commits.
+ */
+export const providerActionRequestSchema = z.object({
+  connectionId: z.string().uuid(),
+  actionType: z.string().regex(/^[a-z][a-z0-9_.-]{2,127}$/),
+  idempotencyKey: z.string().min(1).max(256),
+  input: z.record(z.unknown()).default({}),
+  settings: z.record(z.unknown()).default({}),
+  secretReference: z.string().min(1).max(500),
+});
+
+export type ProviderActionRequest = z.infer<typeof providerActionRequestSchema>;
+
+export const providerActionResultSchema = z.object({
+  providerActionId: z.string().min(1).max(500),
+  result: z.record(z.unknown()).default({}),
+  completedAt: z.string().datetime(),
+});
+
+export type ProviderActionResult = z.infer<typeof providerActionResultSchema>;
+
 export interface Connector {
   readonly manifest: ConnectorManifest;
   verifyWebhook(input: { headers: Headers; rawBody: Uint8Array }): Promise<boolean>;
@@ -197,6 +220,9 @@ export interface Connector {
   unregisterWebhook?(
     input: WebhookSubscriptionRequest & { providerSubscriptionId: string },
   ): Promise<void>;
+  /** Explicit allowlist of action types this connector is safe to execute. */
+  readonly supportedActionTypes?: readonly string[];
+  executeAction?(input: ProviderActionRequest): Promise<ProviderActionResult>;
 }
 
 /** Provider adapters that can dispatch a persisted outbound inbox message. */

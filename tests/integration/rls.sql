@@ -99,6 +99,17 @@ INSERT INTO integrations.webhook_subscriptions (
   'aaaaaaaa-0000-0000-0000-000000000002',
   'https://preview.example.test/v1/webhooks/test-connector/connection-a'
 );
+
+INSERT INTO integrations.provider_actions (
+  id, tenant_id, connection_id, action_type, input, idempotency_key
+) VALUES (
+  'aaaaaaaa-0000-0000-0000-000000000107',
+  'aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa',
+  'aaaaaaaa-0000-0000-0000-000000000002',
+  'development.test_action',
+  '{"fixture":true}'::jsonb,
+  'provider-action-a'
+);
 COMMIT;
 
 BEGIN;
@@ -162,6 +173,9 @@ BEGIN
   END IF;
   IF EXISTS (SELECT 1 FROM integrations.webhook_subscriptions WHERE id = 'aaaaaaaa-0000-0000-0000-000000000106') THEN
     RAISE EXCEPTION 'Tenant B can read Tenant A webhook subscription';
+  END IF;
+  IF EXISTS (SELECT 1 FROM integrations.provider_actions WHERE id = 'aaaaaaaa-0000-0000-0000-000000000107') THEN
+    RAISE EXCEPTION 'Tenant B can read Tenant A provider action';
   END IF;
   IF EXISTS (SELECT 1 FROM policy.approval_requests WHERE id = 'aaaaaaaa-0000-0000-0000-000000000005') THEN
     RAISE EXCEPTION 'Tenant B can read Tenant A approval';
@@ -319,6 +333,32 @@ BEGIN
   IF claimed IS NULL THEN RAISE EXCEPTION 'Worker did not claim committed outbox event'; END IF;
   IF NOT platform.mark_outbox_published(claimed, 'integration-test-worker') THEN
     RAISE EXCEPTION 'Worker could not acknowledge its own outbox claim';
+  END IF;
+END;
+$$;
+COMMIT;
+
+BEGIN;
+SELECT platform.set_request_context(
+  'aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa',
+  '11111111-1111-1111-1111-111111111111',
+  'test-subject-a',
+  'provider-action-worker-claim'
+);
+
+DO $$
+DECLARE claimed uuid;
+BEGIN
+  SELECT id INTO claimed
+  FROM integrations.claim_provider_actions('integration-test-worker', 1, 60)
+  WHERE id = 'aaaaaaaa-0000-0000-0000-000000000107';
+  IF claimed IS NULL THEN RAISE EXCEPTION 'Worker did not claim provider action'; END IF;
+  IF NOT EXISTS (
+    SELECT 1 FROM integrations.provider_actions
+    WHERE id = claimed AND state = 'RUNNING' AND attempts = 0
+      AND claimed_by = 'integration-test-worker' AND started_at IS NOT NULL
+  ) THEN
+    RAISE EXCEPTION 'Provider action claim did not record a processing lease';
   END IF;
 END;
 $$;

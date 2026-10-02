@@ -4,6 +4,8 @@ import type {
   IntegrationSyncResult,
   MessagingConnector,
   OutboundMessageRequest,
+  ProviderActionRequest,
+  ProviderActionResult,
   ProviderAsset,
 } from './index.js';
 import { webhookEnvelopeSchema, type WebhookEnvelope } from './index.js';
@@ -102,6 +104,21 @@ export const developmentWebChatConnector: MessagingConnector = {
 
   unregisterWebhook() {
     return Promise.resolve();
+  },
+
+  supportedActionTypes: ['development.web_chat.echo'],
+
+  executeAction(input: ProviderActionRequest): Promise<ProviderActionResult> {
+    if (input.actionType !== 'development.web_chat.echo')
+      return Promise.reject(new Error('Development Web Chat does not support this action type'));
+    return Promise.resolve({
+      providerActionId: `development-web-chat-action-${createHash('sha256')
+        .update(`${input.connectionId}:${input.idempotencyKey}`)
+        .digest('hex')
+        .slice(0, 32)}`,
+      result: { echoed: input.input, developmentOnly: true },
+      completedAt: new Date().toISOString(),
+    });
   },
 
   sendMessage(input: OutboundMessageRequest) {

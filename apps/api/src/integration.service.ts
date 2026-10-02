@@ -49,6 +49,13 @@ const webhookSubscriptionInputSchema = z.object({
 
 export type CreateWebhookSubscriptionInput = z.input<typeof webhookSubscriptionInputSchema>;
 
+const providerActionInputSchema = z.object({
+  actionType: z.string().regex(/^[a-z][a-z0-9_.-]{2,127}$/),
+  input: z.record(z.unknown()).default({}),
+});
+
+export type CreateProviderActionInput = z.input<typeof providerActionInputSchema>;
+
 export interface IntegrationConnection {
   id: string;
   connectorKey: string;
@@ -93,6 +100,18 @@ export interface IntegrationWebhookSubscription {
   operation: 'REGISTER' | 'UNREGISTER';
   attempts: number;
   lastError: string | null;
+}
+
+export interface IntegrationProviderAction {
+  id: string;
+  actionType: string;
+  state: 'QUEUED' | 'RUNNING' | 'SUCCEEDED' | 'FAILED' | 'DEAD_LETTER' | 'CANCELED';
+  providerActionId: string | null;
+  result: Record<string, unknown>;
+  attempts: number;
+  lastError: string | null;
+  startedAt: Date | null;
+  finishedAt: Date | null;
 }
 
 /**
@@ -351,6 +370,107 @@ export class IntegrationService {
         lastError: subscription.last_error,
       }));
     });
+  }
+
+  public async listProviderActions(
+    context: TenantRequestContext,
+    connectionId: string,
+  ): Promise<readonly IntegrationProviderAction[]> {
+    const id = z.string().uuid().parse(connectionId);
+    return withTenantTransaction(this.database, context, async (transaction) => {
+      const result = await sql<{
+        id: string;
+        action_type: string;
+        state: IntegrationProviderAction['state'];
+        provider_action_id: string | null;
+        result: Record<string, unknown>;
+        attempts: number;
+        last_error: string | null;
+        started_at: Date | null;
+        finished_at: Date | null;
+      }>`select id, action_type, state, provider_action_id, result, attempts, last_error,
+          started_at, finished_at
+        from integrations.provider_actions
+        where connection_id = ${id}::uuid
+        order by created_at desc, id desc
+        limit 100`.execute(transaction);
+      return result.rows.map((action) => ({
+        id: action.id,
+        actionType: action.action_type,
+        state: action.state,
+        providerActionId: action.provider_action_id,
+        result: action.result,
+        attempts: action.attempts,
+        lastError: action.last_error,
+        startedAt: action.started_at,
+        finishedAt: action.finished_at,
+      }));
+    });
+  }
+
+  /**
+   * Persists a typed, allowlisted connector action. The provider is invoked by
+   * the worker only after this command's transaction, audit, and outbox event
+   * commit successfully.
+   */
+  public async requestProviderAction(
+    context: TenantRequestContext,
+    idempotencyKey: string,
+    connectionId: string,
+    input: CreateProviderActionInput,
+    approvalId?: string,
+  ): Promise<CommandResult<{ providerActionId: string; state: 'QUEUED' }>> {
+    const id = z.string().uuid().parse(connectionId);
+    const validated = providerActionInputSchema.parse(input);
+    const providerActionId = randomUUID();
+    return this.commands.execute(
+      {
+        action: 'integrations.provider_action.request',
+        permission: 'integrations.manage',
+        risk: 'HIGH',
+        resource: () => ({ type: 'integration.connection', id }),
+        event: {
+          type: 'integrations.provider_action.requested',
+          data: (_input, result) => ({
+            ...result,
+            connectionId: id,
+            actionType: validated.actionType,
+          }),
+          dedupeKey: () => `integration:provider-action:requested:${providerActionId}`,
+        },
+        audit: {
+          afterState: (_input, result) => ({
+            ...result,
+            connectionId: id,
+            actionType: validated.actionType,
+          }),
+        },
+        execute: async (transaction) => {
+          const connection = await sql<{ connector_key: string }>`select connector_key
+            from integrations.connections
+            where id = ${id}::uuid and status in ('CONNECTED', 'DEGRADED')
+            for share`.execute(transaction);
+          if (!connection.rows[0])
+            throw new Error('A connected integration is required to request a provider action');
+          const connector = this.connectors.get(connection.rows[0].connector_key);
+          if (!supportsProviderAction(connector, validated.actionType))
+            throw new Error('Connector does not support this typed provider action');
+          await sql`insert into integrations.provider_actions (
+            id, tenant_id, connection_id, action_type, input, idempotency_key
+          ) values (
+            ${providerActionId}::uuid, ${context.tenantId}::uuid, ${id}::uuid,
+            ${validated.actionType}, ${JSON.stringify(validated.input)}::jsonb, ${idempotencyKey.trim()}
+          )`.execute(transaction);
+          return { providerActionId, state: 'QUEUED' as const };
+        },
+      },
+      {
+        context,
+        input: { connectionId: id, actionType: validated.actionType, input: validated.input },
+        idempotencyKey,
+        ...(approvalId ? { approvalId } : {}),
+      },
+    );
   }
 
   public async requestWebhookSubscription(
@@ -772,6 +892,17 @@ function supportsSync(
   connector: Connector,
 ): connector is Connector & Required<Pick<Connector, 'sync'>> {
   return typeof connector.sync === 'function';
+}
+
+function supportsProviderAction(
+  connector: Connector,
+  actionType: string,
+): connector is Connector & Required<Pick<Connector, 'executeAction' | 'supportedActionTypes'>> {
+  return (
+    typeof connector.executeAction === 'function' &&
+    Array.isArray(connector.supportedActionTypes) &&
+    connector.supportedActionTypes.includes(actionType)
+  );
 }
 
 function assertPublicHttpsCallback(callbackUrl: string): void {

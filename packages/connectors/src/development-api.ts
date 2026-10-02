@@ -4,6 +4,8 @@ import type {
   IntegrationSyncResult,
   MessagingConnector,
   OutboundMessageRequest,
+  ProviderActionRequest,
+  ProviderActionResult,
   ProviderAsset,
 } from './index.js';
 import { webhookEnvelopeSchema, type WebhookEnvelope } from './index.js';
@@ -86,6 +88,19 @@ export const developmentApiConnector: MessagingConnector = {
   },
   unregisterWebhook() {
     return Promise.resolve();
+  },
+  supportedActionTypes: ['development.api.echo'],
+  executeAction(input: ProviderActionRequest): Promise<ProviderActionResult> {
+    if (input.actionType !== 'development.api.echo')
+      return Promise.reject(new Error('Development API does not support this action type'));
+    return Promise.resolve({
+      providerActionId: `development-api-action-${createHash('sha256')
+        .update(`${input.connectionId}:${input.idempotencyKey}`)
+        .digest('hex')
+        .slice(0, 32)}`,
+      result: { echoed: input.input, developmentOnly: true },
+      completedAt: new Date().toISOString(),
+    });
   },
   sendMessage(input: OutboundMessageRequest) {
     const providerMessageId = `development-api-${createHash('sha256')

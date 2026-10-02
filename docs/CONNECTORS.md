@@ -21,6 +21,14 @@ worker invokes the typed connector after commit. Connector results store only a
 bounded provider subscription identifier. Retry failures do not expose provider
 responses or credential references; terminal failures create a dead letter.
 
+Provider actions follow the same durable model. The API accepts only a typed
+action which the selected connector explicitly allowlists, writes the action
+with audit/outbox evidence, and returns `QUEUED`. A leased worker resolves the
+tenant-scoped route, invokes the connector only after commit, then records a
+bounded provider action identifier/result. Retryable failures use capped
+backoff; non-retryable or eighth failures are dead-lettered. This boundary does
+not accept arbitrary URLs or executable provider payloads.
+
 Connectors classify provider failures into a bounded error code and a retryable
 flag. Worker persistence and dead letters contain that code rather than a raw
 provider exception; non-retryable errors terminate safely on their first claim.
@@ -46,6 +54,8 @@ completed result, and make no provider network calls. They are never registered 
 production runtime and are enabled only with
 `ENABLE_DEVELOPMENT_CONNECTOR_FIXTURES=true` outside production.
 Their shared contract tests cover signature verification, normalization, asset
-discovery, cursor-bearing reconciliation, and deterministic outbound dispatch.
+discovery, cursor-bearing reconciliation, deterministic outbound dispatch, and
+an explicitly named development-only echo action. Fixture actions are not
+commerce, payment, or production messaging provider implementations.
 
 Planned adapter keys: Shopify, WooCommerce, WhatsApp Cloud API, Instagram, Messenger, email, generic shipping, generic payment, and generic REST/webhook.

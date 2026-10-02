@@ -252,6 +252,28 @@ void test('the development API fixture has an isolated signature and determinist
     first.providerMessageId,
     (await developmentWebChatConnector.sendMessage(request)).providerMessageId,
   );
+  const action = await developmentApiConnector.executeAction?.({
+    connectionId: request.connectionId,
+    actionType: 'development.api.echo',
+    idempotencyKey: 'api-action-idempotency-key',
+    input: { safe: 'fixture data' },
+    settings: { allowDevelopmentFixture: true },
+    secretReference: 'development://api/preview',
+  });
+  assert.match(action?.providerActionId ?? '', /^development-api-action-/u);
+  assert.deepEqual(action?.result, { echoed: { safe: 'fixture data' }, developmentOnly: true });
+  const executeAction = developmentApiConnector.executeAction;
+  if (!executeAction) assert.fail('Development API fixture must expose typed provider actions');
+  await assert.rejects(
+    executeAction({
+      connectionId: request.connectionId,
+      actionType: 'commerce.order.cancel',
+      idempotencyKey: 'invalid-api-action',
+      input: {},
+      settings: { allowDevelopmentFixture: true },
+      secretReference: 'development://api/preview',
+    }),
+  );
 });
 
 void test('development channel emulators satisfy the common provider lifecycle contract', async () => {

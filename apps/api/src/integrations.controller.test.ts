@@ -34,4 +34,16 @@ void test('integration connection endpoints require dedicated permissions', asyn
     ),
     ForbiddenException,
   );
+  await assert.rejects(
+    controller.requestProviderAction(
+      context.tenantId,
+      Buffer.from('{"actionType":"development.api.echo","input":{}}'),
+      'Bearer token',
+      context.tenantId,
+      undefined,
+      'idempotency-key',
+      undefined,
+    ),
+    ForbiddenException,
+  );
 });
