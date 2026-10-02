@@ -3,6 +3,7 @@ import type { TenantRequestContext } from '@platform/command-execution';
 import { approvalActionDigest, type ApprovalAction } from '@platform/contracts';
 import { sql, withTenantTransaction } from '@platform/database';
 import { Injectable } from '@nestjs/common';
+import { ConnectorRegistry, type Connector } from '@platform/connectors';
 import { z } from 'zod';
 import { ApiDatabaseService } from './api-database.service.js';
 import type { TicketSlaPolicyInput } from './tickets.service.js';
@@ -34,7 +35,10 @@ export class ApprovalError extends Error {}
 
 @Injectable()
 export class ApprovalService {
-  public constructor(private readonly database: ApiDatabaseService) {}
+  public constructor(
+    private readonly database: ApiDatabaseService,
+    private readonly connectors: ConnectorRegistry,
+  ) {}
 
   public async requestMerge(context: TenantRequestContext, input: unknown) {
     this.require(context, 'crm.customers.merge');
@@ -178,10 +182,14 @@ export class ApprovalService {
     };
     const digest = approvalActionDigest(action);
     return withTenantTransaction(this.database.database, context, async (transaction) => {
-      const connection = await sql<{ id: string }>`select id from integrations.connections
+      const connection = await sql<{ id: string; connector_key: string }>`select id, connector_key
+        from integrations.connections
         where id = ${request.connectionId}::uuid and status in ('CONNECTED', 'DEGRADED')
         for share`.execute(transaction);
       if (!connection.rows[0]) throw new ApprovalError('Connected integration was not found');
+      const connector = this.connectors.get(connection.rows[0].connector_key);
+      if (!supportsProviderAction(connector, request.actionType))
+        throw new ApprovalError('Connector does not support this typed provider action');
       const result = await sql<{
         id: string;
         status: string;
@@ -366,4 +374,15 @@ export class ApprovalService {
   private require(context: TenantRequestContext, permission: string): void {
     if (!context.permissions.includes(permission)) throw new ApprovalError('Permission denied');
   }
+}
+
+function supportsProviderAction(
+  connector: Connector,
+  actionType: string,
+): connector is Connector & Required<Pick<Connector, 'executeAction' | 'supportedActionTypes'>> {
+  return (
+    typeof connector.executeAction === 'function' &&
+    Array.isArray(connector.supportedActionTypes) &&
+    connector.supportedActionTypes.includes(actionType)
+  );
 }
