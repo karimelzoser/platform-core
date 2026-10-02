@@ -68,8 +68,12 @@ export type InboundMessagingWebhook = z.infer<typeof inboundMessagingWebhookSche
 
 export function parseInboundMessagingWebhook(
   envelope: WebhookEnvelope,
+  allowedChannels?: readonly InboundMessagingWebhook['channel'][],
 ): InboundMessagingWebhook | undefined {
-  return inboundMessagingWebhookSchema.safeParse(envelope.payload).data;
+  const inbound = inboundMessagingWebhookSchema.safeParse(envelope.payload).data;
+  if (!inbound) return undefined;
+  if (allowedChannels && !allowedChannels.includes(inbound.channel)) return undefined;
+  return inbound;
 }
 
 /** A provider acknowledgement for a previously dispatched outbound message. */
@@ -227,6 +231,8 @@ export interface Connector {
 
 /** Provider adapters that can dispatch a persisted outbound inbox message. */
 export interface MessagingConnector extends Connector {
+  /** Channels this connector is permitted to normalize into the inbox. */
+  readonly messagingChannels: readonly InboundMessagingWebhook['channel'][];
   sendMessage(input: OutboundMessageRequest): Promise<OutboundMessageResult>;
 }
 

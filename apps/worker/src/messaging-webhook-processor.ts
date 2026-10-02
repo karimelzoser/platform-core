@@ -3,6 +3,8 @@ import {
   parseInboundMessagingWebhook,
   parseMessagingDeliveryReceipt,
   parseVerifiedConsentWebhook,
+  type MessagingConnector,
+  type Connector,
   type WebhookEnvelope,
 } from '@platform/connectors';
 import { sql, withTenantTransaction, type PlatformDatabase } from '@platform/database';
@@ -53,7 +55,7 @@ export class MessagingWebhookProcessor {
       headers: new Headers(Object.entries(delivery.headers)),
       body: delivery.payload,
     });
-    const inbound = parseInboundMessagingWebhook(envelope);
+    const inbound = parseInboundMessagingWebhook(envelope, messagingChannels(connector));
     if (inbound) return this.persistInbound(delivery, connectorKey, envelope, inbound);
     const receipt = parseMessagingDeliveryReceipt(envelope);
     if (receipt) return this.persistDeliveryReceipt(delivery, connectorKey, envelope, receipt);
@@ -384,4 +386,11 @@ export class MessagingWebhookProcessor {
       },
     );
   }
+}
+
+function messagingChannels(
+  connector: Connector,
+): readonly MessagingConnector['messagingChannels'][number][] {
+  if (!('messagingChannels' in connector) || !Array.isArray(connector.messagingChannels)) return [];
+  return connector.messagingChannels;
 }

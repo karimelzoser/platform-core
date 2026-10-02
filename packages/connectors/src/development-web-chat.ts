@@ -37,6 +37,7 @@ export const developmentWebChatConnector: MessagingConnector = {
     credentialSchema: { type: 'development-fixture' },
     settingsSchema: { type: 'object', required: ['allowDevelopmentFixture'] },
   },
+  messagingChannels: ['WEB_CHAT'],
 
   verifyWebhook({ headers, rawBody }): Promise<boolean> {
     const provided = headers.get(signatureHeader);

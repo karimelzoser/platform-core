@@ -67,6 +67,7 @@ void test('does not treat unrelated webhook payloads as inbound messages', () =>
     parseInboundMessagingWebhook({ ...envelope, payload: { kind: 'commerce.order.updated' } }),
     undefined,
   );
+  assert.equal(parseInboundMessagingWebhook(envelope, ['API']), undefined);
 });
 
 void test('parses only a bounded provider-verified communication consent payload', () => {
