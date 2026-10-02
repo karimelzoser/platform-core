@@ -232,7 +232,7 @@ export interface Connector {
 /** Provider adapters that can dispatch a persisted outbound inbox message. */
 export interface MessagingConnector extends Connector {
   /** Channels this connector is permitted to normalize into the inbox. */
-  readonly messagingChannels: readonly InboundMessagingWebhook['channel'][];
+  readonly messagingChannels?: readonly InboundMessagingWebhook['channel'][];
   sendMessage(input: OutboundMessageRequest): Promise<OutboundMessageResult>;
 }
 

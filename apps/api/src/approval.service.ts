@@ -37,7 +37,7 @@ export class ApprovalError extends Error {}
 export class ApprovalService {
   public constructor(
     private readonly database: ApiDatabaseService,
-    private readonly connectors: ConnectorRegistry,
+    private readonly connectors?: ConnectorRegistry,
   ) {}
 
   public async requestMerge(context: TenantRequestContext, input: unknown) {
@@ -187,6 +187,8 @@ export class ApprovalService {
         where id = ${request.connectionId}::uuid and status in ('CONNECTED', 'DEGRADED')
         for share`.execute(transaction);
       if (!connection.rows[0]) throw new ApprovalError('Connected integration was not found');
+      if (!this.connectors)
+        throw new ApprovalError('Connector registry is unavailable for provider action approval');
       const connector = this.connectors.get(connection.rows[0].connector_key);
       if (!supportsProviderAction(connector, request.actionType))
         throw new ApprovalError('Connector does not support this typed provider action');

@@ -392,12 +392,14 @@ export class MessagingWebhookProcessor {
 
 function messagingChannels(
   connector: Connector,
-): readonly MessagingConnector['messagingChannels'][number][] {
+): readonly NonNullable<MessagingConnector['messagingChannels']>[number][] {
   if (!isMessagingConnector(connector)) return [];
   return [...connector.messagingChannels];
 }
 
-function isMessagingConnector(connector: Connector): connector is MessagingConnector {
+function isMessagingConnector(
+  connector: Connector,
+): connector is MessagingConnector & Required<Pick<MessagingConnector, 'messagingChannels'>> {
   return (
     typeof (connector as Partial<MessagingConnector>).sendMessage === 'function' &&
     Array.isArray((connector as Partial<MessagingConnector>).messagingChannels)
