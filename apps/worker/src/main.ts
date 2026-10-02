@@ -2,6 +2,7 @@ import { connect } from 'nats';
 import {
   ConnectorRegistry,
   developmentApiConnector,
+  developmentInstagramMessagingConnector,
   developmentWebChatConnector,
   developmentWhatsAppCloudApiConnector,
 } from '@platform/connectors';
@@ -38,6 +39,7 @@ async function main(): Promise<void> {
   const connectors = new ConnectorRegistry();
   if (environment.APP_ENV !== 'production' && environment.ENABLE_DEVELOPMENT_CONNECTOR_FIXTURES) {
     connectors.register(developmentApiConnector);
+    connectors.register(developmentInstagramMessagingConnector);
     connectors.register(developmentWebChatConnector);
     connectors.register(developmentWhatsAppCloudApiConnector);
   }

@@ -269,6 +269,11 @@ export {
   signDevelopmentWhatsAppCloudApiWebhook,
 } from './development-whatsapp-cloud-api.js';
 export {
+  buildInstagramTextRequest,
+  developmentInstagramMessagingConnector,
+  signDevelopmentInstagramMessagingWebhook,
+} from './development-instagram-messaging.js';
+export {
   providerBoundaries,
   providerBoundary,
   providerBoundarySchema,

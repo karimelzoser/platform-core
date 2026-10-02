@@ -57,7 +57,7 @@ export const providerBoundaries: readonly ProviderBoundary[] = [
       'messaging.outbound',
       'provider.actions',
     ],
-    implementationState: 'PLANNED',
+    implementationState: 'DEVELOPMENT_FIXTURE',
   },
   {
     key: 'messenger-platform',

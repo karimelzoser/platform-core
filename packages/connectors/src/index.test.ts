@@ -3,7 +3,9 @@ import test from 'node:test';
 import {
   ConnectorRegistry,
   ConnectorError,
+  buildInstagramTextRequest,
   developmentApiConnector,
+  developmentInstagramMessagingConnector,
   developmentWebChatConnector,
   developmentWhatsAppCloudApiConnector,
   buildWhatsAppTextRequest,
@@ -18,6 +20,7 @@ import {
 } from './index.js';
 import { signDevelopmentWebChatWebhook } from './development-web-chat.js';
 import { signDevelopmentApiWebhook } from './development-api.js';
+import { signDevelopmentInstagramMessagingWebhook } from './development-instagram-messaging.js';
 import { signDevelopmentWhatsAppCloudApiWebhook } from './development-whatsapp-cloud-api.js';
 
 const envelope: WebhookEnvelope = {
@@ -459,6 +462,76 @@ void test('the Meta-shaped WhatsApp fixture verifies signatures and normalizes b
   const registry = new ConnectorRegistry();
   registry.register(developmentWhatsAppCloudApiConnector);
   assert.deepEqual(registry.keys(), ['development-whatsapp-cloud-api']);
+});
+
+void test('the Meta-shaped Instagram fixture verifies signatures and normalizes messages', async () => {
+  const inbound = {
+    object: 'instagram',
+    entry: [
+      {
+        id: 'instagram-account-1',
+        messaging: [
+          {
+            sender: { id: 'instagram-user-1' },
+            recipient: { id: 'instagram-account-1' },
+            timestamp: 1780315200000,
+            message: { mid: 'instagram-message-1', text: 'Hello from Instagram' },
+          },
+        ],
+      },
+    ],
+  };
+  const rawBody = Buffer.from(JSON.stringify(inbound));
+  assert.equal(
+    await developmentInstagramMessagingConnector.verifyWebhook({
+      headers: new Headers({
+        'x-hub-signature-256': signDevelopmentInstagramMessagingWebhook(rawBody),
+      }),
+      rawBody,
+    }),
+    true,
+  );
+  assert.deepEqual(
+    await developmentInstagramMessagingConnector.normalizeWebhook({
+      headers: new Headers(),
+      body: inbound,
+    }),
+    {
+      deliveryId: 'instagram:instagram-account-1:message:instagram-message-1',
+      eventType: 'instagram.message.received',
+      occurredAt: '2026-06-01T12:00:00.000Z',
+      resource: { type: 'instagram_account', providerId: 'instagram-account-1' },
+      payload: {
+        kind: 'messaging.inbound_message',
+        channel: 'INSTAGRAM',
+        providerConversationId: 'instagram-user-1',
+        providerMessageId: 'instagram-message-1',
+        body: 'Hello from Instagram',
+        sentAt: '2026-06-01T12:00:00.000Z',
+      },
+    },
+  );
+  await developmentInstagramMessagingConnector.validateConnection({
+    settings: { allowDevelopmentFixture: true },
+    secretReference: 'development://instagram-messaging/preview',
+  });
+  assert.deepEqual(buildInstagramTextRequest({ recipientId: 'instagram-user-1', body: 'Reply' }), {
+    recipient: { id: 'instagram-user-1' },
+    message: { text: 'Reply' },
+  });
+  const request = {
+    connectionId: 'aaaaaaaa-0000-0000-0000-000000000001',
+    providerConversationId: 'instagram-user-1',
+    idempotencyKey: 'instagram-message-idempotency-key',
+    body: 'Reply from the agent',
+    attachments: [],
+  };
+  const first = await developmentInstagramMessagingConnector.sendMessage(request);
+  const retry = await developmentInstagramMessagingConnector.sendMessage(request);
+  assert.equal(first.providerMessageId, retry.providerMessageId);
+  const registry = new ConnectorRegistry();
+  registry.register(developmentInstagramMessagingConnector);
+  assert.deepEqual(registry.keys(), ['development-instagram-messaging']);
 });
 
 void test('development channel emulators satisfy the common provider lifecycle contract', async () => {
