@@ -3,6 +3,7 @@ import { decideApproval } from './actions';
 import { ExecuteMergeForm } from './execute-merge-form';
 import { ExecuteSlaPolicyArchiveForm } from './execute-sla-policy-archive-form';
 import { ExecuteSlaPolicyForm } from './execute-sla-policy-form';
+import { ExecuteProviderActionForm } from './execute-provider-action-form';
 export const dynamic = 'force-dynamic';
 interface Approval {
   id: string;
@@ -62,6 +63,10 @@ export default async function ApprovalsPage() {
                   {approval.status === 'APPROVED' &&
                   approval.action === 'tickets.sla_policy.archive' ? (
                     <ExecuteSlaPolicyArchiveForm approvalId={approval.id} />
+                  ) : null}
+                  {approval.status === 'APPROVED' &&
+                  approval.action === 'integrations.provider_action.request' ? (
+                    <ExecuteProviderActionForm approvalId={approval.id} />
                   ) : null}
                 </li>
               ))}

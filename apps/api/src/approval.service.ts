@@ -22,6 +22,13 @@ const slaPolicyRequestSchema = z.object({
   escalationMinutes: z.number().int().min(1).max(43200).optional(),
 });
 const slaPolicyArchiveRequestSchema = z.object({ slaPolicyId: z.string().uuid() });
+const providerActionRequestSchema = z.object({
+  connectionId: z.string().uuid(),
+  actionType: z.string().regex(/^[a-z][a-z0-9_.-]{2,127}$/),
+  input: z.record(z.unknown()).default({}),
+});
+
+export type ApprovedProviderAction = z.infer<typeof providerActionRequestSchema>;
 
 export class ApprovalError extends Error {}
 
@@ -155,6 +162,52 @@ export class ApprovalService {
     });
   }
 
+  public async requestProviderAction(context: TenantRequestContext, input: unknown) {
+    this.require(context, 'integrations.manage');
+    const request = providerActionRequestSchema.parse(input);
+    const action: ApprovalAction = {
+      action: 'integrations.provider_action.request',
+      permission: 'integrations.manage',
+      risk: 'HIGH',
+      resource: {
+        type: 'integration.connection',
+        id: request.connectionId,
+        tenantId: context.tenantId,
+      },
+      input: request,
+    };
+    const digest = approvalActionDigest(action);
+    return withTenantTransaction(this.database.database, context, async (transaction) => {
+      const connection = await sql<{ id: string }>`select id from integrations.connections
+        where id = ${request.connectionId}::uuid and status in ('CONNECTED', 'DEGRADED')
+        for share`.execute(transaction);
+      if (!connection.rows[0]) throw new ApprovalError('Connected integration was not found');
+      const result = await sql<{
+        id: string;
+        status: string;
+        expires_at: Date;
+      }>`insert into policy.approval_requests (
+        id, tenant_id, requested_by, action, permission, risk, resource_type, resource_id,
+        action_digest, request_snapshot, policy_reason, status, expires_at
+      ) values (
+        ${randomUUID()}::uuid, ${context.tenantId}::uuid, ${context.actorId}::uuid,
+        ${action.action}, ${action.permission}, ${action.risk}, ${action.resource.type}, ${action.resource.id},
+        ${digest}, ${JSON.stringify(action)}::jsonb, 'approval_required', 'REQUESTED', now() + interval '24 hours'
+      ) on conflict (tenant_id, action_digest, status) do update set updated_at = now()
+      returning id, status, expires_at`.execute(transaction);
+      const approval = result.rows[0];
+      if (!approval) throw new ApprovalError('Provider action approval could not be stored');
+      await sql`insert into platform.audit_log (
+        tenant_id, actor_type, actor_id, action, resource_type, resource_id, request_id, correlation_id, metadata
+      ) values (
+        ${context.tenantId}::uuid, ${context.actorType}, ${context.actorId}::uuid,
+        'policy.approval.request', ${action.resource.type}, ${action.resource.id},
+        ${context.requestId}, ${context.correlationId}, ${JSON.stringify({ approvalId: approval.id, actionDigest: digest })}::jsonb
+      )`.execute(transaction);
+      return { approvalId: approval.id, status: approval.status, expiresAt: approval.expires_at };
+    });
+  }
+
   public async list(context: TenantRequestContext) {
     this.require(context, 'policy.approvals.read');
     return withTenantTransaction(this.database.database, context, async (transaction) => {
@@ -273,6 +326,40 @@ export class ApprovalService {
         slaPolicyId: slaPolicyArchiveRequestSchema.parse({ slaPolicyId: snapshot.resource.id })
           .slaPolicyId,
       };
+    });
+  }
+
+  public async executableProviderAction(
+    context: TenantRequestContext,
+    approvalId: string,
+  ): Promise<ApprovedProviderAction> {
+    this.require(context, 'integrations.manage');
+    return withTenantTransaction(this.database.database, context, async (transaction) => {
+      const result = await sql<{
+        request_snapshot: unknown;
+        status: string;
+      }>`select request_snapshot, status
+        from policy.approval_requests
+        where id = ${approvalId}::uuid and action = 'integrations.provider_action.request'`.execute(
+        transaction,
+      );
+      const approval = result.rows[0];
+      if (!approval || approval.status !== 'APPROVED')
+        throw new ApprovalError('Provider action approval is not executable');
+      const snapshot = approval.request_snapshot as {
+        input?: unknown;
+        resource?: { id?: unknown; type?: unknown };
+      };
+      if (
+        snapshot.resource?.type !== 'integration.connection' ||
+        typeof snapshot.resource.id !== 'string'
+      )
+        throw new ApprovalError('Provider action approval snapshot is invalid');
+      const input = providerActionRequestSchema.parse({
+        connectionId: snapshot.resource.id,
+        ...(typeof snapshot.input === 'object' && snapshot.input !== null ? snapshot.input : {}),
+      });
+      return input;
     });
   }
 

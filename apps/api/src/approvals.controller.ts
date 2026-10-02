@@ -12,6 +12,7 @@ import { ApprovalError, ApprovalService } from './approval.service.js';
 import { AuthenticatedContextService } from './authenticated-context.service.js';
 import { CustomerService } from '@platform/crm';
 import { TicketsService } from './tickets.service.js';
+import { IntegrationService } from './integration.service.js';
 
 @Controller('v1/approvals')
 export class ApprovalsController {
@@ -20,6 +21,7 @@ export class ApprovalsController {
     private readonly approvals: ApprovalService,
     private readonly customers: CustomerService,
     private readonly tickets: TicketsService,
+    private readonly integrations: IntegrationService,
   ) {}
 
   @Get()
@@ -89,6 +91,27 @@ export class ApprovalsController {
     });
   }
 
+  @Post(':approvalId/execute-provider-action')
+  public async executeProviderAction(
+    @Param('approvalId') approvalId: string,
+    @Headers('authorization') authorization: string | undefined,
+    @Headers('x-tenant-id') tenantId: string | undefined,
+    @Headers('x-correlation-id') correlationId: string | undefined,
+    @Headers('idempotency-key') idempotencyKey: string | undefined,
+  ) {
+    return this.invoke(async () => {
+      const context = await this.context(authorization, tenantId, correlationId);
+      const providerAction = await this.approvals.executableProviderAction(context, approvalId);
+      return this.integrations.requestProviderAction(
+        context,
+        idempotencyKey ?? '',
+        providerAction.connectionId,
+        { actionType: providerAction.actionType, input: providerAction.input },
+        approvalId,
+      );
+    });
+  }
+
   @Post(':approvalId/decision')
   public async decide(
     @Param('approvalId') approvalId: string,
@@ -149,6 +172,22 @@ export class ApprovalsController {
     if (!Buffer.isBuffer(body)) throw new BadRequestException('Approval body must be JSON');
     return this.invoke(async () =>
       this.approvals.requestSlaPolicyArchive(
+        await this.context(authorization, tenantId, correlationId),
+        JSON.parse(body.toString('utf8')),
+      ),
+    );
+  }
+
+  @Post('provider-action-request')
+  public async requestProviderAction(
+    @Body() body: unknown,
+    @Headers('authorization') authorization: string | undefined,
+    @Headers('x-tenant-id') tenantId: string | undefined,
+    @Headers('x-correlation-id') correlationId: string | undefined,
+  ) {
+    if (!Buffer.isBuffer(body)) throw new BadRequestException('Approval body must be JSON');
+    return this.invoke(async () =>
+      this.approvals.requestProviderAction(
         await this.context(authorization, tenantId, correlationId),
         JSON.parse(body.toString('utf8')),
       ),

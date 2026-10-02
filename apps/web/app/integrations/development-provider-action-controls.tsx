@@ -18,13 +18,13 @@ export function DevelopmentProviderActionControls({
     <section className="customer-form" aria-label="Development provider action">
       <h2>Development-only action</h2>
       <p className="muted">
-        This queues a harmless fixture echo through the same durable connector worker path. It does
-        not contact a provider.
+        This requests approval for a harmless fixture echo through the same durable connector worker
+        path. It does not contact a provider.
       </p>
       <form action={action} className="approval-actions">
         <input type="hidden" name="connectionId" value={connectionId} />
         <input type="hidden" name="connectorKey" value={connectorKey} />
-        <button type="submit">Queue development echo</button>
+        <button type="submit">Request development echo</button>
       </form>
       {state.error ? (
         <p className="form-error" role="alert">

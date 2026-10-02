@@ -86,12 +86,41 @@ export async function requestDevelopmentProviderAction(
         : undefined;
   if (!connectionId || !actionType)
     return { error: 'Development provider actions are unavailable for this connection.' };
-  return sendConnectionCommand(
-    connectionId,
-    '/provider-actions',
-    { actionType, input: { source: 'developer-preview' } },
-    'Development action queued.',
+  return sendApprovalRequest(
+    { connectionId, actionType, input: { source: 'developer-preview' } },
+    'Development action approval requested.',
   );
+}
+
+async function sendApprovalRequest(
+  body: Record<string, unknown>,
+  completed: string,
+): Promise<IntegrationActionState> {
+  const store = await cookies();
+  const token = store.get('platform_access_token')?.value;
+  const tenantId = store.get('platform_tenant_id')?.value;
+  const baseUrl = process.env.API_INTERNAL_URL;
+  if (!token || !tenantId || !baseUrl)
+    return { error: 'Sign in and select an organization before requesting an approval.' };
+  try {
+    const response = await fetch(new URL('/v1/approvals/provider-action-request', baseUrl), {
+      method: 'POST',
+      headers: {
+        authorization: `Bearer ${token}`,
+        'content-type': 'application/json',
+        'x-tenant-id': tenantId,
+      },
+      body: JSON.stringify(body),
+    });
+    if (response.status === 401 || response.status === 403)
+      return { error: 'Your session does not have permission to request this approval.' };
+    if (!response.ok) return { error: 'The provider action approval could not be recorded.' };
+  } catch {
+    return { error: 'The approval service is currently unavailable.' };
+  }
+  refreshPath('/approvals');
+  refreshPath('/integrations');
+  return { completed };
 }
 
 async function sendConnectionCommand(

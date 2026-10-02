@@ -46,9 +46,10 @@ No overall completion percentage is recorded: the required release gate is a bin
   post-commit provider webhook subscription/action lifecycle.
   Development Web Chat/API emulators exercise these typed boundaries without a
   provider network call. The protected Integrations page lists current action
-  state and exposes only their clearly labelled harmless echo action; real
-  provider adapter lifecycle/webhook/backfill/reconciliation implementations
-  remain incomplete.
+  state and exposes only their clearly labelled harmless echo action through
+  the normal request, independent approval, and exact approved execution flow;
+  real provider adapter lifecycle/webhook/backfill/reconciliation
+  implementations remain incomplete.
 - CRM has tenant-scoped customer/tag/segment/import/export/merge foundations.
   Migration `0022` adds immutable verified provider-consent evidence. Its
   canonical webhook path verifies a bounded provider payload, writes evidence
