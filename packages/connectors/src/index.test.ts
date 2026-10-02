@@ -275,10 +275,10 @@ void test('the development API fixture has an isolated signature and determinist
   });
   assert.match(action?.providerActionId ?? '', /^development-api-action-/u);
   assert.deepEqual(action?.result, { echoed: { safe: 'fixture data' }, developmentOnly: true });
-  const executeAction = developmentApiConnector.executeAction;
-  if (!executeAction) assert.fail('Development API fixture must expose typed provider actions');
+  if (!developmentApiConnector.executeAction)
+    assert.fail('Development API fixture must expose typed provider actions');
   await assert.rejects(
-    executeAction({
+    developmentApiConnector.executeAction({
       connectionId: request.connectionId,
       actionType: 'commerce.order.cancel',
       idempotencyKey: 'invalid-api-action',
