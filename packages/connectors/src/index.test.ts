@@ -249,6 +249,7 @@ void test('the development Web Chat fixture signs webhooks and preserves outboun
   registry.register(developmentApiConnector);
   registry.register(developmentWebChatConnector);
   assert.deepEqual(registry.keys(), ['development-api', 'development-web-chat']);
+  assert.ok(developmentWebChatConnector.manifest.capabilities.includes('provider.actions'));
 });
 
 void test('the development API fixture has an isolated signature and deterministic outbound identity', async () => {
@@ -286,6 +287,7 @@ void test('the development API fixture has an isolated signature and determinist
     first.providerMessageId,
     (await developmentWebChatConnector.sendMessage(request)).providerMessageId,
   );
+  assert.ok(developmentApiConnector.manifest.capabilities.includes('provider.actions'));
   const action = await developmentApiConnector.executeAction?.({
     connectionId: request.connectionId,
     actionType: 'development.api.echo',
