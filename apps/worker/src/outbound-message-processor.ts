@@ -1,5 +1,6 @@
 import {
   outboundMessageResultSchema,
+  toConnectorError,
   type Connector,
   type ConnectorRegistry,
   type MessagingConnector,
@@ -165,8 +166,7 @@ export class OutboundMessageProcessor {
   }
 
   private async recordFailure(message: ClaimedOutboundMessage, error: unknown): Promise<void> {
-    const failure =
-      error instanceof Error ? error.message : 'Unknown outbound message delivery error';
+    const failure = toConnectorError(error);
     await withTenantTransaction(
       this.database,
       {
@@ -181,13 +181,16 @@ export class OutboundMessageProcessor {
           delivery_attempts: number;
         }>`update messaging.messages
           set delivery_status = case
-                when delivery_attempts >= ${maximumDeliveryAttempts} then 'DEAD_LETTER'
+                when not ${failure.retryable} or delivery_attempts >= ${maximumDeliveryAttempts}
+                  then 'DEAD_LETTER'
                 else 'FAILED'
               end,
-              last_delivery_error = left(${failure}, 2000),
+              last_delivery_error = ${failure.code},
               next_delivery_attempt_at = case
-                when delivery_attempts >= ${maximumDeliveryAttempts} then null
-                else now() + make_interval(secs => least(3600, 2 ^ least(delivery_attempts, 10)))
+                when not ${failure.retryable} or delivery_attempts >= ${maximumDeliveryAttempts} then null
+                else now() + make_interval(secs => greatest(
+                  ${failure.retryAfterSeconds ?? 0}, least(3600, 2 ^ least(delivery_attempts, 10))
+                ))
               end,
               delivery_claimed_by = null, delivery_claimed_at = null
           where id = ${message.id}::uuid and delivery_claimed_by = ${this.workerId}
@@ -199,7 +202,8 @@ export class OutboundMessageProcessor {
         ) values (
           ${message.tenant_id}::uuid, 'messaging-outbound-worker', 'messaging.message.dispatch_requested',
           ${message.id}, ${JSON.stringify({ connectionId: message.connection_id, conversationId: message.conversation_id })}::jsonb,
-          'OUTBOUND_MESSAGE_MAX_ATTEMPTS', left(${failure}, 2000), ${result.delivery_attempts}
+          ${failure.retryable ? 'OUTBOUND_MESSAGE_MAX_ATTEMPTS' : 'OUTBOUND_MESSAGE_NON_RETRYABLE'},
+          ${failure.code}, ${result.delivery_attempts}
         )`.execute(transaction);
         await sql`insert into platform.outbox_events (
           tenant_id, event_type, source, correlation_id, causation_id, actor_type,
