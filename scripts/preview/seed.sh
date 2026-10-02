@@ -191,6 +191,103 @@ SET connector_key = EXCLUDED.connector_key,
     capabilities = EXCLUDED.capabilities,
     last_validated_at = EXCLUDED.last_validated_at,
     updated_at = now();
+INSERT INTO integrations.connector_definitions (key, version, category, display_name, manifest)
+VALUES (
+  'development-instagram-messaging',
+  '1.0.0',
+  'MESSAGING',
+  'Development Instagram Messaging',
+  '{"key":"development-instagram-messaging","version":"1.0.0","category":"MESSAGING","capabilities":["messaging.inbound","messaging.outbound","webhooks","sync","provider.actions"],"credentialSchema":{"type":"development-fixture"},"settingsSchema":{"type":"object","required":["allowDevelopmentFixture"]}}'::jsonb
+)
+ON CONFLICT (key) DO UPDATE
+SET version = EXCLUDED.version,
+    category = EXCLUDED.category,
+    display_name = EXCLUDED.display_name,
+    manifest = EXCLUDED.manifest,
+    enabled = true,
+    updated_at = now();
+INSERT INTO integrations.secret_references (id, tenant_id, provider, reference, key_version, metadata)
+VALUES (
+  'aaaaaaaa-3333-3333-3333-333333333333',
+  'cccccccc-cccc-cccc-cccc-cccccccccccc',
+  'development-instagram-messaging',
+  'development://instagram-messaging/preview',
+  'development-only',
+  '{"developmentOnly":true}'::jsonb
+)
+ON CONFLICT (tenant_id, provider, reference) DO NOTHING;
+INSERT INTO integrations.connections (
+  id, tenant_id, connector_key, secret_reference_id, display_name, status, settings, capabilities, last_validated_at
+)
+VALUES (
+  'aaaaaaaa-4444-4444-4444-444444444444',
+  'cccccccc-cccc-cccc-cccc-cccccccccccc',
+  'development-instagram-messaging',
+  'aaaaaaaa-3333-3333-3333-333333333333',
+  'Development Instagram Messaging',
+  'CONNECTED',
+  '{"allowDevelopmentFixture":true}'::jsonb,
+  '["messaging.inbound","messaging.outbound","webhooks","sync","provider.actions"]'::jsonb,
+  now()
+)
+ON CONFLICT (id) DO UPDATE
+SET connector_key = EXCLUDED.connector_key,
+    secret_reference_id = EXCLUDED.secret_reference_id,
+    display_name = EXCLUDED.display_name,
+    status = EXCLUDED.status,
+    settings = EXCLUDED.settings,
+    capabilities = EXCLUDED.capabilities,
+    last_validated_at = EXCLUDED.last_validated_at,
+    updated_at = now();
+
+INSERT INTO integrations.connector_definitions (key, version, category, display_name, manifest)
+VALUES (
+  'development-messenger-platform',
+  '1.0.0',
+  'MESSAGING',
+  'Development Messenger Platform',
+  '{"key":"development-messenger-platform","version":"1.0.0","category":"MESSAGING","capabilities":["messaging.inbound","messaging.outbound","webhooks","sync","provider.actions"],"credentialSchema":{"type":"development-fixture"},"settingsSchema":{"type":"object","required":["allowDevelopmentFixture"]}}'::jsonb
+)
+ON CONFLICT (key) DO UPDATE
+SET version = EXCLUDED.version,
+    category = EXCLUDED.category,
+    display_name = EXCLUDED.display_name,
+    manifest = EXCLUDED.manifest,
+    enabled = true,
+    updated_at = now();
+INSERT INTO integrations.secret_references (id, tenant_id, provider, reference, key_version, metadata)
+VALUES (
+  'aaaaaaaa-5555-5555-5555-555555555555',
+  'cccccccc-cccc-cccc-cccc-cccccccccccc',
+  'development-messenger-platform',
+  'development://messenger-platform/preview',
+  'development-only',
+  '{"developmentOnly":true}'::jsonb
+)
+ON CONFLICT (tenant_id, provider, reference) DO NOTHING;
+INSERT INTO integrations.connections (
+  id, tenant_id, connector_key, secret_reference_id, display_name, status, settings, capabilities, last_validated_at
+)
+VALUES (
+  'aaaaaaaa-6666-6666-6666-666666666666',
+  'cccccccc-cccc-cccc-cccc-cccccccccccc',
+  'development-messenger-platform',
+  'aaaaaaaa-5555-5555-5555-555555555555',
+  'Development Messenger Platform',
+  'CONNECTED',
+  '{"allowDevelopmentFixture":true}'::jsonb,
+  '["messaging.inbound","messaging.outbound","webhooks","sync","provider.actions"]'::jsonb,
+  now()
+)
+ON CONFLICT (id) DO UPDATE
+SET connector_key = EXCLUDED.connector_key,
+    secret_reference_id = EXCLUDED.secret_reference_id,
+    display_name = EXCLUDED.display_name,
+    status = EXCLUDED.status,
+    settings = EXCLUDED.settings,
+    capabilities = EXCLUDED.capabilities,
+    last_validated_at = EXCLUDED.last_validated_at,
+    updated_at = now();
 INSERT INTO crm.tags (id, tenant_id, name, description)
 VALUES (
   '55555555-5555-5555-5555-555555555555',

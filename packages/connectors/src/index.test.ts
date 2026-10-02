@@ -4,8 +4,10 @@ import {
   ConnectorRegistry,
   ConnectorError,
   buildInstagramTextRequest,
+  buildMessengerTextRequest,
   developmentApiConnector,
   developmentInstagramMessagingConnector,
+  developmentMessengerPlatformConnector,
   developmentWebChatConnector,
   developmentWhatsAppCloudApiConnector,
   buildWhatsAppTextRequest,
@@ -21,6 +23,7 @@ import {
 import { signDevelopmentWebChatWebhook } from './development-web-chat.js';
 import { signDevelopmentApiWebhook } from './development-api.js';
 import { signDevelopmentInstagramMessagingWebhook } from './development-instagram-messaging.js';
+import { signDevelopmentMessengerPlatformWebhook } from './development-messenger-platform.js';
 import { signDevelopmentWhatsAppCloudApiWebhook } from './development-whatsapp-cloud-api.js';
 
 const envelope: WebhookEnvelope = {
@@ -164,6 +167,10 @@ void test('declares all planned provider families without registering production
   );
   assert.equal(providerBoundary('shopify-public-app')?.implementationState, 'PLANNED');
   assert.equal(providerBoundary('whatsapp-cloud-api')?.implementationState, 'DEVELOPMENT_FIXTURE');
+  assert.equal(providerBoundary('instagram-messaging')?.implementationState, 'DEVELOPMENT_FIXTURE');
+  assert.equal(providerBoundary('messenger-platform')?.implementationState, 'DEVELOPMENT_FIXTURE');
+  assert.equal(providerBoundary('web-chat')?.implementationState, 'DEVELOPMENT_FIXTURE');
+  assert.equal(providerBoundary('api')?.implementationState, 'DEVELOPMENT_FIXTURE');
   assert.equal(providerBoundary('unknown-provider'), undefined);
 });
 
@@ -532,6 +539,110 @@ void test('the Meta-shaped Instagram fixture verifies signatures and normalizes 
   const registry = new ConnectorRegistry();
   registry.register(developmentInstagramMessagingConnector);
   assert.deepEqual(registry.keys(), ['development-instagram-messaging']);
+});
+
+
+void test('the Meta-shaped Messenger fixture verifies signatures and normalizes messages', async () => {
+  const inbound = {
+    object: 'page',
+    entry: [
+      {
+        id: 'facebook-page-1',
+        messaging: [
+          {
+            sender: { id: 'messenger-user-1' },
+            recipient: { id: 'facebook-page-1' },
+            timestamp: 1780315200000,
+            message: { mid: 'messenger-message-1', text: 'Hello from Messenger' },
+          },
+        ],
+      },
+    ],
+  };
+  const rawBody = Buffer.from(JSON.stringify(inbound));
+  assert.equal(
+    await developmentMessengerPlatformConnector.verifyWebhook({
+      headers: new Headers({
+        'x-hub-signature-256': signDevelopmentMessengerPlatformWebhook(rawBody),
+      }),
+      rawBody,
+    }),
+    true,
+  );
+  assert.equal(
+    await developmentMessengerPlatformConnector.verifyWebhook({
+      headers: new Headers({ 'x-hub-signature-256': 'sha256=invalid' }),
+      rawBody,
+    }),
+    false,
+  );
+  assert.deepEqual(
+    await developmentMessengerPlatformConnector.normalizeWebhook({
+      headers: new Headers(),
+      body: inbound,
+    }),
+    {
+      deliveryId: 'messenger:facebook-page-1:message:messenger-message-1',
+      eventType: 'messenger.message.received',
+      occurredAt: '2026-06-01T12:00:00.000Z',
+      resource: { type: 'facebook_page', providerId: 'facebook-page-1' },
+      payload: {
+        kind: 'messaging.inbound_message',
+        channel: 'MESSENGER',
+        providerConversationId: 'messenger-user-1',
+        providerMessageId: 'messenger-message-1',
+        body: 'Hello from Messenger',
+        sentAt: '2026-06-01T12:00:00.000Z',
+      },
+    },
+  );
+  await developmentMessengerPlatformConnector.validateConnection({
+    settings: { allowDevelopmentFixture: true },
+    secretReference: 'development://messenger-platform/preview',
+  });
+  await assert.rejects(
+    developmentMessengerPlatformConnector.validateConnection({
+      settings: { allowDevelopmentFixture: true },
+      secretReference: 'development://instagram-messaging/preview',
+    }),
+  );
+  assert.deepEqual(
+    buildMessengerTextRequest({ recipientId: 'messenger-user-1', body: 'Reply' }),
+    {
+      recipient: { id: 'messenger-user-1' },
+      messaging_type: 'RESPONSE',
+      message: { text: 'Reply' },
+    },
+  );
+  const request = {
+    connectionId: 'aaaaaaaa-0000-0000-0000-000000000001',
+    providerConversationId: 'messenger-user-1',
+    idempotencyKey: 'messenger-message-idempotency-key',
+    body: 'Reply from the agent',
+    attachments: [],
+  };
+  const first = await developmentMessengerPlatformConnector.sendMessage(request);
+  const retry = await developmentMessengerPlatformConnector.sendMessage(request);
+  assert.equal(first.providerMessageId, retry.providerMessageId);
+  assert.match(first.providerMessageId, /^development-messenger-/u);
+  await assert.rejects(
+    developmentMessengerPlatformConnector.sendMessage({
+      ...request,
+      attachments: [
+        {
+          storageKey: 'development/attachment-1',
+          mediaType: 'IMAGE',
+          contentType: 'image/png',
+          fileName: 'attachment.png',
+          byteSize: 1,
+        },
+      ],
+    }),
+    { code: 'UNSUPPORTED_OPERATION' },
+  );
+  const registry = new ConnectorRegistry();
+  registry.register(developmentMessengerPlatformConnector);
+  assert.deepEqual(registry.keys(), ['development-messenger-platform']);
 });
 
 void test('development channel emulators satisfy the common provider lifecycle contract', async () => {

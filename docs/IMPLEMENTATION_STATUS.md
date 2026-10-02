@@ -45,8 +45,8 @@ No overall completion percentage is recorded: the required release gate is a bin
   leases, capped retries, terminal sync/action dead-letter behavior, and
   post-commit provider webhook subscription/action lifecycle.
   Development Web Chat/API emulators exercise these typed boundaries without a
-  provider network call. Meta-shaped WhatsApp Cloud API and Instagram
-  Messaging fixtures now verify the provider HMAC header convention, normalize
+  provider network call. Meta-shaped WhatsApp Cloud API, Instagram Messaging,
+  and Messenger fixtures verify the provider HMAC header convention, normalize
   one bounded text/receipt event per delivery, support deterministic outbound
   text dispatch, and reject media transport until its production contract is
   implemented; they are never registered in production. The protected Integrations page lists current action

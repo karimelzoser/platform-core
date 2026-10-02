@@ -3,6 +3,7 @@ import {
   ConnectorRegistry,
   developmentApiConnector,
   developmentInstagramMessagingConnector,
+  developmentMessengerPlatformConnector,
   developmentWebChatConnector,
   developmentWhatsAppCloudApiConnector,
 } from '@platform/connectors';
@@ -40,6 +41,7 @@ async function main(): Promise<void> {
   if (environment.APP_ENV !== 'production' && environment.ENABLE_DEVELOPMENT_CONNECTOR_FIXTURES) {
     connectors.register(developmentApiConnector);
     connectors.register(developmentInstagramMessagingConnector);
+    connectors.register(developmentMessengerPlatformConnector);
     connectors.register(developmentWebChatConnector);
     connectors.register(developmentWhatsAppCloudApiConnector);
   }

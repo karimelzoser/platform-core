@@ -70,7 +70,7 @@ export const providerBoundaries: readonly ProviderBoundary[] = [
       'messaging.outbound',
       'provider.actions',
     ],
-    implementationState: 'PLANNED',
+    implementationState: 'DEVELOPMENT_FIXTURE',
   },
   {
     key: 'email',
@@ -84,14 +84,14 @@ export const providerBoundaries: readonly ProviderBoundary[] = [
     displayName: 'Web Chat',
     category: 'MESSAGING',
     capabilities: ['webhooks', 'sync', 'messaging.inbound', 'messaging.outbound'],
-    implementationState: 'PLANNED',
+    implementationState: 'DEVELOPMENT_FIXTURE',
   },
   {
     key: 'api',
     displayName: 'API',
     category: 'GENERIC',
     capabilities: ['webhooks', 'sync', 'provider.actions'],
-    implementationState: 'PLANNED',
+    implementationState: 'DEVELOPMENT_FIXTURE',
   },
   {
     key: 'shopify-public-app',

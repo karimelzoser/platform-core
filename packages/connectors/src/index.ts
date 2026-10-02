@@ -274,6 +274,11 @@ export {
   signDevelopmentInstagramMessagingWebhook,
 } from './development-instagram-messaging.js';
 export {
+  buildMessengerTextRequest,
+  developmentMessengerPlatformConnector,
+  signDevelopmentMessengerPlatformWebhook,
+} from './development-messenger-platform.js';
+export {
   providerBoundaries,
   providerBoundary,
   providerBoundarySchema,

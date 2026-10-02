@@ -5,6 +5,7 @@ import {
   ConnectorRegistry,
   developmentApiConnector,
   developmentInstagramMessagingConnector,
+  developmentMessengerPlatformConnector,
   developmentWebChatConnector,
   developmentWhatsAppCloudApiConnector,
 } from '@platform/connectors';
@@ -42,6 +43,7 @@ function createRuntimeConnectorRegistry(): ConnectorRegistry {
   if (config.APP_ENV !== 'production' && config.ENABLE_DEVELOPMENT_CONNECTOR_FIXTURES) {
     registry.register(developmentApiConnector);
     registry.register(developmentInstagramMessagingConnector);
+    registry.register(developmentMessengerPlatformConnector);
     registry.register(developmentWebChatConnector);
     registry.register(developmentWhatsAppCloudApiConnector);
   }
