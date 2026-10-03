@@ -4,6 +4,8 @@ import { randomUUID } from 'node:crypto';
 import { revalidatePath } from 'next/cache';
 import { cookies } from 'next/headers';
 
+const refreshPath = revalidatePath as (path: string) => void;
+
 export interface OrderActionState {
   error?: string;
   completed?: boolean;
@@ -194,8 +196,8 @@ async function sendOrderCommand(
   } catch {
     return { error: 'The commerce API is unavailable.' };
   }
-  revalidatePath('/orders');
-  revalidatePath(`/orders/${orderId}`);
+  refreshPath('/orders');
+  refreshPath(`/orders/${orderId}`);
   return { completed: true };
 }
 
