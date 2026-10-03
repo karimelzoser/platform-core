@@ -61,6 +61,7 @@ jobs:
           apps/api/src/app.module.ts
           apps/api/src/commerce.controller.ts
           apps/web/app/orders
+          apps/web/e2e/orders-preview.spec.ts
           tests/integration/order-workflow-lifecycle.ts
           tests/integration/temporal-durability.ts
           tests/package.json
@@ -85,6 +86,7 @@ jobs:
             apps/api/src/app.module.ts \
             apps/api/src/commerce.controller.ts \
             apps/web/app/orders \
+            apps/web/e2e/orders-preview.spec.ts \
             tests/integration/order-workflow-lifecycle.ts \
             tests/integration/temporal-durability.ts \
             tests/package.json \
