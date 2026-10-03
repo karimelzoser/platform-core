@@ -52,8 +52,7 @@ jobs:
           apps/api/src/app.module.ts
           apps/api/src/commerce.controller.ts
           apps/web/app/orders
-      - run: pnpm --filter @platform/connectors... --filter @platform/worker... --filter @platform/commerce... --filter @platform/api... --filter @platform/web... build
-      - run: pnpm --filter @platform/connectors test
+          pnpm-lock.yaml
       - name: Commit normalization if needed
         run: |
           if git diff --quiet; then
@@ -74,3 +73,5 @@ jobs:
             apps/web/app/orders
           git commit -m 'style: normalize order workflow surface'
           git push origin HEAD:codex/order-workflows-hosted-preview-20261003
+      - run: pnpm --filter @platform/connectors... --filter @platform/worker... --filter @platform/commerce... --filter @platform/api... --filter @platform/web... build
+      - run: pnpm --filter @platform/connectors test
