@@ -165,7 +165,13 @@ void test('declares all planned provider families without registering production
       'woocommerce',
     ],
   );
-  assert.equal(providerBoundary('shopify-public-app')?.implementationState, 'PLANNED');
+  assert.equal(
+    providerBoundary('meta-embedded-signup')?.implementationState,
+    'DEVELOPMENT_FIXTURE',
+  );
+  assert.equal(providerBoundary('email')?.implementationState, 'DEVELOPMENT_FIXTURE');
+  assert.equal(providerBoundary('shopify-public-app')?.implementationState, 'DEVELOPMENT_FIXTURE');
+  assert.equal(providerBoundary('woocommerce')?.implementationState, 'DEVELOPMENT_FIXTURE');
   assert.equal(providerBoundary('whatsapp-cloud-api')?.implementationState, 'DEVELOPMENT_FIXTURE');
   assert.equal(providerBoundary('instagram-messaging')?.implementationState, 'DEVELOPMENT_FIXTURE');
   assert.equal(providerBoundary('messenger-platform')?.implementationState, 'DEVELOPMENT_FIXTURE');
