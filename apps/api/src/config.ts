@@ -19,5 +19,8 @@ const environmentSchema = z.object({
 export type ApiConfig = z.infer<typeof environmentSchema>;
 
 export function loadApiConfig(environment: NodeJS.ProcessEnv = process.env): ApiConfig {
-  return environmentSchema.parse(environment);
+  return environmentSchema.parse({
+    ...environment,
+    API_PORT: environment.API_PORT ?? environment.PORT,
+  });
 }
