@@ -11,7 +11,8 @@ import { z } from 'zod';
 type DatabaseTransaction = Transaction<Record<string, never>>;
 
 const uuidSchema = z.string().uuid();
-const optionalText = (maximum: number) => z.string().trim().min(1).max(maximum).nullable().optional();
+const optionalText = (maximum: number) =>
+  z.string().trim().min(1).max(maximum).nullable().optional();
 const orderAddressSchema = z.object({
   name: optionalText(300),
   company: optionalText(300),
@@ -20,7 +21,11 @@ const orderAddressSchema = z.object({
   city: z.string().trim().min(1).max(300),
   region: optionalText(300),
   postalCode: optionalText(100),
-  countryCode: z.string().trim().toUpperCase().regex(/^[A-Z]{2}$/u),
+  countryCode: z
+    .string()
+    .trim()
+    .toUpperCase()
+    .regex(/^[A-Z]{2}$/u),
   phone: optionalText(64),
 });
 
@@ -207,7 +212,9 @@ export class OrderWorkflowService {
             throw new OrderWorkflowInvariantError(
               'A confirmed duplicate must be resolved before confirmation',
             );
-          const updated = await sql<{ confirmation_attempts: number }>`update commerce.order_workflows
+          const updated = await sql<{
+            confirmation_attempts: number;
+          }>`update commerce.order_workflows
             set confirmation_state = 'REQUESTED',
                 confirmation_attempts = confirmation_attempts + 1,
                 confirmation_requested_at = now(),
@@ -219,9 +226,15 @@ export class OrderWorkflowService {
             returning confirmation_attempts`.execute(transaction);
           const attempts = updated.rows[0]?.confirmation_attempts;
           if (!attempts) throw new OrderWorkflowInvariantError('Order workflow state is missing');
-          await this.appendTimeline(transaction, context, validated, 'commerce.order.confirmation_requested', {
-            attempts,
-          });
+          await this.appendTimeline(
+            transaction,
+            context,
+            validated,
+            'commerce.order.confirmation_requested',
+            {
+              attempts,
+            },
+          );
           return { orderId: validated.orderId, confirmationState: 'REQUESTED' as const, attempts };
         },
       },
@@ -244,7 +257,8 @@ export class OrderWorkflowService {
         event: {
           type: `commerce.order.confirmation_${validated.response.toLowerCase()}`,
           data: (_input, result) => result,
-          dedupeKey: () => `commerce:order:confirmation:${validated.response}:${idempotencyKey.trim()}`,
+          dedupeKey: () =>
+            `commerce:order:confirmation:${validated.response}:${idempotencyKey.trim()}`,
         },
         audit: { afterState: (_input, result) => result },
         execute: async (transaction) => {
@@ -383,13 +397,23 @@ export class OrderWorkflowService {
             where tenant_id = ${context.tenantId}::uuid and order_id = ${validated.orderId}::uuid`.execute(
             transaction,
           );
-          await this.appendTimeline(transaction, context, validated, 'commerce.order.duplicates_evaluated', {
-            candidateCount: detected.length,
+          await this.appendTimeline(
+            transaction,
+            context,
+            validated,
+            'commerce.order.duplicates_evaluated',
+            {
+              candidateCount: detected.length,
+              duplicateState: state,
+              threshold: validated.threshold,
+              lookbackDays: validated.lookbackDays,
+            },
+          );
+          return {
+            orderId: validated.orderId,
             duplicateState: state,
-            threshold: validated.threshold,
-            lookbackDays: validated.lookbackDays,
-          });
-          return { orderId: validated.orderId, duplicateState: state, candidateCount: detected.length };
+            candidateCount: detected.length,
+          };
         },
       },
       { context, input: validated, idempotencyKey },
@@ -424,17 +448,24 @@ export class OrderWorkflowService {
               and candidate_order_id = ${validated.candidateId}::uuid
               and state in ('OPEN', 'DISMISSED', 'CONFIRMED_DUPLICATE')
             returning id`.execute(transaction);
-          if (!updated.rows[0]) throw new OrderWorkflowInvariantError('Duplicate candidate was not found');
+          if (!updated.rows[0])
+            throw new OrderWorkflowInvariantError('Duplicate candidate was not found');
           const state = await this.recomputeDuplicateState(
             transaction,
             context.tenantId,
             validated.orderId,
           );
-          await this.appendTimeline(transaction, context, validated, 'commerce.order.duplicate_reviewed', {
-            candidateOrderId: validated.candidateId,
-            decision: validated.decision,
-            duplicateState: state,
-          });
+          await this.appendTimeline(
+            transaction,
+            context,
+            validated,
+            'commerce.order.duplicate_reviewed',
+            {
+              candidateOrderId: validated.candidateId,
+              decision: validated.decision,
+              duplicateState: state,
+            },
+          );
           return { orderId: validated.orderId, duplicateState: state };
         },
       },
@@ -480,10 +511,16 @@ export class OrderWorkflowService {
             where tenant_id = ${context.tenantId}::uuid and order_id = ${validated.orderId}::uuid`.execute(
             transaction,
           );
-          await this.appendTimeline(transaction, context, validated, 'commerce.order.modification_requested', {
-            requestId,
-            reason: validated.reason ?? null,
-          });
+          await this.appendTimeline(
+            transaction,
+            context,
+            validated,
+            'commerce.order.modification_requested',
+            {
+              requestId,
+              reason: validated.reason ?? null,
+            },
+          );
           return { requestId, state: 'REQUESTED' as const };
         },
       },
@@ -504,9 +541,10 @@ export class OrderWorkflowService {
         risk: 'MEDIUM',
         resource: () => ({ type: 'commerce.order', id: validated.orderId }),
         event: {
-          type: validated.decision === 'APPROVE'
-            ? 'commerce.order.modification_applied'
-            : 'commerce.order.modification_rejected',
+          type:
+            validated.decision === 'APPROVE'
+              ? 'commerce.order.modification_applied'
+              : 'commerce.order.modification_rejected',
           data: (_input, result) => result,
           dedupeKey: () => `commerce:order:modification-reviewed:${idempotencyKey.trim()}`,
         },
@@ -523,7 +561,8 @@ export class OrderWorkflowService {
               and kind = 'MODIFICATION' and state = 'REQUESTED'
             for update`.execute(transaction);
           const row = request.rows[0];
-          if (!row) throw new OrderWorkflowInvariantError('Pending modification request was not found');
+          if (!row)
+            throw new OrderWorkflowInvariantError('Pending modification request was not found');
 
           if (validated.decision === 'REJECT') {
             await sql`update commerce.order_change_requests
@@ -537,9 +576,15 @@ export class OrderWorkflowService {
               where tenant_id = ${context.tenantId}::uuid and order_id = ${validated.orderId}::uuid`.execute(
               transaction,
             );
-            await this.appendTimeline(transaction, context, validated, 'commerce.order.modification_rejected', {
-              requestId: validated.requestId,
-            });
+            await this.appendTimeline(
+              transaction,
+              context,
+              validated,
+              'commerce.order.modification_rejected',
+              {
+                requestId: validated.requestId,
+              },
+            );
             return { requestId: validated.requestId, state: 'REJECTED' as const };
           }
 
@@ -564,10 +609,16 @@ export class OrderWorkflowService {
             where tenant_id = ${context.tenantId}::uuid and order_id = ${validated.orderId}::uuid`.execute(
             transaction,
           );
-          await this.appendTimeline(transaction, context, validated, 'commerce.order.modification_applied', {
-            requestId: validated.requestId,
-            providerSyncRequired: mapped,
-          });
+          await this.appendTimeline(
+            transaction,
+            context,
+            validated,
+            'commerce.order.modification_applied',
+            {
+              requestId: validated.requestId,
+              providerSyncRequired: mapped,
+            },
+          );
           return { requestId: validated.requestId, state: 'APPLIED' as const };
         },
       },
@@ -593,7 +644,9 @@ export class OrderWorkflowService {
           data: () => ({ orderId: validated.orderId, requestId }),
           dedupeKey: () => `commerce:order:cancellation-requested:${requestId}`,
         },
-        audit: { afterState: () => ({ orderId: validated.orderId, requestId, state: 'REQUESTED' }) },
+        audit: {
+          afterState: () => ({ orderId: validated.orderId, requestId, state: 'REQUESTED' }),
+        },
         execute: async (transaction) => {
           const order = await this.loadOrderForUpdate(transaction, validated, context.tenantId);
           this.assertCancellationSafe(order);
@@ -610,10 +663,16 @@ export class OrderWorkflowService {
             where tenant_id = ${context.tenantId}::uuid and order_id = ${validated.orderId}::uuid`.execute(
             transaction,
           );
-          await this.appendTimeline(transaction, context, validated, 'commerce.order.cancellation_requested', {
-            requestId,
-            reason: validated.reason,
-          });
+          await this.appendTimeline(
+            transaction,
+            context,
+            validated,
+            'commerce.order.cancellation_requested',
+            {
+              requestId,
+              reason: validated.reason,
+            },
+          );
           return { requestId, state: 'REQUESTED' as const };
         },
       },
@@ -635,9 +694,10 @@ export class OrderWorkflowService {
         risk: 'HIGH',
         resource: () => ({ type: 'commerce.order', id: validated.orderId }),
         event: {
-          type: validated.decision === 'APPROVE'
-            ? 'commerce.order.cancelled'
-            : 'commerce.order.cancellation_rejected',
+          type:
+            validated.decision === 'APPROVE'
+              ? 'commerce.order.cancelled'
+              : 'commerce.order.cancellation_rejected',
           data: (_input, result) => result,
           dedupeKey: () => `commerce:order:cancellation-reviewed:${idempotencyKey.trim()}`,
         },
@@ -667,9 +727,15 @@ export class OrderWorkflowService {
               where tenant_id = ${context.tenantId}::uuid and order_id = ${validated.orderId}::uuid`.execute(
               transaction,
             );
-            await this.appendTimeline(transaction, context, validated, 'commerce.order.cancellation_rejected', {
-              requestId: validated.requestId,
-            });
+            await this.appendTimeline(
+              transaction,
+              context,
+              validated,
+              'commerce.order.cancellation_rejected',
+              {
+                requestId: validated.requestId,
+              },
+            );
             return { requestId: validated.requestId, state: 'REJECTED' as const };
           }
 
@@ -748,14 +814,22 @@ export class OrderWorkflowService {
         execute: async (transaction) => {
           const order = await this.loadOrderForUpdate(transaction, validated, context.tenantId);
           if (validated.operation === 'CONFIRM' && order.status !== 'CONFIRMED')
-            throw new OrderWorkflowInvariantError('Only a confirmed canonical order can be confirmed upstream');
+            throw new OrderWorkflowInvariantError(
+              'Only a confirmed canonical order can be confirmed upstream',
+            );
           if (validated.operation === 'CANCEL' && order.status !== 'CANCELLED')
-            throw new OrderWorkflowInvariantError('Only a cancelled canonical order can be cancelled upstream');
+            throw new OrderWorkflowInvariantError(
+              'Only a cancelled canonical order can be cancelled upstream',
+            );
 
-          let changeRequest: { kind: string; state: string; patch: Record<string, unknown>; reason: string | null } | undefined;
+          let changeRequest:
+            | { kind: string; state: string; patch: Record<string, unknown>; reason: string | null }
+            | undefined;
           if (validated.operation === 'MODIFY') {
             if (!validated.changeRequestId)
-              throw new OrderWorkflowInvariantError('Modification provider action requires a change request');
+              throw new OrderWorkflowInvariantError(
+                'Modification provider action requires a change request',
+              );
             const request = await sql<{
               kind: string;
               state: string;
@@ -768,7 +842,9 @@ export class OrderWorkflowService {
                 and id = ${validated.changeRequestId}::uuid`.execute(transaction);
             changeRequest = request.rows[0];
             if (changeRequest?.kind !== 'MODIFICATION' || changeRequest.state !== 'APPLIED')
-              throw new OrderWorkflowInvariantError('Provider modification requires an applied modification');
+              throw new OrderWorkflowInvariantError(
+                'Provider modification requires an applied modification',
+              );
           }
 
           const mapping = await sql<{ external_id: string; connector_key: string }>`select
@@ -814,11 +890,17 @@ export class OrderWorkflowService {
             where tenant_id = ${context.tenantId}::uuid and order_id = ${validated.orderId}::uuid`.execute(
             transaction,
           );
-          await this.appendTimeline(transaction, context, validated, 'commerce.order.provider_action_queued', {
-            providerActionId,
-            operation: validated.operation,
-            connectorKey: route.connector_key,
-          });
+          await this.appendTimeline(
+            transaction,
+            context,
+            validated,
+            'commerce.order.provider_action_queued',
+            {
+              providerActionId,
+              operation: validated.operation,
+              connectorKey: route.connector_key,
+            },
+          );
           return { providerActionId, state: 'QUEUED' as const };
         },
       },
@@ -850,7 +932,9 @@ export class OrderWorkflowService {
             cancellation_state, provider_sync_state, confirmation_attempts,
             confirmation_requested_at, confirmed_at, declined_at, duplicates_evaluated_at,
             last_provider_sync_at
-          from commerce.order_workflows where order_id = ${validatedOrderId}::uuid`.execute(transaction);
+          from commerce.order_workflows where order_id = ${validatedOrderId}::uuid`.execute(
+        transaction,
+      );
       const row = workflow.rows[0];
       if (!row) return undefined;
       const [duplicates, changes, providerActions] = await Promise.all([
@@ -967,14 +1051,18 @@ export class OrderWorkflowService {
     if (order.status === 'CANCELLED' || order.status === 'CLOSED')
       throw new OrderWorkflowInvariantError('Cancelled or closed orders cannot be modified');
     if (order.fulfillment_status !== 'UNFULFILLED')
-      throw new OrderWorkflowInvariantError('Fulfilled or partially fulfilled orders cannot be modified');
+      throw new OrderWorkflowInvariantError(
+        'Fulfilled or partially fulfilled orders cannot be modified',
+      );
   }
 
   private assertCancellationSafe(order: MutableOrderState): void {
     if (order.status === 'CANCELLED' || order.status === 'CLOSED')
       throw new OrderWorkflowInvariantError('Order is already cancelled or closed');
     if (order.fulfillment_status !== 'UNFULFILLED')
-      throw new OrderWorkflowInvariantError('Fulfilled or partially fulfilled orders require a return workflow');
+      throw new OrderWorkflowInvariantError(
+        'Fulfilled or partially fulfilled orders require a return workflow',
+      );
     if (!['PENDING', 'VOIDED'].includes(order.financial_status))
       throw new OrderWorkflowInvariantError(
         'Authorized or paid orders require a payment void/refund workflow before cancellation',
@@ -1028,7 +1116,9 @@ export class OrderWorkflowService {
         store_id = excluded.store_id, name = excluded.name, company = excluded.company,
         line1 = excluded.line1, line2 = excluded.line2, city = excluded.city,
         region = excluded.region, postal_code = excluded.postal_code,
-        country_code = excluded.country_code, phone = excluded.phone, updated_at = now()`.execute(transaction);
+        country_code = excluded.country_code, phone = excluded.phone, updated_at = now()`.execute(
+      transaction,
+    );
   }
 
   private async hasActiveProviderMapping(
@@ -1088,7 +1178,8 @@ export class OrderWorkflowService {
       from commerce.order_duplicate_candidates
       where tenant_id = ${tenantId}::uuid and order_id = ${orderId}::uuid`.execute(transaction);
     const row = result.rows[0] ?? { confirmed: 0, open: 0 };
-    const state = row.confirmed > 0 ? 'CONFIRMED_DUPLICATE' : row.open > 0 ? 'POSSIBLE_DUPLICATE' : 'UNIQUE';
+    const state =
+      row.confirmed > 0 ? 'CONFIRMED_DUPLICATE' : row.open > 0 ? 'POSSIBLE_DUPLICATE' : 'UNIQUE';
     await sql`update commerce.order_workflows set duplicate_state = ${state}, updated_at = now()
       where tenant_id = ${tenantId}::uuid and order_id = ${orderId}::uuid`.execute(transaction);
     return state;
