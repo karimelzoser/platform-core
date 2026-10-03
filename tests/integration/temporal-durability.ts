@@ -7,7 +7,10 @@ const workflowId = process.env.TEMPORAL_DURABILITY_WORKFLOW_ID;
 const phase = process.env.TEMPORAL_DURABILITY_PHASE;
 
 assert.ok(workflowId, 'TEMPORAL_DURABILITY_WORKFLOW_ID is required');
-assert.ok(phase === 'start' || phase === 'verify', 'TEMPORAL_DURABILITY_PHASE must be start or verify');
+assert.ok(
+  phase === 'start' || phase === 'verify',
+  'TEMPORAL_DURABILITY_PHASE must be start or verify',
+);
 
 const connection = await Connection.connect({ address });
 try {
