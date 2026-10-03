@@ -128,5 +128,80 @@ SET connector_key = EXCLUDED.connector_key,
     last_validated_at = EXCLUDED.last_validated_at,
     updated_at = now();
 
+-- Deterministic canonical order used by the Orders workspace browser acceptance.
+INSERT INTO commerce.stores (
+  id, tenant_id, name, status, default_currency, timezone, metadata
+) VALUES (
+  'dddddddd-0000-0000-0000-000000000001',
+  'cccccccc-cccc-cccc-cccc-cccccccccccc',
+  'Preview Commerce Store', 'ACTIVE', 'EGP', 'Africa/Cairo',
+  '{"previewFixture":true}'::jsonb
+)
+ON CONFLICT (id) DO UPDATE SET
+  name = EXCLUDED.name,
+  status = EXCLUDED.status,
+  default_currency = EXCLUDED.default_currency,
+  timezone = EXCLUDED.timezone,
+  metadata = EXCLUDED.metadata,
+  updated_at = now();
+
+INSERT INTO commerce.orders (
+  id, tenant_id, store_id, order_number, status, financial_status,
+  fulfillment_status, currency, subtotal_minor, discount_minor, tax_minor,
+  shipping_minor, total_minor, source, placed_at, metadata, customer_email,
+  customer_phone, note
+) VALUES (
+  'dddddddd-0000-0000-0000-000000000002',
+  'cccccccc-cccc-cccc-cccc-cccccccccccc',
+  'dddddddd-0000-0000-0000-000000000001',
+  'PREVIEW-1001', 'PENDING', 'PENDING', 'UNFULFILLED', 'EGP',
+  245000, 0, 0, 5000, 250000, 'development-shopify-public-app',
+  now() - interval '30 minutes', '{"previewFixture":true}'::jsonb,
+  'preview-buyer@example.test', '+201001234567', 'Preview order workflow fixture'
+)
+ON CONFLICT (id) DO UPDATE SET
+  customer_email = EXCLUDED.customer_email,
+  customer_phone = EXCLUDED.customer_phone,
+  note = EXCLUDED.note,
+  metadata = EXCLUDED.metadata,
+  updated_at = now();
+
+INSERT INTO commerce.order_lines (
+  id, tenant_id, store_id, order_id, sku, title, quantity,
+  unit_price_minor, discount_minor, tax_minor, total_minor, metadata
+) VALUES (
+  'dddddddd-0000-0000-0000-000000000003',
+  'cccccccc-cccc-cccc-cccc-cccccccccccc',
+  'dddddddd-0000-0000-0000-000000000001',
+  'dddddddd-0000-0000-0000-000000000002',
+  'PREVIEW-SKU-001', 'Preview operational order', 1,
+  245000, 0, 0, 245000, '{"previewFixture":true}'::jsonb
+)
+ON CONFLICT (id) DO UPDATE SET
+  title = EXCLUDED.title,
+  quantity = EXCLUDED.quantity,
+  unit_price_minor = EXCLUDED.unit_price_minor,
+  total_minor = EXCLUDED.total_minor,
+  metadata = EXCLUDED.metadata,
+  updated_at = now();
+
+INSERT INTO commerce.provider_mappings (
+  id, tenant_id, store_id, connection_id, entity_type, canonical_id,
+  external_id, state, metadata
+) VALUES (
+  'dddddddd-0000-0000-0000-000000000004',
+  'cccccccc-cccc-cccc-cccc-cccccccccccc',
+  'dddddddd-0000-0000-0000-000000000001',
+  'bbbbbbbb-6666-6666-6666-666666666666',
+  'ORDER', 'dddddddd-0000-0000-0000-000000000002',
+  'preview-shopify-order-1001', 'ACTIVE', '{"previewFixture":true}'::jsonb
+)
+ON CONFLICT (id) DO UPDATE SET
+  connection_id = EXCLUDED.connection_id,
+  external_id = EXCLUDED.external_id,
+  state = EXCLUDED.state,
+  metadata = EXCLUDED.metadata,
+  updated_at = now();
+
 COMMIT;
 SQL
