@@ -38,7 +38,7 @@ void test('Meta Embedded Signup fixture exposes deterministic account assets wit
       'instagram_business_account',
     ],
   );
-  assert.ok(first?.every((asset) => asset.attributes.developmentOnly === true));
+  assert.ok(first.every((asset) => asset.attributes.developmentOnly === true));
   assert.equal(
     await developmentMetaEmbeddedSignupConnector.verifyWebhook({
       headers: new Headers(),
