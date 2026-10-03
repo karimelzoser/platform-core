@@ -12,7 +12,7 @@ assert.ok(
   'TEMPORAL_DURABILITY_PHASE must be start or verify',
 );
 
-const connection = await Connection.connect({ address });
+const connection = await connectWithRetry();
 try {
   const client = new Client({ connection, namespace });
 
@@ -32,4 +32,22 @@ try {
   }
 } finally {
   await connection.close();
+}
+
+async function connectWithRetry(): Promise<Connection> {
+  const deadline = Date.now() + 60_000;
+  let lastError: unknown;
+
+  while (Date.now() < deadline) {
+    try {
+      return await Connection.connect({ address });
+    } catch (error) {
+      lastError = error;
+      await new Promise((resolve) => setTimeout(resolve, 1_000));
+    }
+  }
+
+  const message = `Temporal at ${address} did not become reachable within 60 seconds.`;
+  if (lastError instanceof Error) throw new Error(message, { cause: lastError });
+  throw new Error(message);
 }
