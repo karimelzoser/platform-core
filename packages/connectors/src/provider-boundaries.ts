@@ -77,7 +77,7 @@ export const providerBoundaries: readonly ProviderBoundary[] = [
     displayName: 'Email',
     category: 'EMAIL',
     capabilities: ['webhooks', 'sync', 'messaging.inbound', 'messaging.outbound'],
-    implementationState: 'PLANNED',
+    implementationState: 'DEVELOPMENT_FIXTURE',
   },
   {
     key: 'web-chat',
