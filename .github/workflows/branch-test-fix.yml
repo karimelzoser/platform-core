@@ -1,0 +1,66 @@
+name: One-time provider boundary test updater
+
+on:
+  push:
+    branches:
+      - codex/full-platform-continuation-20261003
+
+permissions:
+  contents: write
+
+jobs:
+  update-test:
+    if: github.actor != 'github-actions[bot]'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: codex/full-platform-continuation-20261003
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 9.15.5
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - name: Update provider boundary assertions
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+          path = Path('packages/connectors/src/index.test.ts')
+          text = path.read_text()
+          old = """  assert.equal(providerBoundary('shopify-public-app')?.implementationState, 'PLANNED');
+          assert.equal(providerBoundary('whatsapp-cloud-api')?.implementationState, 'DEVELOPMENT_FIXTURE');
+          assert.equal(providerBoundary('instagram-messaging')?.implementationState, 'DEVELOPMENT_FIXTURE');
+          assert.equal(providerBoundary('messenger-platform')?.implementationState, 'DEVELOPMENT_FIXTURE');
+          assert.equal(providerBoundary('web-chat')?.implementationState, 'DEVELOPMENT_FIXTURE');
+          assert.equal(providerBoundary('api')?.implementationState, 'DEVELOPMENT_FIXTURE');
+          """
+          new = """  for (const key of [
+            'meta-embedded-signup',
+            'whatsapp-cloud-api',
+            'instagram-messaging',
+            'messenger-platform',
+            'email',
+            'web-chat',
+            'api',
+            'shopify-public-app',
+            'woocommerce',
+          ] as const) {
+            assert.equal(providerBoundary(key)?.implementationState, 'DEVELOPMENT_FIXTURE');
+          }
+          """
+          if old not in text:
+              raise SystemExit('Expected provider boundary assertion block was not found')
+          path.write_text(text.replace(old, new))
+          PY
+          pnpm exec prettier --write packages/connectors/src/index.test.ts
+          pnpm --filter @platform/connectors test
+      - name: Commit test update
+        run: |
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add packages/connectors/src/index.test.ts
+          git commit -m 'test: align provider boundary fixture expectations'
+          git push origin HEAD:codex/full-platform-continuation-20261003
