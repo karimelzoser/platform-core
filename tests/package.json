@@ -15,7 +15,8 @@
     "@platform/contracts": "workspace:*",
     "@platform/crm": "workspace:*",
     "@platform/database": "workspace:*",
-    "@platform/media": "workspace:*"
+    "@platform/media": "workspace:*",
+    "@temporalio/client": "1.24.0"
   },
   "devDependencies": {
     "@types/node": "22.10.2",
