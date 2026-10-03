@@ -4,7 +4,12 @@ import {
   type Connector,
   type ConnectorRegistry,
 } from '@platform/connectors';
-import { sql, withTenantTransaction, type PlatformDatabase } from '@platform/database';
+import {
+  sql,
+  withTenantTransaction,
+  type PlatformDatabase,
+  type PlatformTransaction,
+} from '@platform/database';
 
 const maximumProviderActionAttempts = 8;
 
@@ -143,7 +148,8 @@ export class ProviderActionProcessor {
           returning id`.execute(transaction);
         if (!updated.rows[0]) return;
 
-        const commerceLink = await sql<CommerceOrderProviderLink>`update commerce.order_provider_actions
+        const commerceLink =
+          await sql<CommerceOrderProviderLink>`update commerce.order_provider_actions
           set state = 'SUCCEEDED', completed_at = ${completedAt}::timestamptz, updated_at = now()
           where tenant_id = ${action.tenant_id}::uuid and provider_action_id = ${action.id}::uuid
           returning store_id, order_id, operation`.execute(transaction);
@@ -220,7 +226,8 @@ export class ProviderActionProcessor {
         const result = updated.rows[0];
         if (!result || result.state !== 'DEAD_LETTER') return;
 
-        const commerceLink = await sql<CommerceOrderProviderLink>`update commerce.order_provider_actions
+        const commerceLink =
+          await sql<CommerceOrderProviderLink>`update commerce.order_provider_actions
           set state = 'DEAD_LETTER', completed_at = now(), updated_at = now()
           where tenant_id = ${action.tenant_id}::uuid and provider_action_id = ${action.id}::uuid
           returning store_id, order_id, operation`.execute(transaction);
@@ -267,7 +274,7 @@ export class ProviderActionProcessor {
   }
 
   private async refreshOrderProviderSyncState(
-    transaction: Parameters<Parameters<typeof withTenantTransaction>[2]>[0],
+    transaction: PlatformTransaction,
     tenantId: string,
     orderId: string,
     completedAt: string,
@@ -278,7 +285,8 @@ export class ProviderActionProcessor {
       from commerce.order_provider_actions
       where tenant_id = ${tenantId}::uuid and order_id = ${orderId}::uuid`.execute(transaction);
     const state = states.rows[0] ?? { dead_letter: 0, queued: 0 };
-    const providerSyncState = state.dead_letter > 0 ? 'OUT_OF_SYNC' : state.queued > 0 ? 'PENDING' : 'IN_SYNC';
+    const providerSyncState =
+      state.dead_letter > 0 ? 'OUT_OF_SYNC' : state.queued > 0 ? 'PENDING' : 'IN_SYNC';
     await sql`update commerce.order_workflows
       set provider_sync_state = ${providerSyncState},
           last_provider_sync_at = ${completedAt}::timestamptz,
