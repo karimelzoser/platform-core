@@ -48,21 +48,20 @@ test.describe('Orders disposable development preview', () => {
     await expect(page.locator('.order-status-stack')).toContainText('CONFIRMED');
     await expect(workflowMetric(page, 'Confirmation')).toContainText('CONFIRMED');
 
-    const modification = page
-      .getByRole('heading', { name: 'Order changes' })
-      .locator('..')
-      .locator('..');
-    await modification.getByLabel('Internal/order note').fill('Browser acceptance modification');
-    await modification.getByLabel('Reason').fill('Verify guarded canonical modification flow');
-    await modification.getByRole('button', { name: 'Request modification' }).click();
-    await expect(modification.getByRole('status')).toContainText('Operation accepted');
+    const modification = workflowSection(page, 'modification-heading');
+    const modificationForm = modification.locator('form.customer-form').first();
+    await modificationForm.getByLabel('Internal/order note').fill('Browser acceptance modification');
+    await modificationForm
+      .getByLabel('Reason')
+      .fill('Verify guarded canonical modification flow');
+    await modificationForm.getByRole('button', { name: 'Request modification' }).click();
+    await expect(modification.locator('p.merge-success[role="status"]')).toContainText(
+      'Operation accepted',
+    );
     await page.reload();
     await expect(workflowMetric(page, 'Modification')).toContainText('REQUESTED');
 
-    const pendingModification = page
-      .getByRole('heading', { name: 'Order changes' })
-      .locator('..')
-      .locator('..')
+    const pendingModification = workflowSection(page, 'modification-heading')
       .getByRole('listitem')
       .filter({ hasText: 'Verify guarded canonical modification flow' });
     await pendingModification.getByRole('button', { name: 'Approve' }).click();
@@ -127,6 +126,10 @@ function operationStatus(page: Page) {
 
 function workflowMetric(page: Page, label: string) {
   return page.locator('.order-workflow-overview .order-summary-metric').filter({ hasText: label });
+}
+
+function workflowSection(page: Page, headingId: string) {
+  return page.locator(`section[aria-labelledby="${headingId}"]`);
 }
 
 async function assertResponsiveAndRtl(page: Page, testInfo: TestInfo) {
