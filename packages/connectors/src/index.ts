@@ -260,6 +260,15 @@ export class ConnectorRegistry {
 
 export { developmentApiConnector, signDevelopmentApiWebhook } from './development-api.js';
 export { developmentEmailConnector, signDevelopmentEmailWebhook } from './development-email.js';
+export { developmentMetaEmbeddedSignupConnector } from './development-meta-embedded-signup.js';
+export {
+  developmentShopifyPublicAppConnector,
+  signDevelopmentShopifyWebhook,
+} from './development-shopify-public-app.js';
+export {
+  developmentWooCommerceConnector,
+  signDevelopmentWooCommerceWebhook,
+} from './development-woocommerce.js';
 export {
   developmentWebChatConnector,
   signDevelopmentWebChatWebhook,
