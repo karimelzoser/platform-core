@@ -10,18 +10,11 @@ dependency-ready item.
 
 ## CURRENT
 
-- **Integration SDK completion:** connection lifecycle (connect/disconnect),
-  credential validation and rotation through encrypted secret references,
-  provider assets, webhook registration/unregistration and signature
-  verification, normalization, initial backfill, incremental sync with
-  cursors/high-water marks, reconciliation, health, throttling/rate limits,
-  error mapping, typed provider actions, and connector fixtures/emulators.
-  Implement explicit provider boundaries for Meta account/assets and Embedded
-  Signup; WhatsApp; Instagram; Messenger; Email; Web Chat; API; Shopify public
-  app lifecycle/webhooks/backfill/sync/reconciliation/actions; and WooCommerce
-  lifecycle/webhooks/sync/reconciliation/actions. Production credentials and
-  provider accounts remain deliberately out of scope; use development fixtures
-  and emulators only.
+- **Commerce schema and service:** catalog, inventory, orders, payments,
+  fulfillment, canonical provider mapping, commands, audit/outbox, and
+  two-tenant RLS/lifecycle tests. Establish the canonical provider-independent
+  commerce model before order automation, shipping, returns, or provider write
+  workflows are allowed to depend on it.
 
 ## VERIFICATION PENDING
 
@@ -31,45 +24,43 @@ dependency-ready item.
 
 ## NEXT
 
-1. Commerce schema and service: catalog, inventory, orders, payments,
-   fulfillment, canonical provider mapping, commands, audit/outbox, RLS tests.
-2. Order workflows: confirmation, duplicate detection, modification,
+1. Order workflows: confirmation, duplicate detection, modification,
    cancellation, payment/fulfillment guards, provider activity boundaries, UI,
    Temporal tests.
-3. Shipping: carrier abstraction, shipment normalization, tracking updates,
+2. Shipping: carrier abstraction, shipment normalization, tracking updates,
    delivery rescue, tenant tests, operational UI.
-4. Returns/recovery: returns, exchanges, refunds, recovery attribution and
+3. Returns/recovery: returns, exchanges, refunds, recovery attribution and
    commands/workflows, UI, provider contracts, tenant tests.
-5. Sales: lead/pipeline/opportunity schema, services, UI, permissions,
+4. Sales: lead/pipeline/opportunity schema, services, UI, permissions,
    audit/outbox, tests.
-6. Campaigns: audience/suppression, batching, provider cost/conversion,
+5. Campaigns: audience/suppression, batching, provider cost/conversion,
    approval controls, worker/workflow and UI tests.
-7. Temporal baseline: all release-critical workflow/activity contracts,
+6. Temporal baseline: all release-critical workflow/activity contracts,
    retries, timeouts, signals, deterministic replay, restart tests.
-8. Automation Studio: typed triggers/actions, version/publish, durable runs,
+7. Automation Studio: typed triggers/actions, version/publish, durable runs,
    approval-aware actions, UI and Temporal verification.
-9. AI Gateway: provider abstraction, safe routing, typed tool registry,
+8. AI Gateway: provider abstraction, safe routing, typed tool registry,
    approval-bound actions, cost records, fallback/escalation, API/UI tests.
-10. Knowledge/RAG and AI evaluation: ingestion, tenant retrieval boundaries,
-    citations, prompt-injection/sensitive-data fixtures, evaluation thresholds.
-11. Custom Data: tables/fields/records, import/export, permissions, APIs/UI,
+9. Knowledge/RAG and AI evaluation: ingestion, tenant retrieval boundaries,
+   citations, prompt-injection/sensitive-data fixtures, evaluation thresholds.
+10. Custom Data: tables/fields/records, import/export, permissions, APIs/UI,
     RLS and contract tests.
-12. Analytics/Billing: aggregates, dashboards, usage/metering, provider cost,
+11. Analytics/Billing: aggregates, dashboards, usage/metering, provider cost,
     subscription state, tenant/UI/performance tests.
-13. Developer Platform: tenant API keys, scoped outbound webhooks, signing,
+12. Developer Platform: tenant API keys, scoped outbound webhooks, signing,
     retries/dead letters, developer UI/docs/tests.
-14. Admin Control Center: tenant/integration/workflow health, failed webhooks,
+13. Admin Control Center: tenant/integration/workflow health, failed webhooks,
     stuck outbox, usage/spend, audited remediation commands, UI.
-15. Identity/RBAC/approval closure: onboarding, invitations, organization
+14. Identity/RBAC/approval closure: onboarding, invitations, organization
     selection, role editor/lifecycle, approval observability, auth/security E2E.
-16. Full UX closure: every surface English LTR and Arabic RTL, responsive,
+15. Full UX closure: every surface English LTR and Arabic RTL, responsive,
     accessible, loading/error/empty/forbidden states, visual/E2E scans.
-17. Observability/performance/security hardening: structured logs/traces/metrics,
+16. Observability/performance/security hardening: structured logs/traces/metrics,
     threat-model refresh, dependency/security scan, benchmarks and thresholds.
-18. Release engineering: immutable images, production Compose overlays, migration
+17. Release engineering: immutable images, production Compose overlays, migration
     upgrade fixture, backup/restore/rollback validation, smoke tooling, runbook,
     release notes and release checklist.
-19. Complete release acceptance: execute every mandatory gate in
+18. Complete release acceptance: execute every mandatory gate in
     `TESTING_AND_ACCEPTANCE.md`, inspect green CI, and record evidence.
 
 ## BLOCKED
@@ -127,6 +118,16 @@ dependency-ready item.
   quoted CSV import, segment evaluation, approval-bound merge execution, and
   responsive, RTL, and accessibility checks. CRM remains partial until its
   full Definition of Done is satisfied.
+- Integration SDK repository-scope evidence in green GitHub Actions run #184
+  for commit `33bbf6f`: protected connection/secret lifecycle, provider assets,
+  webhook registration/signature verification/normalization, cursor-bearing
+  sync and reconciliation, health/error boundaries, typed provider actions,
+  and deterministic development fixtures for Meta Embedded Signup/assets,
+  WhatsApp, Instagram, Messenger, Email, Web Chat, generic API, Shopify Public
+  App, and WooCommerce. Quality, integration/RLS, API image, AI gateway, secret
+  scan, and disposable preview/browser acceptance all passed. Production
+  provider credentials/accounts and real network adapters remain deliberately
+  outside this repository-scope gate.
 
 ## Release evidence
 
