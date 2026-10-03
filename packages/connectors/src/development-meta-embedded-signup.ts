@@ -1,5 +1,10 @@
 import { createHash } from 'node:crypto';
-import { ConnectorError, type Connector, type ProviderAsset, type WebhookEnvelope } from './index.js';
+import {
+  ConnectorError,
+  type Connector,
+  type ProviderAsset,
+  type WebhookEnvelope,
+} from './index.js';
 
 /**
  * Development-only Meta onboarding/account fixture. It models the boundary
@@ -35,10 +40,7 @@ export const developmentMetaEmbeddedSignupConnector: Connector = {
     return Promise.resolve({ latencyMs: 0 });
   },
   discoverAssets(input): Promise<readonly ProviderAsset[]> {
-    const fingerprint = createHash('sha256')
-      .update(input.connectionId)
-      .digest('hex')
-      .slice(0, 12);
+    const fingerprint = createHash('sha256').update(input.connectionId).digest('hex').slice(0, 12);
     return Promise.resolve([
       {
         assetType: 'meta_business_account',

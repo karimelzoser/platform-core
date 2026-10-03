@@ -16,7 +16,10 @@ const signatureHeader = 'x-wc-webhook-signature';
 
 const wooSettingsSchema = z.object({
   allowDevelopmentFixture: z.literal(true),
-  storeUrl: z.string().url().refine((value) => value.startsWith('https://'), 'HTTPS required'),
+  storeUrl: z
+    .string()
+    .url()
+    .refine((value) => value.startsWith('https://'), 'HTTPS required'),
 });
 
 function signature(rawBody: Uint8Array): string {
@@ -34,7 +37,8 @@ function deterministicId(prefix: string, value: string): string {
 }
 
 function eventResource(topic: string, body: Record<string, unknown>): WebhookEnvelope['resource'] {
-  const providerId = typeof body.id === 'string' || typeof body.id === 'number' ? String(body.id) : 'unknown';
+  const providerId =
+    typeof body.id === 'string' || typeof body.id === 'number' ? String(body.id) : 'unknown';
   if (topic.startsWith('order.')) return { type: 'woocommerce_order', providerId };
   if (topic.startsWith('customer.')) return { type: 'woocommerce_customer', providerId };
   if (topic.startsWith('product.')) return { type: 'woocommerce_product', providerId };
@@ -79,7 +83,10 @@ export const developmentWooCommerceConnector: Connector = {
     });
   },
   validateConnection({ settings, secretReference }): Promise<void> {
-    if (!wooSettingsSchema.safeParse(settings).success || !secretReference.startsWith('development://woocommerce/'))
+    if (
+      !wooSettingsSchema.safeParse(settings).success ||
+      !secretReference.startsWith('development://woocommerce/')
+    )
       return Promise.reject(new ConnectorError('AUTHENTICATION_FAILED', false));
     return Promise.resolve();
   },

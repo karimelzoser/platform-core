@@ -27,10 +27,10 @@ void test('Shopify public app fixture exercises webhook, sync, assets, and actio
     }),
     false,
   );
-  assert.deepEqual(
-    developmentShopifyPublicAppConnector.identifyWebhook({ headers, body: order }),
-    { deliveryId: 'shopify-delivery-1', eventType: 'orders/updated' },
-  );
+  assert.deepEqual(developmentShopifyPublicAppConnector.identifyWebhook({ headers, body: order }), {
+    deliveryId: 'shopify-delivery-1',
+    eventType: 'orders/updated',
+  });
   assert.deepEqual(
     await developmentShopifyPublicAppConnector.normalizeWebhook({ headers, body: order }),
     {
@@ -101,7 +101,8 @@ void test('Shopify public app fixture exercises webhook, sync, assets, and actio
   );
   const subscription = await developmentShopifyPublicAppConnector.registerWebhook?.({
     connectionId,
-    callbackUrl: 'https://preview.example.test/v1/webhooks/development-shopify-public-app/connection',
+    callbackUrl:
+      'https://preview.example.test/v1/webhooks/development-shopify-public-app/connection',
     settings,
     secretReference: 'development://shopify-public-app/preview',
   });

@@ -23,10 +23,10 @@ void test('WooCommerce fixture exercises webhook, sync, assets, and action contr
     }),
     false,
   );
-  assert.deepEqual(
-    developmentWooCommerceConnector.identifyWebhook({ headers, body: order }),
-    { deliveryId: 'woo-delivery-1', eventType: 'order.updated' },
-  );
+  assert.deepEqual(developmentWooCommerceConnector.identifyWebhook({ headers, body: order }), {
+    deliveryId: 'woo-delivery-1',
+    eventType: 'order.updated',
+  });
   assert.deepEqual(
     await developmentWooCommerceConnector.normalizeWebhook({ headers, body: order }),
     {

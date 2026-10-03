@@ -128,9 +128,7 @@ export const developmentEmailConnector: MessagingConnector = {
       settings.allowDevelopmentFixture !== true ||
       !secretReference.startsWith('development://email/')
     )
-      return Promise.reject(
-        new ConnectorError('AUTHENTICATION_FAILED', false),
-      );
+      return Promise.reject(new ConnectorError('AUTHENTICATION_FAILED', false));
     return Promise.resolve();
   },
   health(): Promise<{ latencyMs: number }> {
@@ -170,8 +168,7 @@ export const developmentEmailConnector: MessagingConnector = {
     if (input.attachments.length > 0)
       return Promise.reject(new ConnectorError('UNSUPPORTED_OPERATION', false));
     const recipient = z.string().email().safeParse(input.providerConversationId);
-    if (!recipient.success)
-      return Promise.reject(new ConnectorError('INVALID_REQUEST', false));
+    if (!recipient.success) return Promise.reject(new ConnectorError('INVALID_REQUEST', false));
     return Promise.resolve({
       providerMessageId: `development-email-${messageIdentity(
         input.connectionId,

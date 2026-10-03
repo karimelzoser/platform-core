@@ -17,7 +17,10 @@ const signatureHeader = 'x-shopify-hmac-sha256';
 const shopifySettingsSchema = z.object({
   allowDevelopmentFixture: z.literal(true),
   shopDomain: z.string().regex(/^[a-z0-9][a-z0-9-]*\.myshopify\.com$/u),
-  apiVersion: z.string().regex(/^20\d{2}-((01)|(04)|(07)|(10))$/u).optional(),
+  apiVersion: z
+    .string()
+    .regex(/^20\d{2}-((01)|(04)|(07)|(10))$/u)
+    .optional(),
 });
 
 function signature(rawBody: Uint8Array): string {
@@ -35,7 +38,8 @@ function deterministicId(prefix: string, value: string): string {
 }
 
 function eventResource(topic: string, body: Record<string, unknown>): WebhookEnvelope['resource'] {
-  const providerId = typeof body.id === 'string' || typeof body.id === 'number' ? String(body.id) : 'unknown';
+  const providerId =
+    typeof body.id === 'string' || typeof body.id === 'number' ? String(body.id) : 'unknown';
   if (topic.startsWith('orders/')) return { type: 'shopify_order', providerId };
   if (topic.startsWith('customers/')) return { type: 'shopify_customer', providerId };
   if (topic.startsWith('products/')) return { type: 'shopify_product', providerId };
@@ -87,7 +91,10 @@ export const developmentShopifyPublicAppConnector: Connector = {
     });
   },
   validateConnection({ settings, secretReference }): Promise<void> {
-    if (!shopifySettingsSchema.safeParse(settings).success || !secretReference.startsWith('development://shopify-public-app/'))
+    if (
+      !shopifySettingsSchema.safeParse(settings).success ||
+      !secretReference.startsWith('development://shopify-public-app/')
+    )
       return Promise.reject(new ConnectorError('AUTHENTICATION_FAILED', false));
     return Promise.resolve();
   },
