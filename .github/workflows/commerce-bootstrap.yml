@@ -1,0 +1,102 @@
+name: One-time commerce workspace bootstrap
+
+on:
+  push:
+    branches:
+      - codex/full-platform-continuation-20261003
+
+permissions:
+  contents: write
+
+jobs:
+  bootstrap:
+    if: github.actor != 'github-actions[bot]'
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: codex/full-platform-continuation-20261003
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 9.15.5
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: pnpm
+      - name: Patch reviewed commerce policy boundaries
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+          path = Path('packages/commerce/src/index.ts')
+          text = path.read_text()
+
+          replacements = [
+              (
+                  "action: 'commerce.store.create',\n        permission: 'commerce.stores.manage',\n        risk: 'HIGH',",
+                  "action: 'commerce.store.create',\n        permission: 'commerce.stores.manage',\n        risk: 'MEDIUM',",
+              ),
+              (
+                  "action: 'commerce.inventory_location.create',\n        permission: 'commerce.inventory.manage',\n        risk: 'HIGH',\n        resource: () => ({ type: 'commerce.inventory_location', id: locationId }),",
+                  "action: 'commerce.inventory_location.create',\n        permission: 'commerce.inventory.manage',\n        risk: 'HIGH',\n        resource: () => ({ type: 'commerce.store', id: validated.storeId }),",
+              ),
+              (
+                  "action: 'commerce.payment.record',\n        permission: 'commerce.payments.manage',\n        risk: 'HIGH',",
+                  "action: 'commerce.payment.record',\n        permission: 'commerce.payments.manage',\n        risk: 'MEDIUM',",
+              ),
+              (
+                  "action: 'commerce.fulfillment.create',\n        permission: 'commerce.fulfillments.manage',\n        risk: 'HIGH',",
+                  "action: 'commerce.fulfillment.create',\n        permission: 'commerce.fulfillments.record',\n        risk: 'MEDIUM',",
+              ),
+              (
+                  "${context.tenantId}::uuid, ${storeId}::uuid, ${orderId}::uuid, ${eventType},\n      'USER', ${context.actorId}::uuid, ${JSON.stringify(data)}::jsonb",
+                  "${context.tenantId}::uuid, ${storeId}::uuid, ${orderId}::uuid, ${eventType},\n      ${context.actorType}, ${context.actorId ?? null}::uuid, ${JSON.stringify(data)}::jsonb",
+              ),
+          ]
+
+          for old, new in replacements:
+              count = text.count(old)
+              if count != 1:
+                  raise SystemExit(f'Expected exactly one commerce patch target, found {count}: {old[:80]}')
+              text = text.replace(old, new, 1)
+
+          path.write_text(text)
+          PY
+      - name: Update workspace lockfile
+        run: pnpm install --no-frozen-lockfile
+      - name: Format commerce changes
+        run: |
+          pnpm exec prettier --write \
+            packages/commerce/package.json \
+            packages/commerce/tsconfig.json \
+            packages/commerce/src/index.ts \
+            packages/commerce/src/index.test.ts \
+            tests/package.json \
+            tests/integration/commerce-lifecycle.ts \
+            .github/workflows/ci.yml \
+            docs/CODEX_EXECUTION_QUEUE.md
+      - name: Build and typecheck commerce dependencies
+        run: |
+          pnpm --filter @platform/commerce... build
+          pnpm --filter @platform/commerce typecheck
+          pnpm --filter @platform/commerce test
+          pnpm --filter @platform/integration-tests typecheck
+      - name: Commit normalized commerce workspace
+        run: |
+          if git diff --quiet; then
+            echo 'No workspace changes required.'
+            exit 0
+          fi
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add \
+            pnpm-lock.yaml \
+            packages/commerce/package.json \
+            packages/commerce/tsconfig.json \
+            packages/commerce/src/index.ts \
+            packages/commerce/src/index.test.ts \
+            tests/package.json \
+            tests/integration/commerce-lifecycle.ts \
+            .github/workflows/ci.yml \
+            docs/CODEX_EXECUTION_QUEUE.md
+          git commit -m 'feat: normalize commerce workspace and service contracts'
+          git push origin HEAD:codex/full-platform-continuation-20261003
