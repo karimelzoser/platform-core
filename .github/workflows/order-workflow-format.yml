@@ -52,6 +52,8 @@ jobs:
           apps/api/src/app.module.ts
           apps/api/src/commerce.controller.ts
           apps/web/app/orders
+          tests/integration/order-workflow-lifecycle.ts
+          tests/package.json
           pnpm-lock.yaml
       - name: Commit normalization if needed
         run: |
@@ -70,8 +72,11 @@ jobs:
             packages/connectors/src/development-woocommerce.test.ts \
             apps/api/src/app.module.ts \
             apps/api/src/commerce.controller.ts \
-            apps/web/app/orders
+            apps/web/app/orders \
+            tests/integration/order-workflow-lifecycle.ts \
+            tests/package.json
           git commit -m 'style: normalize order workflow surface'
           git push origin HEAD:codex/order-workflows-hosted-preview-20261003
       - run: pnpm --filter @platform/connectors... --filter @platform/worker... --filter @platform/commerce... --filter @platform/api... --filter @platform/web... build
+      - run: pnpm --filter @platform/integration-tests typecheck
       - run: pnpm --filter @platform/connectors test
