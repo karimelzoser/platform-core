@@ -1,0 +1,30 @@
+FROM node:24-bookworm-slim AS build
+WORKDIR /workspace
+RUN corepack enable
+COPY package.json pnpm-lock.yaml pnpm-workspace.yaml tsconfig.base.json ./
+COPY apps/worker/package.json apps/worker/package.json
+COPY packages/connectors/package.json packages/connectors/package.json
+COPY packages/contracts/package.json packages/contracts/package.json
+COPY packages/database/package.json packages/database/package.json
+COPY packages/media/package.json packages/media/package.json
+RUN pnpm install --frozen-lockfile
+COPY apps/worker apps/worker
+COPY packages/connectors packages/connectors
+COPY packages/contracts packages/contracts
+COPY packages/database packages/database
+COPY packages/media packages/media
+RUN pnpm --filter @platform/worker... build
+
+FROM node:24-bookworm-slim
+WORKDIR /workspace
+ENV NODE_ENV=production
+COPY --from=build /workspace/node_modules ./node_modules
+COPY --from=build /workspace/apps/worker/package.json ./apps/worker/package.json
+COPY --from=build /workspace/apps/worker/dist ./apps/worker/dist
+COPY --from=build /workspace/apps/worker/node_modules ./apps/worker/node_modules
+COPY --from=build /workspace/packages/connectors ./packages/connectors
+COPY --from=build /workspace/packages/contracts ./packages/contracts
+COPY --from=build /workspace/packages/database ./packages/database
+COPY --from=build /workspace/packages/media ./packages/media
+USER node
+CMD ["node", "apps/worker/dist/main.js"]
