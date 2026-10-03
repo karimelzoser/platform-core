@@ -154,7 +154,7 @@ void test('development email fixture verifies, normalizes, syncs, and preserves 
       attachments: [
         {
           storageKey: 'development/email-attachment',
-          mediaType: 'FILE',
+          mediaType: 'DOCUMENT',
           contentType: 'application/pdf',
           fileName: 'document.pdf',
           byteSize: 1,
