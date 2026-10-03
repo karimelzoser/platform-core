@@ -33,17 +33,17 @@ test.describe('Orders disposable development preview', () => {
     await expect(page.getByRole('heading', { name: 'External commerce execution' })).toBeVisible();
 
     await page.getByRole('button', { name: 'Scan previous 5 days' }).click();
-    await expect(page.getByRole('status')).toContainText('Operation accepted');
+    await expect(operationStatus(page)).toContainText('Operation accepted');
     await page.reload();
     await expect(workflowMetric(page, 'Duplicates')).toContainText('UNIQUE');
 
     await page.getByRole('button', { name: 'Request confirmation' }).click();
-    await expect(page.getByRole('status')).toContainText('Operation accepted');
+    await expect(operationStatus(page)).toContainText('Operation accepted');
     await page.reload();
     await expect(workflowMetric(page, 'Confirmation')).toContainText('REQUESTED');
 
     await page.getByRole('button', { name: 'Mark confirmed' }).click();
-    await expect(page.getByRole('status')).toContainText('Operation accepted');
+    await expect(operationStatus(page)).toContainText('Operation accepted');
     await page.reload();
     await expect(page.locator('.order-status-stack')).toContainText('CONFIRMED');
     await expect(workflowMetric(page, 'Confirmation')).toContainText('CONFIRMED');
@@ -66,7 +66,7 @@ test.describe('Orders disposable development preview', () => {
       .getByRole('listitem')
       .filter({ hasText: 'Verify guarded canonical modification flow' });
     await pendingModification.getByRole('button', { name: 'Approve' }).click();
-    await expect(page.getByRole('status')).toContainText('Operation accepted');
+    await expect(operationStatus(page)).toContainText('Operation accepted');
     await page.reload();
     await expect(workflowMetric(page, 'Modification')).toContainText('APPLIED');
     await expect(workflowMetric(page, 'Provider sync')).toContainText('PENDING');
@@ -119,6 +119,10 @@ async function login(page: Page) {
         throw new Error(`Preview login failed: ${message}`);
       }),
   ]);
+}
+
+function operationStatus(page: Page) {
+  return page.locator('p.merge-success[role="status"]');
 }
 
 function workflowMetric(page: Page, label: string) {
