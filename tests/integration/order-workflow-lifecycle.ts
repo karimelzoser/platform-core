@@ -7,10 +7,7 @@ import {
   OrderWorkflowInvariantError,
   OrderWorkflowService,
 } from '@platform/commerce/order-workflows';
-import {
-  ConnectorRegistry,
-  developmentShopifyPublicAppConnector,
-} from '@platform/connectors';
+import { ConnectorRegistry, developmentShopifyPublicAppConnector } from '@platform/connectors';
 import { approvalActionDigest, type ApprovalAction } from '@platform/contracts';
 import { sql, withTenantTransaction, type PlatformDatabase } from '@platform/database';
 import { ApiDatabaseService } from '../../apps/api/src/api-database.service.js';
@@ -191,12 +188,16 @@ async function main(): Promise<void> {
           reason: 'Normalize duplicate-detection identity fixture',
         },
       );
-      await workflows.reviewModification(contextA, `order-workflow-identity-review-${String(index)}`, {
-        storeId: store.result.storeId,
-        orderId,
-        requestId: requested.result.requestId,
-        decision: 'APPROVE',
-      });
+      await workflows.reviewModification(
+        contextA,
+        `order-workflow-identity-review-${String(index)}`,
+        {
+          storeId: store.result.storeId,
+          orderId,
+          requestId: requested.result.requestId,
+          decision: 'APPROVE',
+        },
+      );
     }
 
     const duplicateEvaluation = await workflows.evaluateDuplicates(
@@ -295,7 +296,11 @@ async function main(): Promise<void> {
 
     const registry = new ConnectorRegistry();
     registry.register(developmentShopifyPublicAppConnector);
-    const providerProcessor = new ProviderActionProcessor(database, registry, 'order-workflow-test-worker');
+    const providerProcessor = new ProviderActionProcessor(
+      database,
+      registry,
+      'order-workflow-test-worker',
+    );
     assert.equal(await providerProcessor.processBatch(25), 1);
     workflow = await workflows.get(contextA, duplicate.result.orderId);
     assert.equal(workflow?.providerSyncState, 'IN_SYNC');
@@ -358,7 +363,9 @@ async function main(): Promise<void> {
         sql<{ id: string }>`select order_id as id from commerce.order_workflows
           where order_id = ${duplicate.result.orderId}::uuid`.execute(transaction),
         sql<{ id: string }>`select provider_action_id as id from commerce.order_provider_actions
-          where provider_action_id = ${queuedProvider.result.providerActionId}::uuid`.execute(transaction),
+          where provider_action_id = ${queuedProvider.result.providerActionId}::uuid`.execute(
+          transaction,
+        ),
       ]);
       assert.equal(workflowRows.rows.length, 0, 'Tenant B can read Tenant A workflow state');
       assert.equal(providerRows.rows.length, 0, 'Tenant B can read Tenant A provider action link');

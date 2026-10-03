@@ -256,11 +256,11 @@ async function loadOrder(
     });
     if (response.status === 404) return { kind: 'error', detail: 'Order not found.' };
     if (!response.ok) return { kind: 'error', detail: 'Commerce order request failed.' };
-    return (await response.json()) as {
-      kind: 'success';
+    const payload = (await response.json()) as {
       order: OrderDetail;
       workflow: WorkflowDetail | null;
     };
+    return { kind: 'success', ...payload };
   } catch {
     return { kind: 'error', detail: 'Commerce API is unavailable.' };
   }
