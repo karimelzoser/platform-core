@@ -7,7 +7,9 @@ const previewOrderId = 'dddddddd-0000-0000-0000-000000000002';
 test.describe.configure({ mode: 'serial' });
 
 test.describe('Orders disposable development preview', () => {
-  test('runs canonical order workflow and responsive RTL acceptance', async ({ browser }, testInfo) => {
+  test('runs canonical order workflow and responsive RTL acceptance', async ({
+    browser,
+  }, testInfo) => {
     testInfo.setTimeout(180_000);
     requireDisposablePreview();
     const consoleErrors: string[] = [];
@@ -46,7 +48,10 @@ test.describe('Orders disposable development preview', () => {
     await expect(page.locator('.order-status-stack')).toContainText('CONFIRMED');
     await expect(workflowMetric(page, 'Confirmation')).toContainText('CONFIRMED');
 
-    const modification = page.getByRole('heading', { name: 'Order changes' }).locator('..').locator('..');
+    const modification = page
+      .getByRole('heading', { name: 'Order changes' })
+      .locator('..')
+      .locator('..');
     await modification.getByLabel('Internal/order note').fill('Browser acceptance modification');
     await modification.getByLabel('Reason').fill('Verify guarded canonical modification flow');
     await modification.getByRole('button', { name: 'Request modification' }).click();
