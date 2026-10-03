@@ -151,10 +151,20 @@ export function OrderWorkflowControls({
                   <form action={duplicateReviewAction} className="order-inline-actions">
                     <OrderContext orderId={orderId} storeId={storeId} />
                     <input name="candidateId" type="hidden" value={candidate.candidateOrderId} />
-                    <button className="secondary-action" name="decision" type="submit" value="DISMISS">
+                    <button
+                      className="secondary-action"
+                      name="decision"
+                      type="submit"
+                      value="DISMISS"
+                    >
                       Dismiss
                     </button>
-                    <button className="danger-action" name="decision" type="submit" value="CONFIRM_DUPLICATE">
+                    <button
+                      className="danger-action"
+                      name="decision"
+                      type="submit"
+                      value="CONFIRM_DUPLICATE"
+                    >
                       Confirm duplicate
                     </button>
                   </form>
@@ -317,7 +327,9 @@ function ChangeRequests({
   showApproval?: boolean;
   storeId: string;
 }) {
-  const pending = requests.filter((request) => request.kind === kind && request.state === 'REQUESTED');
+  const pending = requests.filter(
+    (request) => request.kind === kind && request.state === 'REQUESTED',
+  );
   if (!pending.length) return <p className="muted">No pending {kind.toLowerCase()} requests.</p>;
   return (
     <ul className="detail-list">

@@ -43,7 +43,10 @@
 
 .order-table-row {
   display: grid;
-  grid-template-columns: minmax(180px, 1.1fr) minmax(160px, 1fr) minmax(190px, 1fr) minmax(120px, 0.7fr) minmax(160px, 0.9fr);
+  grid-template-columns: minmax(180px, 1.1fr) minmax(160px, 1fr) minmax(190px, 1fr) minmax(
+      120px,
+      0.7fr
+    ) minmax(160px, 0.9fr);
   gap: 1rem;
   min-width: 920px;
   padding: 0.95rem 0;
@@ -67,7 +70,9 @@
 .order-table-link {
   border-radius: 0.55rem;
   text-decoration: none;
-  transition: background-color 120ms ease, transform 120ms ease;
+  transition:
+    background-color 120ms ease,
+    transform 120ms ease;
 }
 
 .order-table-link:hover,
@@ -148,7 +153,10 @@
 }
 
 .order-lines-table .order-table-row {
-  grid-template-columns: minmax(220px, 1.4fr) minmax(120px, 0.8fr) minmax(70px, 0.4fr) minmax(110px, 0.7fr) minmax(110px, 0.7fr);
+  grid-template-columns: minmax(220px, 1.4fr) minmax(120px, 0.8fr) minmax(70px, 0.4fr) minmax(
+      110px,
+      0.7fr
+    ) minmax(110px, 0.7fr);
   min-width: 700px;
 }
 

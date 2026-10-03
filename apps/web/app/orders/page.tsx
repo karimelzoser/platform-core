@@ -66,7 +66,11 @@ export default async function OrdersPage() {
                 <span role="columnheader">Updated</span>
               </div>
               {orders.items.map((order) => (
-                <Link className="order-table-row order-table-link" href={`/orders/${order.id}`} key={order.id}>
+                <Link
+                  className="order-table-row order-table-link"
+                  href={`/orders/${order.id}`}
+                  key={order.id}
+                >
                   <span>
                     <strong>{order.orderNumber}</strong>
                     <small>{order.id}</small>
@@ -121,9 +125,7 @@ async function loadOrders(): Promise<
   }
 }
 
-async function loadStores(): Promise<
-  { kind: 'success'; items: StoreItem[] } | { kind: 'error' }
-> {
+async function loadStores(): Promise<{ kind: 'success'; items: StoreItem[] } | { kind: 'error' }> {
   const session = await sessionHeaders();
   if (!session) return { kind: 'error' };
   try {

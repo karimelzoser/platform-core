@@ -358,7 +358,9 @@ function wholeNumber(value: unknown, field: string, minimum: number, maximum: nu
 
 function requiredString(value: unknown, field: string, maximum: number): string {
   if (typeof value !== 'string' || !value.trim() || value.length > maximum)
-    throw new BadRequestException(`${field} must contain between 1 and ${String(maximum)} characters`);
+    throw new BadRequestException(
+      `${field} must contain between 1 and ${String(maximum)} characters`,
+    );
   return value.trim();
 }
 

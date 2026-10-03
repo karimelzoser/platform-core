@@ -204,7 +204,9 @@ async function sendOrderCommand(
 async function safeError(response: Response): Promise<string | undefined> {
   try {
     const body = (await response.json()) as { message?: unknown };
-    return typeof body.message === 'string' && body.message.length <= 300 ? body.message : undefined;
+    return typeof body.message === 'string' && body.message.length <= 300
+      ? body.message
+      : undefined;
   } catch {
     return undefined;
   }

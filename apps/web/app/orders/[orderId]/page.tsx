@@ -116,10 +116,7 @@ export default async function OrderPage({ params }: { params: Promise<{ orderId:
         <SummaryMetric label="Total" value={formatMoney(order.totalMinor, order.currency)} />
         <SummaryMetric label="Store" value={order.storeId} />
         <SummaryMetric label="Customer" value={order.customerId ?? 'Guest / unmapped'} />
-        <SummaryMetric
-          label="Updated"
-          value={new Date(order.updatedAt).toLocaleString()}
-        />
+        <SummaryMetric label="Updated" value={new Date(order.updatedAt).toLocaleString()} />
       </section>
 
       <div className="order-detail-grid">
