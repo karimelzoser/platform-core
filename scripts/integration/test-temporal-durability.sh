@@ -22,10 +22,11 @@ wait_for_temporal() {
     attempt=$((attempt + 1))
     sleep 1
   done
-  echo 'Temporal did not become healthy after restart.' >&2
+  echo 'Temporal did not become healthy.' >&2
   return 1
 }
 
+wait_for_temporal
 run_probe start
 $compose restart temporal >/dev/null
 wait_for_temporal
