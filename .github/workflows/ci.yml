@@ -42,8 +42,8 @@ jobs:
       - name: Verify migration and tenant-RLS behavior
         run: scripts/integration/test-migrations.sh
       - run: pnpm install --frozen-lockfile
-      - run: pnpm --filter @platform/api... --filter @platform/worker... build
-      - name: Verify two-tenant messaging lifecycle
+      - run: pnpm --filter @platform/api... --filter @platform/worker... --filter @platform/commerce... build
+      - name: Verify two-tenant application lifecycles
         env:
           DATABASE_URL: postgres://platform_app:platform-test-app-password@127.0.0.1:5432/platform
           OPA_URL: http://127.0.0.1:8181
