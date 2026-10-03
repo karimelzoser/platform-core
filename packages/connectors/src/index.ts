@@ -259,6 +259,7 @@ export class ConnectorRegistry {
 }
 
 export { developmentApiConnector, signDevelopmentApiWebhook } from './development-api.js';
+export { developmentEmailConnector, signDevelopmentEmailWebhook } from './development-email.js';
 export {
   developmentWebChatConnector,
   signDevelopmentWebChatWebhook,
