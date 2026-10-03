@@ -16,8 +16,11 @@ RUN apt-get update \
   && corepack enable
 COPY --from=opa /opa /usr/local/bin/opa
 COPY --from=build /workspace /workspace
-RUN chmod +x scripts/hosted/bootstrap-postgres.sh \
+RUN chmod +x \
+  scripts/hosted/bootstrap-postgres.sh \
   scripts/hosted/migrate.sh \
+  scripts/hosted/bootstrap-keycloak.sh \
+  scripts/hosted/seed-preview.sh \
   scripts/hosted/start-preview.sh
 EXPOSE 3000
 CMD ["scripts/hosted/start-preview.sh"]
