@@ -142,29 +142,33 @@ const recordPaymentSchema = z.object({
 });
 export type RecordPaymentInput = z.input<typeof recordPaymentSchema>;
 
-const createFulfillmentSchema = z.object({
-  storeId: uuidSchema,
-  orderId: uuidSchema,
-  status: z.enum(['PENDING', 'IN_PROGRESS', 'FULFILLED', 'CANCELLED', 'FAILED']).default('PENDING'),
-  fulfilledAt: z.string().datetime().optional(),
-  metadata: optionalMetadataSchema,
-  lines: z
-    .array(
-      z.object({
-        orderLineId: uuidSchema,
-        quantity: z.number().int().min(1).max(1_000_000),
-      }),
-    )
-    .min(1)
-    .max(500),
-}).superRefine((input, context) => {
-  if (input.status === 'FULFILLED' && !input.fulfilledAt)
-    context.addIssue({
-      code: z.ZodIssueCode.custom,
-      path: ['fulfilledAt'],
-      message: 'fulfilledAt is required when status is FULFILLED',
-    });
-});
+const createFulfillmentSchema = z
+  .object({
+    storeId: uuidSchema,
+    orderId: uuidSchema,
+    status: z
+      .enum(['PENDING', 'IN_PROGRESS', 'FULFILLED', 'CANCELLED', 'FAILED'])
+      .default('PENDING'),
+    fulfilledAt: z.string().datetime().optional(),
+    metadata: optionalMetadataSchema,
+    lines: z
+      .array(
+        z.object({
+          orderLineId: uuidSchema,
+          quantity: z.number().int().min(1).max(1_000_000),
+        }),
+      )
+      .min(1)
+      .max(500),
+  })
+  .superRefine((input, context) => {
+    if (input.status === 'FULFILLED' && !input.fulfilledAt)
+      context.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ['fulfilledAt'],
+        message: 'fulfilledAt is required when status is FULFILLED',
+      });
+  });
 export type CreateFulfillmentInput = z.input<typeof createFulfillmentSchema>;
 
 const mapProviderResourceSchema = z.object({
@@ -278,7 +282,7 @@ export class CommerceService {
       {
         action: 'commerce.store.create',
         permission: 'commerce.stores.manage',
-        risk: 'HIGH',
+        risk: 'MEDIUM',
         resource: () => ({ type: 'commerce.store', id: storeId }),
         event: {
           type: 'commerce.store.created',
@@ -365,7 +369,7 @@ export class CommerceService {
         action: 'commerce.inventory_location.create',
         permission: 'commerce.inventory.manage',
         risk: 'HIGH',
-        resource: () => ({ type: 'commerce.inventory_location', id: locationId }),
+        resource: () => ({ type: 'commerce.store', id: validated.storeId }),
         event: {
           type: 'commerce.inventory_location.created',
           data: () => ({ locationId, storeId: validated.storeId }),
@@ -501,7 +505,12 @@ export class CommerceService {
           metadata: () => ({ lineCount: lines.length }),
         },
         execute: async (transaction) => {
-          await this.validateCatalogReferences(transaction, context.tenantId, validated.storeId, lines);
+          await this.validateCatalogReferences(
+            transaction,
+            context.tenantId,
+            validated.storeId,
+            lines,
+          );
           await sql`insert into commerce.orders (
             id, tenant_id, store_id, customer_id, order_number, currency,
             subtotal_minor, discount_minor, tax_minor, shipping_minor, total_minor,
@@ -541,11 +550,18 @@ export class CommerceService {
               ${tax.title}, ${tax.rateBasisPoints ?? null}, ${tax.amountMinor},
               ${JSON.stringify(tax.metadata)}::jsonb
             )`.execute(transaction);
-          await this.appendOrderTimeline(transaction, context, validated.storeId, orderId, 'commerce.order.created', {
-            orderNumber: validated.orderNumber,
-            totalMinor,
-            currency: validated.currency,
-          });
+          await this.appendOrderTimeline(
+            transaction,
+            context,
+            validated.storeId,
+            orderId,
+            'commerce.order.created',
+            {
+              orderNumber: validated.orderNumber,
+              totalMinor,
+              currency: validated.currency,
+            },
+          );
           return { orderId, totalMinor, lineIds: lines.map((line) => line.id) };
         },
       },
@@ -565,7 +581,7 @@ export class CommerceService {
       {
         action: 'commerce.payment.record',
         permission: 'commerce.payments.manage',
-        risk: 'HIGH',
+        risk: 'MEDIUM',
         resource: () => ({ type: 'commerce.payment', id: paymentId }),
         event: {
           type: 'commerce.payment.recorded',
@@ -612,7 +628,12 @@ export class CommerceService {
             validated.storeId,
             validated.orderId,
             'commerce.payment.recorded',
-            { paymentId, kind: validated.kind, status: validated.status, amountMinor: validated.amountMinor },
+            {
+              paymentId,
+              kind: validated.kind,
+              status: validated.status,
+              amountMinor: validated.amountMinor,
+            },
           );
           return { paymentId };
         },
@@ -635,8 +656,8 @@ export class CommerceService {
     return this.commands.execute(
       {
         action: 'commerce.fulfillment.create',
-        permission: 'commerce.fulfillments.manage',
-        risk: 'HIGH',
+        permission: 'commerce.fulfillments.record',
+        risk: 'MEDIUM',
         resource: () => ({ type: 'commerce.fulfillment', id: fulfillmentId }),
         event: {
           type: 'commerce.fulfillment.created',
@@ -741,7 +762,8 @@ export class CommerceService {
             metadata = excluded.metadata
           returning id`.execute(transaction);
           const resolvedId = result.rows[0]?.id;
-          if (!resolvedId) throw new CommerceInvariantError('Provider mapping write returned no identifier');
+          if (!resolvedId)
+            throw new CommerceInvariantError('Provider mapping write returned no identifier');
           return { mappingId: resolvedId };
         },
       },
@@ -749,7 +771,9 @@ export class CommerceService {
     );
   }
 
-  public async listStores(context: TenantRequestContext): Promise<readonly CommerceStoreListItem[]> {
+  public async listStores(
+    context: TenantRequestContext,
+  ): Promise<readonly CommerceStoreListItem[]> {
     return withTenantTransaction(this.database, context, async (transaction) => {
       const result = await sql<{
         id: string;
@@ -987,7 +1011,9 @@ export class CommerceService {
             and status = 'ACTIVE'
         ) as exists`.execute(transaction);
         if (!result.rows[0]?.exists)
-          throw new CommerceInvariantError('Order line variant does not belong to the active product/store');
+          throw new CommerceInvariantError(
+            'Order line variant does not belong to the active product/store',
+          );
       } else {
         const result = await sql<{ exists: boolean }>`select exists(
           select 1 from commerce.products
@@ -995,7 +1021,9 @@ export class CommerceService {
             and id = ${line.productId}::uuid and status = 'ACTIVE'
         ) as exists`.execute(transaction);
         if (!result.rows[0]?.exists)
-          throw new CommerceInvariantError('Order line product does not belong to the active store');
+          throw new CommerceInvariantError(
+            'Order line product does not belong to the active store',
+          );
       }
     }
   }
@@ -1069,7 +1097,9 @@ export class CommerceService {
       exists = result.rows[0]?.exists ?? false;
     }
     if (!exists)
-      throw new CommerceInvariantError(`${entityType} canonical entity does not exist in this store`);
+      throw new CommerceInvariantError(
+        `${entityType} canonical entity does not exist in this store`,
+      );
   }
 
   private async appendOrderTimeline(
@@ -1084,14 +1114,15 @@ export class CommerceService {
       tenant_id, store_id, order_id, event_type, actor_type, actor_id, data
     ) values (
       ${context.tenantId}::uuid, ${storeId}::uuid, ${orderId}::uuid, ${eventType},
-      'USER', ${context.actorId}::uuid, ${JSON.stringify(data)}::jsonb
+      ${context.actorType}, ${context.actorId ?? null}::uuid, ${JSON.stringify(data)}::jsonb
     )`.execute(transaction);
   }
 }
 
 function safeMultiply(left: number, right: number): number {
   const result = left * right;
-  if (!Number.isSafeInteger(result)) throw new CommerceInvariantError('Money calculation exceeds safe integer range');
+  if (!Number.isSafeInteger(result))
+    throw new CommerceInvariantError('Money calculation exceeds safe integer range');
   return result;
 }
 

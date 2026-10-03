@@ -126,7 +126,9 @@ async function main(): Promise<void> {
       defaultCurrency: 'EGP',
       metadata: {},
     });
-    assert.ok((await commerce.listStores(contextA)).some((store) => store.id === storeA.result.storeId));
+    assert.ok(
+      (await commerce.listStores(contextA)).some((store) => store.id === storeA.result.storeId),
+    );
     assert.equal(
       (await commerce.listStores(contextA)).some((store) => store.id === storeB.result.storeId),
       false,
@@ -367,7 +369,11 @@ async function main(): Promise<void> {
       assert.equal(timeline.rows[0]?.count, '3');
       assert.equal(approval.rows[0]?.status, 'EXECUTED');
       assert.equal(inventoryRow.rows[0]?.available, 21);
-      assert.equal(failedPayment.rows[0]?.count, '0', 'Failed payment command emitted audit evidence');
+      assert.equal(
+        failedPayment.rows[0]?.count,
+        '0',
+        'Failed payment command emitted audit evidence',
+      );
     });
 
     await withTenantTransaction(database, contextB, async (transaction) => {
