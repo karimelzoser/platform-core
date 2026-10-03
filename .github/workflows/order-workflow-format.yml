@@ -21,14 +21,45 @@ jobs:
         with:
           node-version: 22
       - run: pnpm install --frozen-lockfile
-      - run: pnpm exec prettier --write packages/commerce/src/order-workflows.ts
-      - name: Commit formatting if needed
+      - name: Normalize worker transaction typing
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+          path = Path('apps/worker/src/provider-action-processor.ts')
+          text = path.read_text()
+          text = text.replace(
+              "import { sql, withTenantTransaction, type PlatformDatabase } from '@platform/database';",
+              "import {\n  sql,\n  withTenantTransaction,\n  type PlatformDatabase,\n  type PlatformTransaction,\n} from '@platform/database';",
+          )
+          text = text.replace(
+              "transaction: Parameters<Parameters<typeof withTenantTransaction>[2]>[0],",
+              "transaction: PlatformTransaction,",
+          )
+          path.write_text(text)
+          PY
+      - run: >-
+          pnpm exec prettier --write
+          packages/commerce/src/order-workflows.ts
+          apps/worker/src/provider-action-processor.ts
+          packages/connectors/src/development-shopify-public-app.ts
+          packages/connectors/src/development-shopify-public-app.test.ts
+          packages/connectors/src/development-woocommerce.ts
+          packages/connectors/src/development-woocommerce.test.ts
+      - run: pnpm --filter @platform/connectors... --filter @platform/worker... --filter @platform/commerce... build
+      - run: pnpm --filter @platform/connectors test
+      - name: Commit normalization if needed
         run: |
           if git diff --quiet; then
             exit 0
           fi
           git config user.name 'github-actions[bot]'
           git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
-          git add packages/commerce/src/order-workflows.ts
-          git commit -m 'style: format order workflow service'
+          git add \
+            packages/commerce/src/order-workflows.ts \
+            apps/worker/src/provider-action-processor.ts \
+            packages/connectors/src/development-shopify-public-app.ts \
+            packages/connectors/src/development-shopify-public-app.test.ts \
+            packages/connectors/src/development-woocommerce.ts \
+            packages/connectors/src/development-woocommerce.test.ts
+          git commit -m 'style: normalize order workflow implementation'
           git push origin HEAD:codex/order-workflows-hosted-preview-20261003
