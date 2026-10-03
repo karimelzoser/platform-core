@@ -110,6 +110,19 @@ jobs:
       - uses: actions/checkout@v4
       - name: Build API image with its workspace dependencies
         run: docker build --file docker/Dockerfile.api --tag platform-api:ci .
+  hosted-preview-image:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+      - name: Validate hosted bootstrap shell syntax
+        run: |
+          bash -n scripts/hosted/bootstrap-postgres.sh
+          bash -n scripts/hosted/migrate.sh
+          bash -n scripts/hosted/bootstrap-keycloak.sh
+          bash -n scripts/hosted/seed-preview.sh
+          bash -n scripts/hosted/start-preview.sh
+      - name: Build combined Railway preview image
+        run: docker build --file docker/Dockerfile.preview --tag platform-preview:ci .
   ai-gateway:
     runs-on: ubuntu-24.04
     steps:
