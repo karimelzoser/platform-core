@@ -5,12 +5,14 @@
   "type": "module",
   "scripts": {
     "typecheck": "tsc --noEmit -p tsconfig.json",
-    "test:integration": "tsx integration/messaging-lifecycle.ts && tsx integration/ticket-lifecycle.ts && tsx integration/crm-lifecycle.ts"
+    "test:integration": "tsx integration/messaging-lifecycle.ts && tsx integration/ticket-lifecycle.ts && tsx integration/crm-lifecycle.ts && tsx integration/commerce-lifecycle.ts"
   },
   "dependencies": {
     "@platform/authorization": "workspace:*",
     "@platform/command-execution": "workspace:*",
+    "@platform/commerce": "workspace:*",
     "@platform/connectors": "workspace:*",
+    "@platform/contracts": "workspace:*",
     "@platform/crm": "workspace:*",
     "@platform/database": "workspace:*",
     "@platform/media": "workspace:*"
