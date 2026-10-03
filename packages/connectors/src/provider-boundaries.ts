@@ -31,7 +31,7 @@ export const providerBoundaries: readonly ProviderBoundary[] = [
     displayName: 'Meta Embedded Signup',
     category: 'MESSAGING',
     capabilities: ['connection.onboarding', 'provider.assets'],
-    implementationState: 'PLANNED',
+    implementationState: 'DEVELOPMENT_FIXTURE',
   },
   {
     key: 'whatsapp-cloud-api',
@@ -104,14 +104,14 @@ export const providerBoundaries: readonly ProviderBoundary[] = [
       'provider.assets',
       'provider.actions',
     ],
-    implementationState: 'PLANNED',
+    implementationState: 'DEVELOPMENT_FIXTURE',
   },
   {
     key: 'woocommerce',
     displayName: 'WooCommerce',
     category: 'COMMERCE',
     capabilities: ['webhooks', 'sync', 'provider.assets', 'provider.actions'],
-    implementationState: 'PLANNED',
+    implementationState: 'DEVELOPMENT_FIXTURE',
   },
 ].map((boundary) => providerBoundarySchema.parse(boundary));
 
