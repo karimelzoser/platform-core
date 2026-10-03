@@ -13,6 +13,11 @@ import type {
 
 const fixtureSecret = 'platform-development-woocommerce-fixture';
 const signatureHeader = 'x-wc-webhook-signature';
+const orderActionTypes = [
+  'commerce.order.confirm',
+  'commerce.order.modify',
+  'commerce.order.cancel',
+] as const;
 
 const wooSettingsSchema = z.object({
   allowDevelopmentFixture: z.literal(true),
@@ -20,6 +25,12 @@ const wooSettingsSchema = z.object({
     .string()
     .url()
     .refine((value) => value.startsWith('https://'), 'HTTPS required'),
+});
+
+const orderActionInputSchema = z.object({
+  canonicalOrderId: z.string().uuid(),
+  externalOrderId: z.string().trim().min(1).max(500),
+  patch: z.record(z.unknown()).optional(),
 });
 
 function signature(rawBody: Uint8Array): string {
@@ -43,6 +54,27 @@ function eventResource(topic: string, body: Record<string, unknown>): WebhookEnv
   if (topic.startsWith('customer.')) return { type: 'woocommerce_customer', providerId };
   if (topic.startsWith('product.')) return { type: 'woocommerce_product', providerId };
   return { type: 'woocommerce_store', providerId };
+}
+
+function executeOrderAction(input: ProviderActionRequest): ProviderActionResult {
+  const actionType = z.enum(orderActionTypes).parse(input.actionType);
+  const action = orderActionInputSchema.parse(input.input);
+  if (actionType === 'commerce.order.modify' && !action.patch)
+    throw new ConnectorError('INVALID_REQUEST', false);
+  return {
+    providerActionId: deterministicId(
+      'development-woocommerce-order-action',
+      `${input.connectionId}:${input.idempotencyKey}:${actionType}`,
+    ),
+    result: {
+      operation: actionType,
+      canonicalOrderId: action.canonicalOrderId,
+      externalOrderId: action.externalOrderId,
+      ...(action.patch ? { patch: action.patch } : {}),
+      developmentOnly: true,
+    },
+    completedAt: new Date().toISOString(),
+  };
 }
 
 /** Development-only WooCommerce lifecycle fixture; performs no store network calls. */
@@ -129,18 +161,26 @@ export const developmentWooCommerceConnector: Connector = {
   unregisterWebhook() {
     return Promise.resolve();
   },
-  supportedActionTypes: ['development.woocommerce.echo'],
+  supportedActionTypes: ['development.woocommerce.echo', ...orderActionTypes],
   executeAction(input: ProviderActionRequest): Promise<ProviderActionResult> {
-    if (input.actionType !== 'development.woocommerce.echo')
-      return Promise.reject(new ConnectorError('UNSUPPORTED_OPERATION', false));
-    return Promise.resolve({
-      providerActionId: deterministicId(
-        'development-woocommerce-action',
-        `${input.connectionId}:${input.idempotencyKey}`,
-      ),
-      result: { echoed: input.input, developmentOnly: true },
-      completedAt: new Date().toISOString(),
-    });
+    if (input.actionType === 'development.woocommerce.echo')
+      return Promise.resolve({
+        providerActionId: deterministicId(
+          'development-woocommerce-action',
+          `${input.connectionId}:${input.idempotencyKey}`,
+        ),
+        result: { echoed: input.input, developmentOnly: true },
+        completedAt: new Date().toISOString(),
+      });
+    if (orderActionTypes.includes(input.actionType as (typeof orderActionTypes)[number])) {
+      try {
+        return Promise.resolve(executeOrderAction(input));
+      } catch (error) {
+        if (error instanceof ConnectorError) return Promise.reject(error);
+        return Promise.reject(new ConnectorError('INVALID_REQUEST', false));
+      }
+    }
+    return Promise.reject(new ConnectorError('UNSUPPORTED_OPERATION', false));
   },
 };
 
