@@ -8,6 +8,7 @@ corepack pnpm --filter @platform/api... --filter @platform/worker... build
 $compose up --detach --wait
 scripts/integration/migrate.sh
 scripts/preview/seed.sh
+sh scripts/preview/seed-integration-fixtures.sh
 mkdir -p .preview
 mkdir -p .preview/media
 API_PORT=4000 ENABLE_DEVELOPMENT_CONNECTOR_FIXTURES=true MEDIA_LOCAL_ROOT="$(pwd)/.preview/media" DATABASE_URL=postgres://platform_app:platform-test-app-password@localhost:5432/platform OPA_URL=http://localhost:8181 KEYCLOAK_ISSUER=http://localhost:8080/realms/platform KEYCLOAK_JWKS_URL=http://localhost:8080/realms/platform/protocol/openid-connect/certs KEYCLOAK_CLIENT_ID=platform-web nohup corepack pnpm --filter @platform/api start > .preview/api.log 2>&1 &

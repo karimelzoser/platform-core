@@ -165,7 +165,13 @@ void test('declares all planned provider families without registering production
       'woocommerce',
     ],
   );
-  assert.equal(providerBoundary('shopify-public-app')?.implementationState, 'PLANNED');
+  assert.equal(
+    providerBoundary('meta-embedded-signup')?.implementationState,
+    'DEVELOPMENT_FIXTURE',
+  );
+  assert.equal(providerBoundary('email')?.implementationState, 'DEVELOPMENT_FIXTURE');
+  assert.equal(providerBoundary('shopify-public-app')?.implementationState, 'DEVELOPMENT_FIXTURE');
+  assert.equal(providerBoundary('woocommerce')?.implementationState, 'DEVELOPMENT_FIXTURE');
   assert.equal(providerBoundary('whatsapp-cloud-api')?.implementationState, 'DEVELOPMENT_FIXTURE');
   assert.equal(providerBoundary('instagram-messaging')?.implementationState, 'DEVELOPMENT_FIXTURE');
   assert.equal(providerBoundary('messenger-platform')?.implementationState, 'DEVELOPMENT_FIXTURE');
@@ -541,7 +547,6 @@ void test('the Meta-shaped Instagram fixture verifies signatures and normalizes 
   assert.deepEqual(registry.keys(), ['development-instagram-messaging']);
 });
 
-
 void test('the Meta-shaped Messenger fixture verifies signatures and normalizes messages', async () => {
   const inbound = {
     object: 'page',
@@ -606,14 +611,11 @@ void test('the Meta-shaped Messenger fixture verifies signatures and normalizes 
       secretReference: 'development://instagram-messaging/preview',
     }),
   );
-  assert.deepEqual(
-    buildMessengerTextRequest({ recipientId: 'messenger-user-1', body: 'Reply' }),
-    {
-      recipient: { id: 'messenger-user-1' },
-      messaging_type: 'RESPONSE',
-      message: { text: 'Reply' },
-    },
-  );
+  assert.deepEqual(buildMessengerTextRequest({ recipientId: 'messenger-user-1', body: 'Reply' }), {
+    recipient: { id: 'messenger-user-1' },
+    messaging_type: 'RESPONSE',
+    message: { text: 'Reply' },
+  });
   const request = {
     connectionId: 'aaaaaaaa-0000-0000-0000-000000000001',
     providerConversationId: 'messenger-user-1',

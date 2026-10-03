@@ -184,6 +184,21 @@ importers:
         specifier: 0.27.5
         version: 0.27.5
 
+  packages/commerce:
+    dependencies:
+      '@platform/command-execution':
+        specifier: workspace:*
+        version: link:../command-execution
+      '@platform/database':
+        specifier: workspace:*
+        version: link:../database
+      kysely:
+        specifier: 0.27.5
+        version: 0.27.5
+      zod:
+        specifier: 3.24.1
+        version: 3.24.1
+
   packages/connectors:
     dependencies:
       '@platform/contracts':
@@ -244,9 +259,15 @@ importers:
       '@platform/command-execution':
         specifier: workspace:*
         version: link:../packages/command-execution
+      '@platform/commerce':
+        specifier: workspace:*
+        version: link:../packages/commerce
       '@platform/connectors':
         specifier: workspace:*
         version: link:../packages/connectors
+      '@platform/contracts':
+        specifier: workspace:*
+        version: link:../packages/contracts
       '@platform/crm':
         specifier: workspace:*
         version: link:../packages/crm

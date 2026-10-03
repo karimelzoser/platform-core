@@ -4,10 +4,14 @@ import { CommandExecutor } from '@platform/command-execution';
 import {
   ConnectorRegistry,
   developmentApiConnector,
+  developmentEmailConnector,
   developmentInstagramMessagingConnector,
   developmentMessengerPlatformConnector,
+  developmentMetaEmbeddedSignupConnector,
+  developmentShopifyPublicAppConnector,
   developmentWebChatConnector,
   developmentWhatsAppCloudApiConnector,
+  developmentWooCommerceConnector,
 } from '@platform/connectors';
 import { CustomerService } from '@platform/crm';
 import { LocalMediaStore } from '@platform/media';
@@ -42,10 +46,14 @@ function createRuntimeConnectorRegistry(): ConnectorRegistry {
   const config = loadApiConfig();
   if (config.APP_ENV !== 'production' && config.ENABLE_DEVELOPMENT_CONNECTOR_FIXTURES) {
     registry.register(developmentApiConnector);
+    registry.register(developmentEmailConnector);
     registry.register(developmentInstagramMessagingConnector);
     registry.register(developmentMessengerPlatformConnector);
+    registry.register(developmentMetaEmbeddedSignupConnector);
+    registry.register(developmentShopifyPublicAppConnector);
     registry.register(developmentWebChatConnector);
     registry.register(developmentWhatsAppCloudApiConnector);
+    registry.register(developmentWooCommerceConnector);
   }
   return registry;
 }

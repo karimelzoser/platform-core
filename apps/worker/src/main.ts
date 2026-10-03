@@ -2,10 +2,14 @@ import { connect } from 'nats';
 import {
   ConnectorRegistry,
   developmentApiConnector,
+  developmentEmailConnector,
   developmentInstagramMessagingConnector,
   developmentMessengerPlatformConnector,
+  developmentMetaEmbeddedSignupConnector,
+  developmentShopifyPublicAppConnector,
   developmentWebChatConnector,
   developmentWhatsAppCloudApiConnector,
+  developmentWooCommerceConnector,
 } from '@platform/connectors';
 import { createDatabase, destroyDatabase } from '@platform/database';
 import { createServer } from 'node:http';
@@ -40,10 +44,14 @@ async function main(): Promise<void> {
   const connectors = new ConnectorRegistry();
   if (environment.APP_ENV !== 'production' && environment.ENABLE_DEVELOPMENT_CONNECTOR_FIXTURES) {
     connectors.register(developmentApiConnector);
+    connectors.register(developmentEmailConnector);
     connectors.register(developmentInstagramMessagingConnector);
     connectors.register(developmentMessengerPlatformConnector);
+    connectors.register(developmentMetaEmbeddedSignupConnector);
+    connectors.register(developmentShopifyPublicAppConnector);
     connectors.register(developmentWebChatConnector);
     connectors.register(developmentWhatsAppCloudApiConnector);
+    connectors.register(developmentWooCommerceConnector);
   }
   const webhookProcessor = new MessagingWebhookProcessor(db, connectors, workerId);
   const outboundMessageProcessor = new OutboundMessageProcessor(db, connectors, workerId);
