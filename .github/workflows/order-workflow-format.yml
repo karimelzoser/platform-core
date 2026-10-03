@@ -25,12 +25,13 @@ jobs:
         with:
           node-version: 22
       - run: pnpm install --no-frozen-lockfile
-      - name: Normalize worker transaction typing
+      - name: Normalize branch-local implementation details
         run: |
           python - <<'PY'
           from pathlib import Path
-          path = Path('apps/worker/src/provider-action-processor.ts')
-          text = path.read_text()
+
+          worker = Path('apps/worker/src/provider-action-processor.ts')
+          text = worker.read_text()
           text = text.replace(
               "import { sql, withTenantTransaction, type PlatformDatabase } from '@platform/database';",
               "import {\n  sql,\n  withTenantTransaction,\n  type PlatformDatabase,\n  type PlatformTransaction,\n} from '@platform/database';",
@@ -39,7 +40,15 @@ jobs:
               "transaction: Parameters<Parameters<typeof withTenantTransaction>[2]>[0],",
               "transaction: PlatformTransaction,",
           )
-          path.write_text(text)
+          worker.write_text(text)
+
+          detail = Path('apps/web/app/orders/[orderId]/page.tsx')
+          text = detail.read_text()
+          text = text.replace(
+              "    return (await response.json()) as {\n      kind: 'success';\n      order: OrderDetail;\n      workflow: WorkflowDetail | null;\n    };",
+              "    const payload = (await response.json()) as {\n      order: OrderDetail;\n      workflow: WorkflowDetail | null;\n    };\n    return { kind: 'success', ...payload };",
+          )
+          detail.write_text(text)
           PY
       - run: >-
           pnpm exec prettier --write
