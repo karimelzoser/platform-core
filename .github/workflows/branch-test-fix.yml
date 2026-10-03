@@ -46,6 +46,7 @@ jobs:
           path.write_text(text.replace(old, new, 1))
           PY
           pnpm exec prettier --write packages/connectors/src/index.test.ts
+          pnpm --filter @platform/connectors... build
           pnpm --filter @platform/connectors test
       - name: Commit test update
         run: |
