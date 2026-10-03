@@ -47,29 +47,33 @@ revokes the prior reference only when no tenant connection still uses it. Rotati
 is CRITICAL, approval-aware, and records a reference fingerprint rather than the
 reference itself in the idempotency input.
 
-`development-web-chat`, `development-api`,
+`development-web-chat`, `development-api`, `development-email`,
 `development-whatsapp-cloud-api`, `development-instagram-messaging`, and
-`development-messenger-platform` are
-opt-in disposable-preview/test emulators.
+`development-messenger-platform` are opt-in disposable-preview/test emulators.
 They sign fixture webhooks, produce deterministic provider-message IDs for
 idempotent retries, accept the typed sync contract with an empty completed
 result, and make no provider network calls. The WhatsApp fixture uses the
 Meta `x-hub-signature-256` HMAC shape and normalizes one bounded text-message
-or delivery-status event per fixture delivery. The Instagram and Messenger fixtures use the same signature convention and
-normalize bounded text-message or delivery events. Media transport is explicitly unsupported until its production-capable
+or delivery-status event per fixture delivery. The Instagram and Messenger
+fixtures use the same signature convention and normalize bounded text-message
+or delivery events. The Email fixture uses an isolated development HMAC header,
+normalizes bounded inbound email and delivery receipts into the canonical inbox
+contracts, validates recipient addresses, and rejects attachment transport until
+its production-capable contract is implemented. Media transport for the Meta
+fixtures is likewise explicitly unsupported until its production-capable
 transport contract is implemented.
 They are never registered in a production runtime and are enabled only with
 `ENABLE_DEVELOPMENT_CONNECTOR_FIXTURES=true` outside production.
-Their shared contract tests cover signature verification, normalization, asset
+Their contract tests cover signature verification, normalization, asset
 discovery, cursor-bearing reconciliation, deterministic outbound dispatch, and
-an explicitly named development-only echo action. Fixture actions are not
-commerce, payment, or production messaging provider implementations.
+where applicable explicitly named development-only provider actions. Fixture
+actions are not commerce, payment, or production messaging provider
+implementations.
 
 `providerBoundaries` is the explicit, test-covered contract for Meta Embedded
 Signup, WhatsApp, Instagram, Messenger, Email, Web Chat, API, Shopify public
-app, and WooCommerce. WhatsApp, Instagram, Messenger, Web Chat, and API are marked
-`DEVELOPMENT_FIXTURE` because deterministic emulators and contract tests exist;
-they are not production provider adapters. Meta Embedded Signup, Email, Shopify,
-and WooCommerce remain `PLANNED`. The
-boundary declaration does not register a production connector or permit
-provider calls.
+app, and WooCommerce. WhatsApp, Instagram, Messenger, Email, Web Chat, and API
+are marked `DEVELOPMENT_FIXTURE` because deterministic emulators and contract
+tests exist; they are not production provider adapters. Meta Embedded Signup,
+Shopify, and WooCommerce remain `PLANNED`. The boundary declaration does not
+register a production connector or permit provider calls.
