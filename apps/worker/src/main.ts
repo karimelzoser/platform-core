@@ -36,7 +36,10 @@ const environmentSchema = z.object({
 });
 
 async function main(): Promise<void> {
-  const environment = environmentSchema.parse(process.env);
+  const environment = environmentSchema.parse({
+    ...process.env,
+    WORKER_HEALTH_PORT: process.env.WORKER_HEALTH_PORT ?? process.env.PORT,
+  });
   const nats = await connect({ servers: environment.NATS_URL, name: 'platform-worker' });
   const db = createDatabase(environment.DATABASE_URL);
   const publisher = new OutboxPublisher(db, nats, `${hostname()}-${String(process.pid)}`);
