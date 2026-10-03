@@ -58,6 +58,7 @@ WHERE NOT EXISTS (SELECT 1 FROM pg_database WHERE datname = 'platform_temporal')
 SELECT 'CREATE DATABASE platform_temporal_visibility OWNER platform_temporal'
 WHERE NOT EXISTS (SELECT 1 FROM pg_database WHERE datname = 'platform_temporal_visibility') \gexec
 
+GRANT CREATE ON DATABASE platform TO platform_migrator;
 GRANT CONNECT ON DATABASE platform TO platform_app;
 
 \connect platform
