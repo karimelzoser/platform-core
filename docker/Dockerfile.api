@@ -6,6 +6,7 @@ COPY apps/api/package.json apps/api/package.json
 COPY packages/auth/package.json packages/auth/package.json
 COPY packages/authorization/package.json packages/authorization/package.json
 COPY packages/command-execution/package.json packages/command-execution/package.json
+COPY packages/commerce/package.json packages/commerce/package.json
 COPY packages/connectors/package.json packages/connectors/package.json
 COPY packages/contracts/package.json packages/contracts/package.json
 COPY packages/crm/package.json packages/crm/package.json
