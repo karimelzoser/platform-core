@@ -50,10 +50,10 @@ test.describe('Orders disposable development preview', () => {
 
     const modification = workflowSection(page, 'modification-heading');
     const modificationForm = modification.locator('form.customer-form').first();
-    await modificationForm.getByLabel('Internal/order note').fill('Browser acceptance modification');
     await modificationForm
-      .getByLabel('Reason')
-      .fill('Verify guarded canonical modification flow');
+      .getByLabel('Internal/order note')
+      .fill('Browser acceptance modification');
+    await modificationForm.getByLabel('Reason').fill('Verify guarded canonical modification flow');
     await modificationForm.getByRole('button', { name: 'Request modification' }).click();
     await expect(modification.locator('p.merge-success[role="status"]')).toContainText(
       'Operation accepted',
