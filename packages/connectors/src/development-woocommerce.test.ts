@@ -114,6 +114,32 @@ void test('WooCommerce fixture exercises webhook, sync, assets, and action contr
   const retry = await developmentWooCommerceConnector.executeAction?.(actionInput);
   assert.equal(first?.providerActionId, retry?.providerActionId);
   assert.deepEqual(first?.result, { echoed: { orderId: 321 }, developmentOnly: true });
+
+  const orderAction = await developmentWooCommerceConnector.executeAction?.({
+    ...actionInput,
+    actionType: 'commerce.order.cancel',
+    idempotencyKey: 'woo-order-cancel-1',
+    input: {
+      canonicalOrderId: '22222222-2222-2222-2222-222222222222',
+      externalOrderId: '321',
+    },
+  });
+  const orderRetry = await developmentWooCommerceConnector.executeAction?.({
+    ...actionInput,
+    actionType: 'commerce.order.cancel',
+    idempotencyKey: 'woo-order-cancel-1',
+    input: {
+      canonicalOrderId: '22222222-2222-2222-2222-222222222222',
+      externalOrderId: '321',
+    },
+  });
+  assert.equal(orderAction?.providerActionId, orderRetry?.providerActionId);
+  assert.deepEqual(orderAction?.result, {
+    operation: 'commerce.order.cancel',
+    canonicalOrderId: '22222222-2222-2222-2222-222222222222',
+    externalOrderId: '321',
+    developmentOnly: true,
+  });
   await assert.rejects(
     developmentWooCommerceConnector.executeAction?.({
       ...actionInput,
