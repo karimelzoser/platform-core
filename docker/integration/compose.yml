@@ -52,7 +52,7 @@ services:
       - ../../docs/production-reference/temporal-dynamicconfig.yaml:/etc/temporal/config/dynamicconfig/development-sql.yaml:ro
 
   keycloak:
-    image: quay.io/keycloak/keycloak:26.7.4
+    image: quay.io/keycloak/keycloak:26.8.0
     command: ['start-dev', '--import-realm']
     depends_on:
       postgres: { condition: service_healthy }
