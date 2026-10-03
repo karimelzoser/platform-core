@@ -123,10 +123,50 @@ void test('Shopify public app fixture exercises webhook, sync, assets, and actio
     echoed: { orderId: 'gid://shopify/Order/12345' },
     developmentOnly: true,
   });
+
+  const orderAction = await developmentShopifyPublicAppConnector.executeAction?.({
+    ...actionInput,
+    actionType: 'commerce.order.modify',
+    idempotencyKey: 'shopify-order-modify-1',
+    input: {
+      canonicalOrderId: '11111111-1111-1111-1111-111111111111',
+      externalOrderId: 'gid://shopify/Order/12345',
+      patch: { note: 'Updated delivery note' },
+    },
+  });
+  const orderRetry = await developmentShopifyPublicAppConnector.executeAction?.({
+    ...actionInput,
+    actionType: 'commerce.order.modify',
+    idempotencyKey: 'shopify-order-modify-1',
+    input: {
+      canonicalOrderId: '11111111-1111-1111-1111-111111111111',
+      externalOrderId: 'gid://shopify/Order/12345',
+      patch: { note: 'Updated delivery note' },
+    },
+  });
+  assert.equal(orderAction?.providerActionId, orderRetry?.providerActionId);
+  assert.deepEqual(orderAction?.result, {
+    operation: 'commerce.order.modify',
+    canonicalOrderId: '11111111-1111-1111-1111-111111111111',
+    externalOrderId: 'gid://shopify/Order/12345',
+    patch: { note: 'Updated delivery note' },
+    developmentOnly: true,
+  });
   await assert.rejects(
     developmentShopifyPublicAppConnector.executeAction?.({
       ...actionInput,
-      actionType: 'commerce.order.cancel',
+      actionType: 'commerce.order.modify',
+      input: {
+        canonicalOrderId: '11111111-1111-1111-1111-111111111111',
+        externalOrderId: 'gid://shopify/Order/12345',
+      },
+    }) ?? Promise.reject(new Error('missing executeAction')),
+    { code: 'INVALID_REQUEST' },
+  );
+  await assert.rejects(
+    developmentShopifyPublicAppConnector.executeAction?.({
+      ...actionInput,
+      actionType: 'commerce.order.refund',
     }) ?? Promise.reject(new Error('missing executeAction')),
     { code: 'UNSUPPORTED_OPERATION' },
   );
