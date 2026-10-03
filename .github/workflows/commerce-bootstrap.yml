@@ -79,6 +79,7 @@ jobs:
           pnpm --filter @platform/commerce... build
           pnpm --filter @platform/commerce typecheck
           pnpm --filter @platform/commerce test
+          pnpm --filter @platform/integration-tests... --if-present build
           pnpm --filter @platform/integration-tests typecheck
       - name: Commit normalized commerce workspace
         run: |
