@@ -305,7 +305,7 @@ async function main(): Promise<void> {
     workflow = await workflows.get(contextA, duplicate.result.orderId);
     assert.equal(workflow?.providerSyncState, 'IN_SYNC');
     assert.equal(
-      workflow?.providerActions.find(
+      workflow.providerActions.find(
         (action) => action.providerActionId === queuedProvider.result.providerActionId,
       )?.state,
       'SUCCEEDED',
