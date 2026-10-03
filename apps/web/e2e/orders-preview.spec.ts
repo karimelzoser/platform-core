@@ -61,7 +61,7 @@ test.describe('Orders disposable development preview', () => {
       .getByRole('listitem')
       .filter({ hasText: 'Verify guarded canonical modification flow' });
     await pendingModification.getByRole('button', { name: 'Approve' }).click();
-    await expect(pendingModification.getByRole('status')).toContainText('Operation accepted');
+    await expect(page.getByRole('status')).toContainText('Operation accepted');
     await page.reload();
     await expect(workflowMetric(page, 'Modification')).toContainText('APPLIED');
     await expect(workflowMetric(page, 'Provider sync')).toContainText('PENDING');
