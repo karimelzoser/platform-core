@@ -4,6 +4,10 @@ on:
   push:
     branches: [codex/order-workflows-hosted-preview-20261003]
 
+concurrency:
+  group: order-workflow-normalizer
+  cancel-in-progress: true
+
 permissions:
   contents: write
 
@@ -45,7 +49,10 @@ jobs:
           packages/connectors/src/development-shopify-public-app.test.ts
           packages/connectors/src/development-woocommerce.ts
           packages/connectors/src/development-woocommerce.test.ts
-      - run: pnpm --filter @platform/connectors... --filter @platform/worker... --filter @platform/commerce... build
+          apps/api/src/app.module.ts
+          apps/api/src/commerce.controller.ts
+          apps/web/app/orders
+      - run: pnpm --filter @platform/connectors... --filter @platform/worker... --filter @platform/commerce... --filter @platform/api... --filter @platform/web... build
       - run: pnpm --filter @platform/connectors test
       - name: Commit normalization if needed
         run: |
@@ -61,6 +68,9 @@ jobs:
             packages/connectors/src/development-shopify-public-app.ts \
             packages/connectors/src/development-shopify-public-app.test.ts \
             packages/connectors/src/development-woocommerce.ts \
-            packages/connectors/src/development-woocommerce.test.ts
-          git commit -m 'style: normalize order workflow implementation'
+            packages/connectors/src/development-woocommerce.test.ts \
+            apps/api/src/app.module.ts \
+            apps/api/src/commerce.controller.ts \
+            apps/web/app/orders
+          git commit -m 'style: normalize order workflow surface'
           git push origin HEAD:codex/order-workflows-hosted-preview-20261003
