@@ -9,9 +9,13 @@ set -Eeuo pipefail
 : "${PLATFORM_TEMPORAL_PASSWORD:?PLATFORM_TEMPORAL_PASSWORD is required}"
 : "${NATS_HOST:?NATS_HOST is required}"
 : "${KEYCLOAK_HOST:?KEYCLOAK_HOST is required}"
+: "${KEYCLOAK_ADMIN_USERNAME:?KEYCLOAK_ADMIN_USERNAME is required}"
+: "${KEYCLOAK_ADMIN_PASSWORD:?KEYCLOAK_ADMIN_PASSWORD is required}"
 
 export APP_ENV="${APP_ENV:-development}"
 export ENABLE_DEVELOPMENT_CONNECTOR_FIXTURES="${ENABLE_DEVELOPMENT_CONNECTOR_FIXTURES:-true}"
+export PREVIEW_TENANT_ID="${PREVIEW_TENANT_ID:-cccccccc-cccc-cccc-cccc-cccccccccccc}"
+export PREVIEW_SECURE_COOKIES="${PREVIEW_SECURE_COOKIES:-true}"
 export PLATFORM_ADMIN_DATABASE_URL="postgresql://postgres:${POSTGRES_ADMIN_PASSWORD}@${POSTGRES_HOST}:5432/platform"
 export PLATFORM_MIGRATOR_DATABASE_URL="postgresql://platform_migrator:${PLATFORM_MIGRATOR_PASSWORD}@${POSTGRES_HOST}:5432/platform"
 export DATABASE_URL="postgresql://platform_app:${PLATFORM_APP_PASSWORD}@${POSTGRES_HOST}:5432/platform"
@@ -29,7 +33,8 @@ mkdir -p "$MEDIA_LOCAL_ROOT"
 
 wait_for_postgres() {
   local attempt=0
-  until pg_isready -h "$POSTGRES_HOST" -p 5432 -U postgres >/dev/null 2>&1; do
+  until PGPASSWORD="$POSTGRES_ADMIN_PASSWORD" pg_isready \
+    -h "$POSTGRES_HOST" -p 5432 -U postgres -d platform >/dev/null 2>&1; do
     attempt=$((attempt + 1))
     if (( attempt >= 120 )); then
       echo 'PostgreSQL did not become ready.' >&2
@@ -54,7 +59,9 @@ wait_for_keycloak() {
 wait_for_postgres
 scripts/hosted/bootstrap-postgres.sh
 scripts/hosted/migrate.sh
+scripts/hosted/seed-preview.sh
 wait_for_keycloak
+scripts/hosted/bootstrap-keycloak.sh
 
 pids=()
 cleanup() {
