@@ -4,6 +4,7 @@ import { CommandExecutor } from '@platform/command-execution';
 import {
   ConnectorRegistry,
   developmentApiConnector,
+  developmentEmailConnector,
   developmentInstagramMessagingConnector,
   developmentMessengerPlatformConnector,
   developmentWebChatConnector,
@@ -42,6 +43,7 @@ function createRuntimeConnectorRegistry(): ConnectorRegistry {
   const config = loadApiConfig();
   if (config.APP_ENV !== 'production' && config.ENABLE_DEVELOPMENT_CONNECTOR_FIXTURES) {
     registry.register(developmentApiConnector);
+    registry.register(developmentEmailConnector);
     registry.register(developmentInstagramMessagingConnector);
     registry.register(developmentMessengerPlatformConnector);
     registry.register(developmentWebChatConnector);
