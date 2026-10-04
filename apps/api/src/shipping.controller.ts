@@ -272,7 +272,7 @@ export class ShippingController {
       ...(typeof object.priority === 'string' ? { priority: object.priority as never } : {}),
       ...(object.assignedActorId === undefined
         ? {}
-        : { assignedActorId: object.assignedActorId as string | null }),
+        : { assignedActorId: object.assignedActorId }),
       ...(typeof object.summary === 'string' ? { summary: object.summary } : {}),
       ...(object.dueAt === undefined ? {} : { dueAt: object.dueAt as string | null }),
     });
