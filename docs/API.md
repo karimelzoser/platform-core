@@ -50,7 +50,7 @@ All non-public endpoints require a valid Keycloak access token, an active applic
 | `POST /v1/commerce/orders/:orderId/modifications/:requestId/review`                      | Implemented | Idempotent approve/reject modification review and guarded application                                      |
 | `POST /v1/commerce/orders/:orderId/cancellations`                                        | Implemented | Idempotent cancellation request with canonical order state guards                                          |
 | `POST /v1/commerce/orders/:orderId/cancellations/:requestId/review`                      | Implemented | Approval-aware cancellation review with fulfillment/payment safety guards                                 |
-| `POST /v1/commerce/orders/:orderId/provider-actions`                                     | Implemented | Post-commit typed CONFIRM/MODIFY/CANCEL provider action dispatch through a tenant connection              |
+| `POST /v1/commerce/orders/:orderId/provider-actions`                                     | Implemented | Post-commit typed CONFIRM/MODIFY/CANCEL provider action dispatch through a tenant connection               |
 
 Responses for operational failures include a correlation ID. Secret values never appear in API responses or logs.
 
