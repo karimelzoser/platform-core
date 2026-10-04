@@ -16,6 +16,7 @@
     "@platform/auth": "workspace:*",
     "@platform/authorization": "workspace:*",
     "@platform/command-execution": "workspace:*",
+    "@platform/commerce": "workspace:*",
     "@platform/connectors": "workspace:*",
     "@platform/contracts": "workspace:*",
     "@platform/crm": "workspace:*",

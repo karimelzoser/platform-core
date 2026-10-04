@@ -1,0 +1,26 @@
+FROM openpolicyagent/opa:1.20.2-static AS opa
+
+FROM node:24-bookworm-slim AS build
+WORKDIR /workspace
+RUN corepack enable
+COPY . .
+RUN pnpm install --frozen-lockfile
+RUN pnpm --filter @platform/api... --filter @platform/worker... --filter @platform/web... build
+
+FROM node:24-bookworm-slim
+WORKDIR /workspace
+ENV NODE_ENV=production
+RUN apt-get update \
+  && apt-get install -y --no-install-recommends postgresql-client curl ca-certificates \
+  && rm -rf /var/lib/apt/lists/* \
+  && corepack enable
+COPY --from=opa /opa /usr/local/bin/opa
+COPY --from=build /workspace /workspace
+RUN chmod +x \
+  scripts/hosted/bootstrap-postgres.sh \
+  scripts/hosted/migrate.sh \
+  scripts/hosted/bootstrap-keycloak.sh \
+  scripts/hosted/seed-preview.sh \
+  scripts/hosted/start-preview.sh
+EXPOSE 3000
+CMD ["scripts/hosted/start-preview.sh"]

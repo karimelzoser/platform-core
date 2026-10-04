@@ -1,6 +1,8 @@
 import { Controller, Get, Module } from '@nestjs/common';
 import { CommandAuthorizer, OpaClient } from '@platform/authorization';
 import { CommandExecutor } from '@platform/command-execution';
+import { CommerceService } from '@platform/commerce';
+import { OrderWorkflowService } from '@platform/commerce/order-workflows';
 import {
   ConnectorRegistry,
   developmentApiConnector,
@@ -19,6 +21,7 @@ import { ApprovalService } from './approval.service.js';
 import { ApprovalsController } from './approvals.controller.js';
 import { ApiDatabaseService } from './api-database.service.js';
 import { AuthenticatedContextService } from './authenticated-context.service.js';
+import { CommerceController } from './commerce.controller.js';
 import { loadApiConfig } from './config.js';
 import { CustomersController } from './customers.controller.js';
 import { SessionController } from './session.controller.js';
@@ -69,6 +72,7 @@ function createRuntimeConnectorRegistry(): ConnectorRegistry {
     TicketsController,
     MediaController,
     IntegrationsController,
+    CommerceController,
   ],
   providers: [
     ApiDatabaseService,
@@ -86,6 +90,18 @@ function createRuntimeConnectorRegistry(): ConnectorRegistry {
         connectors: ConnectorRegistry,
       ) => new IntegrationService(database.database, commands, connectors),
       inject: [ApiDatabaseService, CommandExecutor, ConnectorRegistry],
+    },
+    {
+      provide: CommerceService,
+      useFactory: (database: ApiDatabaseService, commands: CommandExecutor) =>
+        new CommerceService(database.database, commands),
+      inject: [ApiDatabaseService, CommandExecutor],
+    },
+    {
+      provide: OrderWorkflowService,
+      useFactory: (database: ApiDatabaseService, commands: CommandExecutor) =>
+        new OrderWorkflowService(database.database, commands),
+      inject: [ApiDatabaseService, CommandExecutor],
     },
     {
       provide: LocalMediaStore,

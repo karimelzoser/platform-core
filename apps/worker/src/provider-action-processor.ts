@@ -4,7 +4,12 @@ import {
   type Connector,
   type ConnectorRegistry,
 } from '@platform/connectors';
-import { sql, withTenantTransaction, type PlatformDatabase } from '@platform/database';
+import {
+  sql,
+  withTenantTransaction,
+  type PlatformDatabase,
+  type PlatformTransaction,
+} from '@platform/database';
 
 const maximumProviderActionAttempts = 8;
 
@@ -21,6 +26,12 @@ interface ProviderActionRoute {
   connectorKey: string;
   settings: Record<string, unknown>;
   secretReference: string;
+}
+
+interface CommerceOrderProviderLink {
+  store_id: string;
+  order_id: string;
+  operation: string;
 }
 
 function supportsProviderAction(
@@ -54,6 +65,17 @@ export class ProviderActionProcessor {
       try {
         await this.process(action);
       } catch (error) {
+        const failure = toConnectorError(error);
+        process.stderr.write(
+          `${JSON.stringify({
+            level: 'error',
+            event: 'provider_action.processing_failed',
+            providerActionId: action.id,
+            actionType: action.action_type,
+            errorCode: failure.code,
+            retryable: failure.retryable,
+          })}\n`,
+        );
         await this.recordFailure(action, error);
       }
     }
@@ -91,19 +113,20 @@ export class ProviderActionProcessor {
         const result = await sql<{
           connector_key: string;
           settings: Record<string, unknown>;
-          reference: string | null;
+          reference: string;
         }>`select connection.connector_key, connection.settings, secret.reference
           from integrations.provider_actions as action
           join integrations.connections as connection
             on connection.tenant_id = action.tenant_id and connection.id = action.connection_id
-          left join integrations.secret_references as secret
+          join integrations.secret_references as secret
             on secret.tenant_id = connection.tenant_id and secret.id = connection.secret_reference_id
           where action.id = ${action.id}::uuid
             and action.claimed_by = ${this.workerId}
             and connection.status in ('CONNECTED', 'DEGRADED')
-          for share`.execute(transaction);
+            and secret.state in ('ACTIVE', 'ROTATING')
+          for share of action, connection, secret`.execute(transaction);
         const route = result.rows[0];
-        if (!route?.reference) throw new Error('Provider action has no dispatchable connection');
+        if (!route) throw new Error('Provider action has no dispatchable connection');
         return {
           connectorKey: route.connector_key,
           settings: route.settings,
@@ -136,6 +159,33 @@ export class ProviderActionProcessor {
           where id = ${action.id}::uuid and claimed_by = ${this.workerId}
           returning id`.execute(transaction);
         if (!updated.rows[0]) return;
+
+        const commerceLink =
+          await sql<CommerceOrderProviderLink>`update commerce.order_provider_actions
+          set state = 'SUCCEEDED', completed_at = ${completedAt}::timestamptz, updated_at = now()
+          where tenant_id = ${action.tenant_id}::uuid and provider_action_id = ${action.id}::uuid
+          returning store_id, order_id, operation`.execute(transaction);
+        const link = commerceLink.rows[0];
+        if (link) {
+          await this.refreshOrderProviderSyncState(
+            transaction,
+            action.tenant_id,
+            link.order_id,
+            completedAt,
+          );
+          await sql`insert into commerce.order_timeline (
+            tenant_id, store_id, order_id, event_type, actor_type, data
+          ) values (
+            ${action.tenant_id}::uuid, ${link.store_id}::uuid, ${link.order_id}::uuid,
+            'commerce.order.provider_action_succeeded', 'INTEGRATION',
+            ${JSON.stringify({
+              providerActionId: action.id,
+              providerReference: providerActionId,
+              operation: link.operation,
+            })}::jsonb
+          )`.execute(transaction);
+        }
+
         await sql`insert into platform.audit_log (
           tenant_id, actor_type, action, resource_type, resource_id, request_id, correlation_id, metadata
         ) values (
@@ -187,6 +237,33 @@ export class ProviderActionProcessor {
           returning state, attempts`.execute(transaction);
         const result = updated.rows[0];
         if (!result || result.state !== 'DEAD_LETTER') return;
+
+        const commerceLink =
+          await sql<CommerceOrderProviderLink>`update commerce.order_provider_actions
+          set state = 'DEAD_LETTER', completed_at = now(), updated_at = now()
+          where tenant_id = ${action.tenant_id}::uuid and provider_action_id = ${action.id}::uuid
+          returning store_id, order_id, operation`.execute(transaction);
+        const link = commerceLink.rows[0];
+        if (link) {
+          await sql`update commerce.order_workflows
+            set provider_sync_state = 'OUT_OF_SYNC', updated_at = now()
+            where tenant_id = ${action.tenant_id}::uuid and order_id = ${link.order_id}::uuid`.execute(
+            transaction,
+          );
+          await sql`insert into commerce.order_timeline (
+            tenant_id, store_id, order_id, event_type, actor_type, data
+          ) values (
+            ${action.tenant_id}::uuid, ${link.store_id}::uuid, ${link.order_id}::uuid,
+            'commerce.order.provider_action_dead_lettered', 'INTEGRATION',
+            ${JSON.stringify({
+              providerActionId: action.id,
+              operation: link.operation,
+              errorCode: failure.code,
+              attempts: result.attempts,
+            })}::jsonb
+          )`.execute(transaction);
+        }
+
         await sql`insert into platform.dead_letters (
           tenant_id, source, event_type, source_event_id, payload, error_code, error_message, attempts
         ) values (
@@ -206,5 +283,26 @@ export class ProviderActionProcessor {
         )`.execute(transaction);
       },
     );
+  }
+
+  private async refreshOrderProviderSyncState(
+    transaction: PlatformTransaction,
+    tenantId: string,
+    orderId: string,
+    completedAt: string,
+  ): Promise<void> {
+    const states = await sql<{ dead_letter: number; queued: number }>`select
+        count(*) filter (where state = 'DEAD_LETTER')::integer as dead_letter,
+        count(*) filter (where state = 'QUEUED')::integer as queued
+      from commerce.order_provider_actions
+      where tenant_id = ${tenantId}::uuid and order_id = ${orderId}::uuid`.execute(transaction);
+    const state = states.rows[0] ?? { dead_letter: 0, queued: 0 };
+    const providerSyncState =
+      state.dead_letter > 0 ? 'OUT_OF_SYNC' : state.queued > 0 ? 'PENDING' : 'IN_SYNC';
+    await sql`update commerce.order_workflows
+      set provider_sync_state = ${providerSyncState},
+          last_provider_sync_at = ${completedAt}::timestamptz,
+          updated_at = now()
+      where tenant_id = ${tenantId}::uuid and order_id = ${orderId}::uuid`.execute(transaction);
   }
 }

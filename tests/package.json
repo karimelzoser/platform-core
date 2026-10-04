@@ -5,7 +5,7 @@
   "type": "module",
   "scripts": {
     "typecheck": "tsc --noEmit -p tsconfig.json",
-    "test:integration": "tsx integration/messaging-lifecycle.ts && tsx integration/ticket-lifecycle.ts && tsx integration/crm-lifecycle.ts && tsx integration/commerce-lifecycle.ts"
+    "test:integration": "tsx integration/messaging-lifecycle.ts && tsx integration/ticket-lifecycle.ts && tsx integration/crm-lifecycle.ts && tsx integration/commerce-lifecycle.ts && tsx integration/order-workflow-lifecycle.ts"
   },
   "dependencies": {
     "@platform/authorization": "workspace:*",
@@ -15,7 +15,8 @@
     "@platform/contracts": "workspace:*",
     "@platform/crm": "workspace:*",
     "@platform/database": "workspace:*",
-    "@platform/media": "workspace:*"
+    "@platform/media": "workspace:*",
+    "@temporalio/client": "1.24.0"
   },
   "devDependencies": {
     "@types/node": "22.10.2",

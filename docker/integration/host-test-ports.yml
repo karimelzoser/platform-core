@@ -1,5 +1,8 @@
+# CI-only loopback bindings for host-run integration probes; the base stack stays private.
 services:
   postgres:
     ports: ['127.0.0.1:5432:5432']
+  temporal:
+    ports: ['127.0.0.1:7233:7233']
   opa:
     ports: ['127.0.0.1:8181:8181']

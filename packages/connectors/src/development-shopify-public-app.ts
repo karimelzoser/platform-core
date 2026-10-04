@@ -13,6 +13,11 @@ import type {
 
 const fixtureSecret = 'platform-development-shopify-fixture';
 const signatureHeader = 'x-shopify-hmac-sha256';
+const orderActionTypes = [
+  'commerce.order.confirm',
+  'commerce.order.modify',
+  'commerce.order.cancel',
+] as const;
 
 const shopifySettingsSchema = z.object({
   allowDevelopmentFixture: z.literal(true),
@@ -21,6 +26,12 @@ const shopifySettingsSchema = z.object({
     .string()
     .regex(/^20\d{2}-((01)|(04)|(07)|(10))$/u)
     .optional(),
+});
+
+const orderActionInputSchema = z.object({
+  canonicalOrderId: z.string().uuid(),
+  externalOrderId: z.string().trim().min(1).max(500),
+  patch: z.record(z.unknown()).optional(),
 });
 
 function signature(rawBody: Uint8Array): string {
@@ -45,6 +56,27 @@ function eventResource(topic: string, body: Record<string, unknown>): WebhookEnv
   if (topic.startsWith('products/')) return { type: 'shopify_product', providerId };
   if (topic.startsWith('fulfillments/')) return { type: 'shopify_fulfillment', providerId };
   return { type: 'shopify_shop', providerId };
+}
+
+function executeOrderAction(input: ProviderActionRequest): ProviderActionResult {
+  const actionType = z.enum(orderActionTypes).parse(input.actionType);
+  const action = orderActionInputSchema.parse(input.input);
+  if (actionType === 'commerce.order.modify' && !action.patch)
+    throw new ConnectorError('INVALID_REQUEST', false);
+  return {
+    providerActionId: deterministicId(
+      'development-shopify-order-action',
+      `${input.connectionId}:${input.idempotencyKey}:${actionType}`,
+    ),
+    result: {
+      operation: actionType,
+      canonicalOrderId: action.canonicalOrderId,
+      externalOrderId: action.externalOrderId,
+      ...(action.patch ? { patch: action.patch } : {}),
+      developmentOnly: true,
+    },
+    completedAt: new Date().toISOString(),
+  };
 }
 
 /** Development-only Shopify public-app contract fixture; performs no Shopify network calls. */
@@ -140,18 +172,26 @@ export const developmentShopifyPublicAppConnector: Connector = {
   unregisterWebhook() {
     return Promise.resolve();
   },
-  supportedActionTypes: ['development.shopify.echo'],
+  supportedActionTypes: ['development.shopify.echo', ...orderActionTypes],
   executeAction(input: ProviderActionRequest): Promise<ProviderActionResult> {
-    if (input.actionType !== 'development.shopify.echo')
-      return Promise.reject(new ConnectorError('UNSUPPORTED_OPERATION', false));
-    return Promise.resolve({
-      providerActionId: deterministicId(
-        'development-shopify-action',
-        `${input.connectionId}:${input.idempotencyKey}`,
-      ),
-      result: { echoed: input.input, developmentOnly: true },
-      completedAt: new Date().toISOString(),
-    });
+    if (input.actionType === 'development.shopify.echo')
+      return Promise.resolve({
+        providerActionId: deterministicId(
+          'development-shopify-action',
+          `${input.connectionId}:${input.idempotencyKey}`,
+        ),
+        result: { echoed: input.input, developmentOnly: true },
+        completedAt: new Date().toISOString(),
+      });
+    if (orderActionTypes.includes(input.actionType as (typeof orderActionTypes)[number])) {
+      try {
+        return Promise.resolve(executeOrderAction(input));
+      } catch (error) {
+        if (error instanceof ConnectorError) return Promise.reject(error);
+        return Promise.reject(new ConnectorError('INVALID_REQUEST', false));
+      }
+    }
+    return Promise.reject(new ConnectorError('UNSUPPORTED_OPERATION', false));
   },
 };
 

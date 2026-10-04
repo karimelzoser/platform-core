@@ -1,12 +1,5 @@
 import { NextResponse } from 'next/server';
 
-const cookieOptions = {
-  httpOnly: true,
-  sameSite: 'lax' as const,
-  secure: false,
-  path: '/',
-};
-
 export async function POST(request: Request) {
   if (process.env.APP_ENV !== 'development') return new NextResponse(null, { status: 404 });
 
@@ -37,6 +30,13 @@ export async function POST(request: Request) {
 
     const destination = new URL('/customers', request.url);
     const next = NextResponse.redirect(destination, 303);
+    const cookieOptions = {
+      httpOnly: true,
+      sameSite: 'lax' as const,
+      secure:
+        process.env.PREVIEW_SECURE_COOKIES === 'true' || new URL(request.url).protocol === 'https:',
+      path: '/',
+    };
     next.cookies.set('platform_access_token', body.access_token, cookieOptions);
     next.cookies.set('platform_tenant_id', tenantId, cookieOptions);
     return next;
