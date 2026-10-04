@@ -76,12 +76,7 @@ const createShipmentSchema = z
     carrierAccountId: uuidSchema.optional(),
     carrierServiceId: uuidSchema.optional(),
     destination: destinationSchema,
-    declaredValueMinor: z
-      .number()
-      .int()
-      .min(0)
-      .max(Number.MAX_SAFE_INTEGER)
-      .optional(),
+    declaredValueMinor: z.number().int().min(0).max(Number.MAX_SAFE_INTEGER).optional(),
     declaredValueCurrency: currencySchema.optional(),
     estimatedDeliveryAt: z.string().datetime().optional(),
     metadata: metadataSchema,
@@ -104,8 +99,7 @@ const createShipmentSchema = z
       context.addIssue({
         code: z.ZodIssueCode.custom,
         path: ['declaredValueMinor'],
-        message:
-          'declaredValueMinor and declaredValueCurrency must be provided together',
+        message: 'declaredValueMinor and declaredValueCurrency must be provided together',
       });
     }
     if (input.carrierServiceId && !input.carrierAccountId) {
@@ -154,9 +148,7 @@ const recordTrackingEventSchema = z.object({
   locationName: z.string().trim().min(1).max(500).optional(),
   countryCode: countryCodeSchema.optional(),
   occurredAt: z.string().datetime(),
-  sourceType: z
-    .enum(['USER', 'SYSTEM', 'SERVICE', 'INTEGRATION'])
-    .default('INTEGRATION'),
+  sourceType: z.enum(['USER', 'SYSTEM', 'SERVICE', 'INTEGRATION']).default('INTEGRATION'),
   externalEventId: z.string().trim().min(1).max(500).optional(),
   dedupeKey: z.string().trim().min(1).max(300),
   data: metadataSchema,
@@ -246,9 +238,7 @@ const queueProviderActionSchema = z
       });
     }
   });
-export type QueueShippingProviderActionInput = z.input<
-  typeof queueProviderActionSchema
->;
+export type QueueShippingProviderActionInput = z.input<typeof queueProviderActionSchema>;
 
 export class ShippingInvariantError extends Error {
   public constructor(message: string) {
@@ -315,8 +305,7 @@ export class ShippingService {
             carrierAccountId,
             carrierKey: validated.carrierKey,
           }),
-          dedupeKey: () =>
-            `shipping:carrier-account:created:${carrierAccountId}`,
+          dedupeKey: () => `shipping:carrier-account:created:${carrierAccountId}`,
         },
         audit: {
           afterState: () => ({
@@ -336,9 +325,7 @@ export class ShippingService {
                 and status in ('CONNECTED', 'DEGRADED')
             `.execute(transaction);
             if (!connection.rows[0]) {
-              throw new ShippingInvariantError(
-                'Carrier connection is not dispatchable',
-              );
+              throw new ShippingInvariantError('Carrier connection is not dispatchable');
             }
           }
 
@@ -393,8 +380,7 @@ export class ShippingService {
             carrierServiceId,
             serviceCode: validated.serviceCode,
           }),
-          dedupeKey: () =>
-            `shipping:carrier-service:created:${carrierServiceId}`,
+          dedupeKey: () => `shipping:carrier-service:created:${carrierServiceId}`,
         },
         audit: {
           afterState: () => ({
@@ -412,9 +398,7 @@ export class ShippingService {
               and status = 'ACTIVE'
           `.execute(transaction);
           if (!account.rows[0]) {
-            throw new ShippingInvariantError(
-              'Active carrier account was not found',
-            );
+            throw new ShippingInvariantError('Active carrier account was not found');
           }
 
           await sql`
@@ -449,9 +433,7 @@ export class ShippingService {
     idempotencyKey: string,
     input: CreateShipmentInput,
     approvalId?: string,
-  ): Promise<
-    CommandResult<{ shipmentId: string; packageIds: readonly string[] }>
-  > {
+  ): Promise<CommandResult<{ shipmentId: string; packageIds: readonly string[] }>> {
     const validated = createShipmentSchema.parse(input);
     const shipmentId = randomUUID();
     const packages = validated.packages.map((item, index) => ({
@@ -495,14 +477,10 @@ export class ShippingService {
             for share
           `.execute(transaction);
           if (!fulfillment.rows[0]) {
-            throw new ShippingInvariantError(
-              'Fulfillment was not found for this order',
-            );
+            throw new ShippingInvariantError('Fulfillment was not found for this order');
           }
           if (['CANCELLED', 'FAILED'].includes(fulfillment.rows[0].status)) {
-            throw new ShippingInvariantError(
-              'Cancelled or failed fulfillments cannot be shipped',
-            );
+            throw new ShippingInvariantError('Cancelled or failed fulfillments cannot be shipped');
           }
 
           if (validated.carrierAccountId) {
@@ -524,9 +502,7 @@ export class ShippingService {
                 and account.status = 'ACTIVE'
             `.execute(transaction);
             if (!carrier.rows[0]) {
-              throw new ShippingInvariantError(
-                'Active carrier account was not found',
-              );
+              throw new ShippingInvariantError('Active carrier account was not found');
             }
             if (!carrier.rows[0].service_ok) {
               throw new ShippingInvariantError(
@@ -546,14 +522,10 @@ export class ShippingService {
                 and order_line_id = ${line.orderLineId}::uuid
             `.execute(transaction);
             if (!available.rows[0]) {
-              throw new ShippingInvariantError(
-                'Shipment line is not part of this fulfillment',
-              );
+              throw new ShippingInvariantError('Shipment line is not part of this fulfillment');
             }
             if (line.quantity > available.rows[0].quantity) {
-              throw new ShippingInvariantError(
-                'Shipment quantity exceeds fulfillment quantity',
-              );
+              throw new ShippingInvariantError('Shipment quantity exceeds fulfillment quantity');
             }
           }
 
@@ -708,9 +680,7 @@ export class ShippingService {
             `.execute(transaction);
             packageStatus = packageRow.rows[0]?.status;
             if (!packageStatus) {
-              throw new ShippingInvariantError(
-                'Package was not found on this shipment',
-              );
+              throw new ShippingInvariantError('Package was not found on this shipment');
             }
           }
 
@@ -758,29 +728,17 @@ export class ShippingService {
           }
 
           const occurredAt = new Date(validated.occurredAt);
-          const isNewest =
-            !shipment.last_tracking_at ||
-            occurredAt >= shipment.last_tracking_at;
+          const isNewest = !shipment.last_tracking_at || occurredAt >= shipment.last_tracking_at;
           const shouldAdvanceShipment =
-            isNewest &&
-            canAdvanceShippingStatus(
-              shipment.status,
-              validated.normalizedStatus,
-            );
+            isNewest && canAdvanceShippingStatus(shipment.status, validated.normalizedStatus);
 
           if (shouldAdvanceShipment) {
             const deliveredAt =
-              validated.normalizedStatus === 'DELIVERED'
-                ? validated.occurredAt
-                : null;
+              validated.normalizedStatus === 'DELIVERED' ? validated.occurredAt : null;
             const shippedAt =
-              [
-                'HANDED_OVER',
-                'IN_TRANSIT',
-                'OUT_FOR_DELIVERY',
-                'DELIVERED',
-              ].includes(validated.normalizedStatus) &&
-              shipment.status === 'LABEL_CREATED'
+              ['HANDED_OVER', 'IN_TRANSIT', 'OUT_FOR_DELIVERY', 'DELIVERED'].includes(
+                validated.normalizedStatus,
+              ) && shipment.status === 'LABEL_CREATED'
                 ? validated.occurredAt
                 : null;
 
@@ -810,10 +768,7 @@ export class ShippingService {
           if (
             validated.packageId &&
             packageStatus &&
-            canAdvanceShippingStatus(
-              packageStatus,
-              validated.normalizedStatus,
-            )
+            canAdvanceShippingStatus(packageStatus, validated.normalizedStatus)
           ) {
             await sql`
               update shipping.packages
@@ -824,10 +779,7 @@ export class ShippingService {
           }
 
           let rescueCaseId: string | null = null;
-          if (
-            validated.eventType === 'DELIVERY_FAILED' ||
-            validated.eventType === 'EXCEPTION'
-          ) {
+          if (validated.eventType === 'DELIVERY_FAILED' || validated.eventType === 'EXCEPTION') {
             const active = await sql<{ id: string }>`
               select id
               from shipping.rescue_cases
@@ -855,10 +807,7 @@ export class ShippingService {
                       : 'CARRIER_EXCEPTION'
                   },
                   'HIGH',
-                  ${
-                    validated.description ??
-                    'Carrier tracking requires delivery rescue'
-                  },
+                  ${validated.description ?? 'Carrier tracking requires delivery rescue'},
                   now() + interval '4 hours',
                   ${JSON.stringify({ trackingEventId, automatic: true })}::jsonb
                 )
@@ -942,9 +891,7 @@ export class ShippingService {
             for update
           `.execute(transaction);
           if (active.rows[0]) {
-            throw new ShippingInvariantError(
-              'Shipment already has an active rescue case',
-            );
+            throw new ShippingInvariantError('Shipment already has an active rescue case');
           }
 
           await sql`
@@ -1106,8 +1053,7 @@ export class ShippingService {
             providerActionId,
             operation: validated.operation,
           }),
-          dedupeKey: () =>
-            `shipping:shipment:provider-action:${providerActionId}`,
+          dedupeKey: () => `shipping:shipment:provider-action:${providerActionId}`,
         },
         audit: {
           afterState: () => ({
@@ -1124,9 +1070,7 @@ export class ShippingService {
             validated.shipmentId,
           );
           if (!shipment.carrier_account_id) {
-            throw new ShippingInvariantError(
-              'Shipment has no carrier account',
-            );
+            throw new ShippingInvariantError('Shipment has no carrier account');
           }
 
           const route = await sql<{
@@ -1145,17 +1089,10 @@ export class ShippingService {
           `.execute(transaction);
           const carrierRoute = route.rows[0];
           if (!carrierRoute) {
-            throw new ShippingInvariantError(
-              'Shipment carrier has no dispatchable connection',
-            );
+            throw new ShippingInvariantError('Shipment carrier has no dispatchable connection');
           }
 
-          await this.prepareProviderAction(
-            transaction,
-            context.tenantId,
-            shipment,
-            validated,
-          );
+          await this.prepareProviderAction(transaction, context.tenantId, shipment, validated);
 
           const actionType = `shipping.shipment.${validated.operation.toLowerCase()}`;
           const providerInput = {
@@ -1164,12 +1101,8 @@ export class ShippingService {
             fulfillmentId: shipment.fulfillment_id,
             trackingNumber: shipment.tracking_number,
             ...(validated.reason ? { reason: validated.reason } : {}),
-            ...(validated.scheduledAt
-              ? { scheduledAt: validated.scheduledAt }
-              : {}),
-            ...(validated.destination
-              ? { destination: validated.destination }
-              : {}),
+            ...(validated.scheduledAt ? { scheduledAt: validated.scheduledAt } : {}),
+            ...(validated.destination ? { destination: validated.destination } : {}),
           };
 
           await sql`
@@ -1234,10 +1167,13 @@ export class ShippingService {
     offset: number;
   }> {
     const storeId = filters.storeId ? uuidSchema.parse(filters.storeId) : null;
-    const status = filters.status
-      ? z.string().trim().min(1).max(50).parse(filters.status)
-      : null;
-    const limit = z.number().int().min(1).max(100).parse(filters.limit ?? 50);
+    const status = filters.status ? z.string().trim().min(1).max(50).parse(filters.status) : null;
+    const limit = z
+      .number()
+      .int()
+      .min(1)
+      .max(100)
+      .parse(filters.limit ?? 50);
     const offset = z
       .number()
       .int()
@@ -1379,9 +1315,7 @@ export class ShippingService {
   ): Promise<void> {
     if (input.operation === 'CREATE_LABEL') {
       if (!['READY', 'LABEL_PENDING'].includes(shipment.status)) {
-        throw new ShippingInvariantError(
-          'Labels can only be created for ready shipments',
-        );
+        throw new ShippingInvariantError('Labels can only be created for ready shipments');
       }
       await sql`
         update shipping.shipments
@@ -1396,9 +1330,7 @@ export class ShippingService {
 
     if (input.operation === 'REQUEST_PICKUP') {
       if (shipment.status !== 'LABEL_CREATED') {
-        throw new ShippingInvariantError(
-          'Pickup requires a created shipping label',
-        );
+        throw new ShippingInvariantError('Pickup requires a created shipping label');
       }
       await this.markProviderPending(transaction, tenantId, input.shipmentId);
       return;
@@ -1406,9 +1338,7 @@ export class ShippingService {
 
     if (input.operation === 'CANCEL_SHIPMENT') {
       if (['DELIVERED', 'RETURNED'].includes(shipment.status)) {
-        throw new ShippingInvariantError(
-          'Delivered or returned shipments cannot be cancelled',
-        );
+        throw new ShippingInvariantError('Delivered or returned shipments cannot be cancelled');
       }
       await sql`
         update shipping.shipments
@@ -1447,9 +1377,7 @@ export class ShippingService {
 
   private assertShipmentIsNotTerminal(status: string, action: string): void {
     if (['DELIVERED', 'RETURNED', 'CANCELLED'].includes(status)) {
-      throw new ShippingInvariantError(
-        `Terminal shipments cannot ${action}`,
-      );
+      throw new ShippingInvariantError(`Terminal shipments cannot ${action}`);
     }
   }
 
@@ -1471,9 +1399,7 @@ export class ShippingService {
     `.execute(transaction);
     const shipment = result.rows[0];
     if (!shipment) {
-      throw new ShippingInvariantError(
-        'Shipment was not found in this store',
-      );
+      throw new ShippingInvariantError('Shipment was not found in this store');
     }
     return shipment;
   }
@@ -1537,20 +1463,11 @@ function canAdvanceShippingStatus(current: string, incoming: string): boolean {
   }
   if (incoming === 'EXCEPTION') return true;
   if (current === 'EXCEPTION') return incoming !== 'LABEL_CREATED';
-  return (
-    (shippingProgression[incoming] ?? -1) >=
-    (shippingProgression[current] ?? -1)
-  );
+  return (shippingProgression[incoming] ?? -1) >= (shippingProgression[current] ?? -1);
 }
 
 const rescueTransitions: Readonly<Record<string, readonly string[]>> = {
-  OPEN: [
-    'CONTACT_REQUIRED',
-    'ADDRESS_UPDATE_REQUIRED',
-    'READY_TO_RETRY',
-    'RESOLVED',
-    'CANCELLED',
-  ],
+  OPEN: ['CONTACT_REQUIRED', 'ADDRESS_UPDATE_REQUIRED', 'READY_TO_RETRY', 'RESOLVED', 'CANCELLED'],
   CONTACT_REQUIRED: [
     'CONTACTED',
     'ADDRESS_UPDATE_REQUIRED',
@@ -1559,32 +1476,10 @@ const rescueTransitions: Readonly<Record<string, readonly string[]>> = {
     'RESOLVED',
     'CANCELLED',
   ],
-  CONTACTED: [
-    'ADDRESS_UPDATE_REQUIRED',
-    'RESCHEDULED',
-    'READY_TO_RETRY',
-    'RESOLVED',
-    'CANCELLED',
-  ],
-  ADDRESS_UPDATE_REQUIRED: [
-    'CONTACTED',
-    'RESCHEDULED',
-    'READY_TO_RETRY',
-    'RESOLVED',
-    'CANCELLED',
-  ],
-  RESCHEDULED: [
-    'READY_TO_RETRY',
-    'CONTACT_REQUIRED',
-    'RESOLVED',
-    'CANCELLED',
-  ],
-  READY_TO_RETRY: [
-    'CONTACT_REQUIRED',
-    'RESCHEDULED',
-    'RESOLVED',
-    'CANCELLED',
-  ],
+  CONTACTED: ['ADDRESS_UPDATE_REQUIRED', 'RESCHEDULED', 'READY_TO_RETRY', 'RESOLVED', 'CANCELLED'],
+  ADDRESS_UPDATE_REQUIRED: ['CONTACTED', 'RESCHEDULED', 'READY_TO_RETRY', 'RESOLVED', 'CANCELLED'],
+  RESCHEDULED: ['READY_TO_RETRY', 'CONTACT_REQUIRED', 'RESOLVED', 'CANCELLED'],
+  READY_TO_RETRY: ['CONTACT_REQUIRED', 'RESCHEDULED', 'RESOLVED', 'CANCELLED'],
   RESOLVED: [],
   CANCELLED: [],
 };
