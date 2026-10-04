@@ -4,16 +4,26 @@ import {
   type CommandResult,
   type TenantRequestContext,
 } from '@platform/command-execution';
-import { sql, withTenantTransaction, type PlatformDatabase } from '@platform/database';
-import type { Transaction } from 'kysely';
+import {
+  sql,
+  withTenantTransaction,
+  type PlatformDatabase,
+  type PlatformTransaction,
+} from '@platform/database';
 import { z } from 'zod';
-
-type DatabaseTransaction = Transaction<Record<string, never>>;
 
 const uuidSchema = z.string().uuid();
 const metadataSchema = z.record(z.unknown()).default({});
-const countryCodeSchema = z.string().trim().toUpperCase().regex(/^[A-Z]{2}$/u);
-const currencySchema = z.string().trim().toUpperCase().regex(/^[A-Z]{3}$/u);
+const countryCodeSchema = z
+  .string()
+  .trim()
+  .toUpperCase()
+  .regex(/^[A-Z]{2}$/u);
+const currencySchema = z
+  .string()
+  .trim()
+  .toUpperCase()
+  .regex(/^[A-Z]{3}$/u);
 
 const destinationSchema = z.object({
   name: z.string().trim().min(1).max(300),
@@ -30,7 +40,10 @@ export type ShippingDestination = z.infer<typeof destinationSchema>;
 
 const createCarrierAccountSchema = z.object({
   connectionId: uuidSchema.optional(),
-  carrierKey: z.string().trim().regex(/^[a-z][a-z0-9_.-]{1,99}$/u),
+  carrierKey: z
+    .string()
+    .trim()
+    .regex(/^[a-z][a-z0-9_.-]{1,99}$/u),
   accountLabel: z.string().trim().min(1).max(300),
   displayName: z.string().trim().min(1).max(300),
   metadata: metadataSchema,
@@ -63,7 +76,12 @@ const createShipmentSchema = z
     carrierAccountId: uuidSchema.optional(),
     carrierServiceId: uuidSchema.optional(),
     destination: destinationSchema,
-    declaredValueMinor: z.number().int().min(0).max(Number.MAX_SAFE_INTEGER).optional(),
+    declaredValueMinor: z
+      .number()
+      .int()
+      .min(0)
+      .max(Number.MAX_SAFE_INTEGER)
+      .optional(),
     declaredValueCurrency: currencySchema.optional(),
     estimatedDeliveryAt: z.string().datetime().optional(),
     metadata: metadataSchema,
@@ -79,18 +97,24 @@ const createShipmentSchema = z
     packages: z.array(packageSchema).min(1).max(50).default([{}]),
   })
   .superRefine((input, context) => {
-    if (Boolean(input.declaredValueMinor === undefined) !== Boolean(input.declaredValueCurrency === undefined))
+    if (
+      Boolean(input.declaredValueMinor === undefined) !==
+      Boolean(input.declaredValueCurrency === undefined)
+    ) {
       context.addIssue({
         code: z.ZodIssueCode.custom,
         path: ['declaredValueMinor'],
-        message: 'declaredValueMinor and declaredValueCurrency must be provided together',
+        message:
+          'declaredValueMinor and declaredValueCurrency must be provided together',
       });
-    if (input.carrierServiceId && !input.carrierAccountId)
+    }
+    if (input.carrierServiceId && !input.carrierAccountId) {
       context.addIssue({
         code: z.ZodIssueCode.custom,
         path: ['carrierAccountId'],
         message: 'carrierAccountId is required when carrierServiceId is provided',
       });
+    }
   });
 export type CreateShipmentInput = z.input<typeof createShipmentSchema>;
 
@@ -130,7 +154,9 @@ const recordTrackingEventSchema = z.object({
   locationName: z.string().trim().min(1).max(500).optional(),
   countryCode: countryCodeSchema.optional(),
   occurredAt: z.string().datetime(),
-  sourceType: z.enum(['USER', 'SYSTEM', 'SERVICE', 'INTEGRATION']).default('INTEGRATION'),
+  sourceType: z
+    .enum(['USER', 'SYSTEM', 'SERVICE', 'INTEGRATION'])
+    .default('INTEGRATION'),
   externalEventId: z.string().trim().min(1).max(500).optional(),
   dedupeKey: z.string().trim().min(1).max(300),
   data: metadataSchema,
@@ -198,22 +224,31 @@ const queueProviderActionSchema = z
     destination: destinationSchema.optional(),
   })
   .superRefine((input, context) => {
-    if (input.operation === 'CANCEL_SHIPMENT' && !input.reason)
-      context.addIssue({ code: z.ZodIssueCode.custom, path: ['reason'], message: 'reason is required' });
-    if (input.operation === 'RESCHEDULE_DELIVERY' && !input.scheduledAt)
+    if (input.operation === 'CANCEL_SHIPMENT' && !input.reason) {
+      context.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ['reason'],
+        message: 'reason is required',
+      });
+    }
+    if (input.operation === 'RESCHEDULE_DELIVERY' && !input.scheduledAt) {
       context.addIssue({
         code: z.ZodIssueCode.custom,
         path: ['scheduledAt'],
         message: 'scheduledAt is required',
       });
-    if (input.operation === 'UPDATE_DELIVERY_ADDRESS' && !input.destination)
+    }
+    if (input.operation === 'UPDATE_DELIVERY_ADDRESS' && !input.destination) {
       context.addIssue({
         code: z.ZodIssueCode.custom,
         path: ['destination'],
         message: 'destination is required',
       });
+    }
   });
-export type QueueShippingProviderActionInput = z.input<typeof queueProviderActionSchema>;
+export type QueueShippingProviderActionInput = z.input<
+  typeof queueProviderActionSchema
+>;
 
 export class ShippingInvariantError extends Error {
   public constructor(message: string) {
@@ -231,7 +266,6 @@ interface ShipmentStateRow {
   carrier_service_id: string | null;
   status: string;
   tracking_number: string | null;
-  destination: Record<string, unknown>;
   provider_sync_state: string;
   last_tracking_at: Date | null;
 }
@@ -265,16 +299,24 @@ export class ShippingService {
   ): Promise<CommandResult<{ carrierAccountId: string }>> {
     const validated = createCarrierAccountSchema.parse(input);
     const carrierAccountId = randomUUID();
+
     return this.commands.execute(
       {
         action: 'shipping.carrier_account.create',
         permission: 'shipping.shipments.manage',
         risk: 'MEDIUM',
-        resource: () => ({ type: 'shipping.carrier_account', id: carrierAccountId }),
+        resource: () => ({
+          type: 'shipping.carrier_account',
+          id: carrierAccountId,
+        }),
         event: {
           type: 'shipping.carrier_account.created',
-          data: () => ({ carrierAccountId, carrierKey: validated.carrierKey }),
-          dedupeKey: () => `shipping:carrier-account:created:${carrierAccountId}`,
+          data: () => ({
+            carrierAccountId,
+            carrierKey: validated.carrierKey,
+          }),
+          dedupeKey: () =>
+            `shipping:carrier-account:created:${carrierAccountId}`,
         },
         audit: {
           afterState: () => ({
@@ -286,25 +328,43 @@ export class ShippingService {
         },
         execute: async (transaction) => {
           if (validated.connectionId) {
-            const connection = await sql<{ id: string }>`select id from integrations.connections
+            const connection = await sql<{ id: string }>`
+              select id
+              from integrations.connections
               where tenant_id = ${context.tenantId}::uuid
                 and id = ${validated.connectionId}::uuid
-                and status in ('CONNECTED', 'DEGRADED')`.execute(transaction);
-            if (!connection.rows[0])
-              throw new ShippingInvariantError('Carrier connection is not dispatchable');
+                and status in ('CONNECTED', 'DEGRADED')
+            `.execute(transaction);
+            if (!connection.rows[0]) {
+              throw new ShippingInvariantError(
+                'Carrier connection is not dispatchable',
+              );
+            }
           }
-          await sql`insert into shipping.carrier_accounts (
-            id, tenant_id, connection_id, carrier_key, account_label, display_name, metadata
-          ) values (
-            ${carrierAccountId}::uuid, ${context.tenantId}::uuid,
-            ${validated.connectionId ?? null}::uuid, ${validated.carrierKey},
-            ${validated.accountLabel}, ${validated.displayName},
-            ${JSON.stringify(validated.metadata)}::jsonb
-          )`.execute(transaction);
+
+          await sql`
+            insert into shipping.carrier_accounts (
+              id, tenant_id, connection_id, carrier_key, account_label,
+              display_name, metadata
+            ) values (
+              ${carrierAccountId}::uuid,
+              ${context.tenantId}::uuid,
+              ${validated.connectionId ?? null}::uuid,
+              ${validated.carrierKey},
+              ${validated.accountLabel},
+              ${validated.displayName},
+              ${JSON.stringify(validated.metadata)}::jsonb
+            )
+          `.execute(transaction);
           return { carrierAccountId };
         },
       },
-      { context, input: validated, idempotencyKey, ...(approvalId ? { approvalId } : {}) },
+      {
+        context,
+        input: validated,
+        idempotencyKey,
+        ...(approvalId ? { approvalId } : {}),
+      },
     );
   }
 
@@ -316,12 +376,16 @@ export class ShippingService {
   ): Promise<CommandResult<{ carrierServiceId: string }>> {
     const validated = createCarrierServiceSchema.parse(input);
     const carrierServiceId = randomUUID();
+
     return this.commands.execute(
       {
         action: 'shipping.carrier_service.create',
         permission: 'shipping.shipments.manage',
         risk: 'MEDIUM',
-        resource: () => ({ type: 'shipping.carrier_account', id: validated.carrierAccountId }),
+        resource: () => ({
+          type: 'shipping.carrier_account',
+          id: validated.carrierAccountId,
+        }),
         event: {
           type: 'shipping.carrier_service.created',
           data: () => ({
@@ -329,7 +393,8 @@ export class ShippingService {
             carrierServiceId,
             serviceCode: validated.serviceCode,
           }),
-          dedupeKey: () => `shipping:carrier-service:created:${carrierServiceId}`,
+          dedupeKey: () =>
+            `shipping:carrier-service:created:${carrierServiceId}`,
         },
         audit: {
           afterState: () => ({
@@ -339,23 +404,43 @@ export class ShippingService {
           }),
         },
         execute: async (transaction) => {
-          const account = await sql<{ id: string }>`select id from shipping.carrier_accounts
+          const account = await sql<{ id: string }>`
+            select id
+            from shipping.carrier_accounts
             where tenant_id = ${context.tenantId}::uuid
-              and id = ${validated.carrierAccountId}::uuid and status = 'ACTIVE'`.execute(transaction);
-          if (!account.rows[0]) throw new ShippingInvariantError('Active carrier account was not found');
-          await sql`insert into shipping.carrier_services (
-            id, tenant_id, carrier_account_id, service_code, name,
-            domestic, international, metadata
-          ) values (
-            ${carrierServiceId}::uuid, ${context.tenantId}::uuid,
-            ${validated.carrierAccountId}::uuid, ${validated.serviceCode}, ${validated.name},
-            ${validated.domestic}, ${validated.international},
-            ${JSON.stringify(validated.metadata)}::jsonb
-          )`.execute(transaction);
+              and id = ${validated.carrierAccountId}::uuid
+              and status = 'ACTIVE'
+          `.execute(transaction);
+          if (!account.rows[0]) {
+            throw new ShippingInvariantError(
+              'Active carrier account was not found',
+            );
+          }
+
+          await sql`
+            insert into shipping.carrier_services (
+              id, tenant_id, carrier_account_id, service_code, name,
+              domestic, international, metadata
+            ) values (
+              ${carrierServiceId}::uuid,
+              ${context.tenantId}::uuid,
+              ${validated.carrierAccountId}::uuid,
+              ${validated.serviceCode},
+              ${validated.name},
+              ${validated.domestic},
+              ${validated.international},
+              ${JSON.stringify(validated.metadata)}::jsonb
+            )
+          `.execute(transaction);
           return { carrierServiceId };
         },
       },
-      { context, input: validated, idempotencyKey, ...(approvalId ? { approvalId } : {}) },
+      {
+        context,
+        input: validated,
+        idempotencyKey,
+        ...(approvalId ? { approvalId } : {}),
+      },
     );
   }
 
@@ -364,10 +449,17 @@ export class ShippingService {
     idempotencyKey: string,
     input: CreateShipmentInput,
     approvalId?: string,
-  ): Promise<CommandResult<{ shipmentId: string; packageIds: readonly string[] }>> {
+  ): Promise<
+    CommandResult<{ shipmentId: string; packageIds: readonly string[] }>
+  > {
     const validated = createShipmentSchema.parse(input);
     const shipmentId = randomUUID();
-    const packages = validated.packages.map((item, index) => ({ ...item, id: randomUUID(), sequence: index + 1 }));
+    const packages = validated.packages.map((item, index) => ({
+      ...item,
+      id: randomUUID(),
+      sequence: index + 1,
+    }));
+
     return this.commands.execute(
       {
         action: 'shipping.shipment.create',
@@ -376,7 +468,11 @@ export class ShippingService {
         resource: () => ({ type: 'shipping.shipment', id: shipmentId }),
         event: {
           type: 'shipping.shipment.created',
-          data: () => ({ shipmentId, orderId: validated.orderId, fulfillmentId: validated.fulfillmentId }),
+          data: () => ({
+            shipmentId,
+            orderId: validated.orderId,
+            fulfillmentId: validated.fulfillmentId,
+          }),
           dedupeKey: () => `shipping:shipment:created:${shipmentId}`,
         },
         audit: {
@@ -389,91 +485,162 @@ export class ShippingService {
           }),
         },
         execute: async (transaction) => {
-          const fulfillment = await sql<{ status: string }>`select status from commerce.fulfillments
+          const fulfillment = await sql<{ status: string }>`
+            select status
+            from commerce.fulfillments
             where tenant_id = ${context.tenantId}::uuid
               and store_id = ${validated.storeId}::uuid
               and order_id = ${validated.orderId}::uuid
               and id = ${validated.fulfillmentId}::uuid
-            for share`.execute(transaction);
-          if (!fulfillment.rows[0])
-            throw new ShippingInvariantError('Fulfillment was not found for this order');
-          if (['CANCELLED', 'FAILED'].includes(fulfillment.rows[0].status))
-            throw new ShippingInvariantError('Cancelled or failed fulfillments cannot be shipped');
+            for share
+          `.execute(transaction);
+          if (!fulfillment.rows[0]) {
+            throw new ShippingInvariantError(
+              'Fulfillment was not found for this order',
+            );
+          }
+          if (['CANCELLED', 'FAILED'].includes(fulfillment.rows[0].status)) {
+            throw new ShippingInvariantError(
+              'Cancelled or failed fulfillments cannot be shipped',
+            );
+          }
 
           if (validated.carrierAccountId) {
-            const carrier = await sql<{ service_ok: boolean }>`select
-                (${validated.carrierServiceId ?? null}::uuid is null or exists (
-                  select 1 from shipping.carrier_services as service
+            const carrier = await sql<{ service_ok: boolean }>`
+              select (
+                ${validated.carrierServiceId ?? null}::uuid is null
+                or exists (
+                  select 1
+                  from shipping.carrier_services as service
                   where service.tenant_id = account.tenant_id
                     and service.carrier_account_id = account.id
                     and service.id = ${validated.carrierServiceId ?? null}::uuid
                     and service.status = 'ACTIVE'
-                )) as service_ok
+                )
+              ) as service_ok
               from shipping.carrier_accounts as account
               where account.tenant_id = ${context.tenantId}::uuid
                 and account.id = ${validated.carrierAccountId}::uuid
-                and account.status = 'ACTIVE'`.execute(transaction);
-            if (!carrier.rows[0]) throw new ShippingInvariantError('Active carrier account was not found');
-            if (!carrier.rows[0].service_ok)
-              throw new ShippingInvariantError('Active carrier service was not found on this account');
+                and account.status = 'ACTIVE'
+            `.execute(transaction);
+            if (!carrier.rows[0]) {
+              throw new ShippingInvariantError(
+                'Active carrier account was not found',
+              );
+            }
+            if (!carrier.rows[0].service_ok) {
+              throw new ShippingInvariantError(
+                'Active carrier service was not found on this account',
+              );
+            }
           }
 
           for (const line of validated.lines) {
-            const available = await sql<{ quantity: number }>`select quantity
+            const available = await sql<{ quantity: number }>`
+              select quantity
               from commerce.fulfillment_lines
               where tenant_id = ${context.tenantId}::uuid
                 and store_id = ${validated.storeId}::uuid
                 and fulfillment_id = ${validated.fulfillmentId}::uuid
                 and order_id = ${validated.orderId}::uuid
-                and order_line_id = ${line.orderLineId}::uuid`.execute(transaction);
-            if (!available.rows[0])
-              throw new ShippingInvariantError('Shipment line is not part of this fulfillment');
-            if (line.quantity > available.rows[0].quantity)
-              throw new ShippingInvariantError('Shipment quantity exceeds fulfillment quantity');
+                and order_line_id = ${line.orderLineId}::uuid
+            `.execute(transaction);
+            if (!available.rows[0]) {
+              throw new ShippingInvariantError(
+                'Shipment line is not part of this fulfillment',
+              );
+            }
+            if (line.quantity > available.rows[0].quantity) {
+              throw new ShippingInvariantError(
+                'Shipment quantity exceeds fulfillment quantity',
+              );
+            }
           }
 
-          await sql`insert into shipping.shipments (
-            id, tenant_id, store_id, order_id, fulfillment_id,
-            carrier_account_id, carrier_service_id, status, destination,
-            declared_value_minor, declared_value_currency, estimated_delivery_at, metadata
-          ) values (
-            ${shipmentId}::uuid, ${context.tenantId}::uuid, ${validated.storeId}::uuid,
-            ${validated.orderId}::uuid, ${validated.fulfillmentId}::uuid,
-            ${validated.carrierAccountId ?? null}::uuid, ${validated.carrierServiceId ?? null}::uuid,
-            'READY', ${JSON.stringify(validated.destination)}::jsonb,
-            ${validated.declaredValueMinor ?? null}, ${validated.declaredValueCurrency ?? null},
-            ${validated.estimatedDeliveryAt ?? null}::timestamptz,
-            ${JSON.stringify(validated.metadata)}::jsonb
-          )`.execute(transaction);
-
-          for (const line of validated.lines)
-            await sql`insert into shipping.shipment_lines (
-              tenant_id, store_id, shipment_id, fulfillment_id, order_line_id, quantity
+          await sql`
+            insert into shipping.shipments (
+              id, tenant_id, store_id, order_id, fulfillment_id,
+              carrier_account_id, carrier_service_id, status, destination,
+              declared_value_minor, declared_value_currency,
+              estimated_delivery_at, metadata
             ) values (
-              ${context.tenantId}::uuid, ${validated.storeId}::uuid, ${shipmentId}::uuid,
-              ${validated.fulfillmentId}::uuid, ${line.orderLineId}::uuid, ${line.quantity}
-            )`.execute(transaction);
+              ${shipmentId}::uuid,
+              ${context.tenantId}::uuid,
+              ${validated.storeId}::uuid,
+              ${validated.orderId}::uuid,
+              ${validated.fulfillmentId}::uuid,
+              ${validated.carrierAccountId ?? null}::uuid,
+              ${validated.carrierServiceId ?? null}::uuid,
+              'READY',
+              ${JSON.stringify(validated.destination)}::jsonb,
+              ${validated.declaredValueMinor ?? null},
+              ${validated.declaredValueCurrency ?? null},
+              ${validated.estimatedDeliveryAt ?? null}::timestamptz,
+              ${JSON.stringify(validated.metadata)}::jsonb
+            )
+          `.execute(transaction);
 
-          for (const item of packages)
-            await sql`insert into shipping.packages (
-              id, tenant_id, store_id, shipment_id, sequence, status,
-              weight_grams, length_mm, width_mm, height_mm, metadata
-            ) values (
-              ${item.id}::uuid, ${context.tenantId}::uuid, ${validated.storeId}::uuid,
-              ${shipmentId}::uuid, ${item.sequence}, 'READY', ${item.weightGrams ?? null},
-              ${item.lengthMm ?? null}, ${item.widthMm ?? null}, ${item.heightMm ?? null},
-              ${JSON.stringify(item.metadata)}::jsonb
-            )`.execute(transaction);
+          for (const line of validated.lines) {
+            await sql`
+              insert into shipping.shipment_lines (
+                tenant_id, store_id, shipment_id, fulfillment_id,
+                order_line_id, quantity
+              ) values (
+                ${context.tenantId}::uuid,
+                ${validated.storeId}::uuid,
+                ${shipmentId}::uuid,
+                ${validated.fulfillmentId}::uuid,
+                ${line.orderLineId}::uuid,
+                ${line.quantity}
+              )
+            `.execute(transaction);
+          }
 
-          await this.appendTimeline(transaction, context, validated.storeId, shipmentId, 'shipping.shipment.created', {
-            orderId: validated.orderId,
-            fulfillmentId: validated.fulfillmentId,
-            packageCount: packages.length,
-          });
-          return { shipmentId, packageIds: packages.map((item) => item.id) };
+          for (const item of packages) {
+            await sql`
+              insert into shipping.packages (
+                id, tenant_id, store_id, shipment_id, sequence, status,
+                weight_grams, length_mm, width_mm, height_mm, metadata
+              ) values (
+                ${item.id}::uuid,
+                ${context.tenantId}::uuid,
+                ${validated.storeId}::uuid,
+                ${shipmentId}::uuid,
+                ${item.sequence},
+                'READY',
+                ${item.weightGrams ?? null},
+                ${item.lengthMm ?? null},
+                ${item.widthMm ?? null},
+                ${item.heightMm ?? null},
+                ${JSON.stringify(item.metadata)}::jsonb
+              )
+            `.execute(transaction);
+          }
+
+          await this.appendTimeline(
+            transaction,
+            context,
+            validated.storeId,
+            shipmentId,
+            'shipping.shipment.created',
+            {
+              orderId: validated.orderId,
+              fulfillmentId: validated.fulfillmentId,
+              packageCount: packages.length,
+            },
+          );
+          return {
+            shipmentId,
+            packageIds: packages.map((item) => item.id),
+          };
         },
       },
-      { context, input: validated, idempotencyKey, ...(approvalId ? { approvalId } : {}) },
+      {
+        context,
+        input: validated,
+        idempotencyKey,
+        ...(approvalId ? { approvalId } : {}),
+      },
     );
   }
 
@@ -481,27 +648,38 @@ export class ShippingService {
     context: TenantRequestContext,
     idempotencyKey: string,
     input: RecordTrackingEventInput,
-  ): Promise<CommandResult<{ trackingEventId: string; duplicate: boolean; rescueCaseId: string | null }>> {
+  ): Promise<
+    CommandResult<{
+      trackingEventId: string;
+      duplicate: boolean;
+      rescueCaseId: string | null;
+    }>
+  > {
     const validated = recordTrackingEventSchema.parse(input);
     const trackingEventId = randomUUID();
+
     return this.commands.execute(
       {
         action: 'shipping.tracking.record',
         permission: 'shipping.tracking.record',
         risk: 'MEDIUM',
-        resource: () => ({ type: 'shipping.shipment', id: validated.shipmentId }),
+        resource: () => ({
+          type: 'shipping.shipment',
+          id: validated.shipmentId,
+        }),
         event: {
           type: 'shipping.tracking.recorded',
-          data: (result) => ({
+          data: (_input, result) => ({
             shipmentId: validated.shipmentId,
             trackingEventId: result.trackingEventId,
             normalizedStatus: validated.normalizedStatus,
             duplicate: result.duplicate,
           }),
-          dedupeKey: (result) => `shipping:tracking:${validated.shipmentId}:${result.trackingEventId}`,
+          dedupeKey: (_input, result) =>
+            `shipping:tracking:${validated.shipmentId}:${result.trackingEventId}`,
         },
         audit: {
-          afterState: (result) => ({
+          afterState: (_input, result) => ({
             shipmentId: validated.shipmentId,
             trackingEventId: result.trackingEventId,
             normalizedStatus: validated.normalizedStatus,
@@ -516,37 +694,62 @@ export class ShippingService {
             validated.storeId,
             validated.shipmentId,
           );
+
           let packageStatus: string | undefined;
           if (validated.packageId) {
-            const packageRow = await sql<{ status: string }>`select status from shipping.packages
+            const packageRow = await sql<{ status: string }>`
+              select status
+              from shipping.packages
               where tenant_id = ${context.tenantId}::uuid
                 and store_id = ${validated.storeId}::uuid
                 and shipment_id = ${validated.shipmentId}::uuid
-                and id = ${validated.packageId}::uuid for update`.execute(transaction);
+                and id = ${validated.packageId}::uuid
+              for update
+            `.execute(transaction);
             packageStatus = packageRow.rows[0]?.status;
-            if (!packageStatus) throw new ShippingInvariantError('Package was not found on this shipment');
+            if (!packageStatus) {
+              throw new ShippingInvariantError(
+                'Package was not found on this shipment',
+              );
+            }
           }
 
-          const inserted = await sql<{ id: string }>`insert into shipping.tracking_events (
-              id, tenant_id, store_id, shipment_id, package_id, event_type, normalized_status,
-              raw_code, description, location_name, country_code, occurred_at, source_type,
-              external_event_id, dedupe_key, data
+          const inserted = await sql<{ id: string }>`
+            insert into shipping.tracking_events (
+              id, tenant_id, store_id, shipment_id, package_id, event_type,
+              normalized_status, raw_code, description, location_name,
+              country_code, occurred_at, source_type, external_event_id,
+              dedupe_key, data
             ) values (
-              ${trackingEventId}::uuid, ${context.tenantId}::uuid, ${validated.storeId}::uuid,
-              ${validated.shipmentId}::uuid, ${validated.packageId ?? null}::uuid,
-              ${validated.eventType}, ${validated.normalizedStatus}, ${validated.rawCode ?? null},
-              ${validated.description ?? null}, ${validated.locationName ?? null},
-              ${validated.countryCode ?? null}, ${validated.occurredAt}::timestamptz,
-              ${validated.sourceType}, ${validated.externalEventId ?? null}, ${validated.dedupeKey},
+              ${trackingEventId}::uuid,
+              ${context.tenantId}::uuid,
+              ${validated.storeId}::uuid,
+              ${validated.shipmentId}::uuid,
+              ${validated.packageId ?? null}::uuid,
+              ${validated.eventType},
+              ${validated.normalizedStatus},
+              ${validated.rawCode ?? null},
+              ${validated.description ?? null},
+              ${validated.locationName ?? null},
+              ${validated.countryCode ?? null},
+              ${validated.occurredAt}::timestamptz,
+              ${validated.sourceType},
+              ${validated.externalEventId ?? null},
+              ${validated.dedupeKey},
               ${JSON.stringify(validated.data)}::jsonb
-            ) on conflict (tenant_id, shipment_id, dedupe_key) do nothing
-            returning id`.execute(transaction);
+            )
+            on conflict (tenant_id, shipment_id, dedupe_key) do nothing
+            returning id
+          `.execute(transaction);
 
           if (!inserted.rows[0]) {
-            const existing = await sql<{ id: string }>`select id from shipping.tracking_events
+            const existing = await sql<{ id: string }>`
+              select id
+              from shipping.tracking_events
               where tenant_id = ${context.tenantId}::uuid
                 and shipment_id = ${validated.shipmentId}::uuid
-                and dedupe_key = ${validated.dedupeKey}`.execute(transaction);
+                and dedupe_key = ${validated.dedupeKey}
+            `.execute(transaction);
             return {
               trackingEventId: existing.rows[0]?.id ?? trackingEventId,
               duplicate: true,
@@ -555,68 +758,134 @@ export class ShippingService {
           }
 
           const occurredAt = new Date(validated.occurredAt);
+          const isNewest =
+            !shipment.last_tracking_at ||
+            occurredAt >= shipment.last_tracking_at;
           const shouldAdvanceShipment =
-            (!shipment.last_tracking_at || occurredAt >= shipment.last_tracking_at) &&
-            canAdvanceShippingStatus(shipment.status, validated.normalizedStatus);
+            isNewest &&
+            canAdvanceShippingStatus(
+              shipment.status,
+              validated.normalizedStatus,
+            );
+
           if (shouldAdvanceShipment) {
-            const deliveredAt = validated.normalizedStatus === 'DELIVERED' ? validated.occurredAt : null;
-            const shippedAt =
-              ['HANDED_OVER', 'IN_TRANSIT', 'OUT_FOR_DELIVERY', 'DELIVERED'].includes(
-                validated.normalizedStatus,
-              ) && shipment.status === 'LABEL_CREATED'
+            const deliveredAt =
+              validated.normalizedStatus === 'DELIVERED'
                 ? validated.occurredAt
                 : null;
-            await sql`update shipping.shipments set
-                status = ${validated.normalizedStatus},
-                last_tracking_at = ${validated.occurredAt}::timestamptz,
-                delivered_at = coalesce(delivered_at, ${deliveredAt}::timestamptz),
-                shipped_at = coalesce(shipped_at, ${shippedAt}::timestamptz),
-                updated_at = now()
-              where tenant_id = ${context.tenantId}::uuid and id = ${validated.shipmentId}::uuid`.execute(
-              transaction,
-            );
-          } else if (!shipment.last_tracking_at || occurredAt >= shipment.last_tracking_at) {
-            await sql`update shipping.shipments
-              set last_tracking_at = ${validated.occurredAt}::timestamptz, updated_at = now()
-              where tenant_id = ${context.tenantId}::uuid and id = ${validated.shipmentId}::uuid`.execute(
-              transaction,
-            );
+            const shippedAt =
+              [
+                'HANDED_OVER',
+                'IN_TRANSIT',
+                'OUT_FOR_DELIVERY',
+                'DELIVERED',
+              ].includes(validated.normalizedStatus) &&
+              shipment.status === 'LABEL_CREATED'
+                ? validated.occurredAt
+                : null;
+
+            await sql`
+              update shipping.shipments
+              set status = ${validated.normalizedStatus},
+                  last_tracking_at = ${validated.occurredAt}::timestamptz,
+                  delivered_at = coalesce(
+                    delivered_at,
+                    ${deliveredAt}::timestamptz
+                  ),
+                  shipped_at = coalesce(shipped_at, ${shippedAt}::timestamptz),
+                  updated_at = now()
+              where tenant_id = ${context.tenantId}::uuid
+                and id = ${validated.shipmentId}::uuid
+            `.execute(transaction);
+          } else if (isNewest) {
+            await sql`
+              update shipping.shipments
+              set last_tracking_at = ${validated.occurredAt}::timestamptz,
+                  updated_at = now()
+              where tenant_id = ${context.tenantId}::uuid
+                and id = ${validated.shipmentId}::uuid
+            `.execute(transaction);
           }
 
-          if (validated.packageId && packageStatus && canAdvanceShippingStatus(packageStatus, validated.normalizedStatus))
-            await sql`update shipping.packages set status = ${validated.normalizedStatus}, updated_at = now()
-              where tenant_id = ${context.tenantId}::uuid and id = ${validated.packageId}::uuid`.execute(transaction);
+          if (
+            validated.packageId &&
+            packageStatus &&
+            canAdvanceShippingStatus(
+              packageStatus,
+              validated.normalizedStatus,
+            )
+          ) {
+            await sql`
+              update shipping.packages
+              set status = ${validated.normalizedStatus}, updated_at = now()
+              where tenant_id = ${context.tenantId}::uuid
+                and id = ${validated.packageId}::uuid
+            `.execute(transaction);
+          }
 
           let rescueCaseId: string | null = null;
-          if (validated.eventType === 'DELIVERY_FAILED' || validated.eventType === 'EXCEPTION') {
-            const active = await sql<{ id: string }>`select id from shipping.rescue_cases
+          if (
+            validated.eventType === 'DELIVERY_FAILED' ||
+            validated.eventType === 'EXCEPTION'
+          ) {
+            const active = await sql<{ id: string }>`
+              select id
+              from shipping.rescue_cases
               where tenant_id = ${context.tenantId}::uuid
                 and shipment_id = ${validated.shipmentId}::uuid
                 and state not in ('RESOLVED', 'CANCELLED')
-              limit 1 for update`.execute(transaction);
+              limit 1
+              for update
+            `.execute(transaction);
             rescueCaseId = active.rows[0]?.id ?? randomUUID();
-            if (!active.rows[0])
-              await sql`insert into shipping.rescue_cases (
+            if (!active.rows[0]) {
+              await sql`
+                insert into shipping.rescue_cases (
                   id, tenant_id, store_id, shipment_id, state, trigger_reason,
                   priority, summary, due_at, metadata
                 ) values (
-                  ${rescueCaseId}::uuid, ${context.tenantId}::uuid, ${validated.storeId}::uuid,
-                  ${validated.shipmentId}::uuid, 'CONTACT_REQUIRED',
-                  ${validated.eventType === 'DELIVERY_FAILED' ? 'DELIVERY_FAILED' : 'CARRIER_EXCEPTION'},
-                  'HIGH', ${validated.description ?? 'Carrier tracking requires delivery rescue'},
+                  ${rescueCaseId}::uuid,
+                  ${context.tenantId}::uuid,
+                  ${validated.storeId}::uuid,
+                  ${validated.shipmentId}::uuid,
+                  'CONTACT_REQUIRED',
+                  ${
+                    validated.eventType === 'DELIVERY_FAILED'
+                      ? 'DELIVERY_FAILED'
+                      : 'CARRIER_EXCEPTION'
+                  },
+                  'HIGH',
+                  ${
+                    validated.description ??
+                    'Carrier tracking requires delivery rescue'
+                  },
                   now() + interval '4 hours',
                   ${JSON.stringify({ trackingEventId, automatic: true })}::jsonb
-                )`.execute(transaction);
+                )
+              `.execute(transaction);
+            }
           }
 
-          await this.appendTimeline(transaction, context, validated.storeId, validated.shipmentId, 'shipping.tracking.recorded', {
+          await this.appendTimeline(
+            transaction,
+            context,
+            validated.storeId,
+            validated.shipmentId,
+            'shipping.tracking.recorded',
+            {
+              trackingEventId,
+              eventType: validated.eventType,
+              normalizedStatus: validated.normalizedStatus,
+              packageId: validated.packageId ?? null,
+              rescueCaseId,
+            },
+          );
+
+          return {
             trackingEventId,
-            eventType: validated.eventType,
-            normalizedStatus: validated.normalizedStatus,
-            packageId: validated.packageId ?? null,
+            duplicate: false,
             rescueCaseId,
-          });
-          return { trackingEventId, duplicate: false, rescueCaseId };
+          };
         },
       },
       { context, input: validated, idempotencyKey },
@@ -630,40 +899,84 @@ export class ShippingService {
   ): Promise<CommandResult<{ rescueCaseId: string }>> {
     const validated = openRescueCaseSchema.parse(input);
     const rescueCaseId = randomUUID();
+
     return this.commands.execute(
       {
         action: 'shipping.rescue.open',
         permission: 'shipping.rescue.manage',
         risk: 'MEDIUM',
-        resource: () => ({ type: 'shipping.shipment', id: validated.shipmentId }),
+        resource: () => ({
+          type: 'shipping.shipment',
+          id: validated.shipmentId,
+        }),
         event: {
           type: 'shipping.rescue.opened',
-          data: () => ({ shipmentId: validated.shipmentId, rescueCaseId, triggerReason: validated.triggerReason }),
+          data: () => ({
+            shipmentId: validated.shipmentId,
+            rescueCaseId,
+            triggerReason: validated.triggerReason,
+          }),
           dedupeKey: () => `shipping:rescue:opened:${rescueCaseId}`,
         },
         audit: {
-          afterState: () => ({ rescueCaseId, shipmentId: validated.shipmentId, state: validated.state }),
+          afterState: () => ({
+            rescueCaseId,
+            shipmentId: validated.shipmentId,
+            state: validated.state,
+          }),
         },
         execute: async (transaction) => {
-          await this.loadShipmentForUpdate(transaction, context.tenantId, validated.storeId, validated.shipmentId);
-          const active = await sql<{ id: string }>`select id from shipping.rescue_cases
-            where tenant_id = ${context.tenantId}::uuid and shipment_id = ${validated.shipmentId}::uuid
-              and state not in ('RESOLVED', 'CANCELLED') limit 1 for update`.execute(transaction);
-          if (active.rows[0]) throw new ShippingInvariantError('Shipment already has an active rescue case');
-          await sql`insert into shipping.rescue_cases (
-              id, tenant_id, store_id, shipment_id, state, trigger_reason, priority,
-              assigned_actor_id, summary, due_at, metadata
+          await this.loadShipmentForUpdate(
+            transaction,
+            context.tenantId,
+            validated.storeId,
+            validated.shipmentId,
+          );
+          const active = await sql<{ id: string }>`
+            select id
+            from shipping.rescue_cases
+            where tenant_id = ${context.tenantId}::uuid
+              and shipment_id = ${validated.shipmentId}::uuid
+              and state not in ('RESOLVED', 'CANCELLED')
+            limit 1
+            for update
+          `.execute(transaction);
+          if (active.rows[0]) {
+            throw new ShippingInvariantError(
+              'Shipment already has an active rescue case',
+            );
+          }
+
+          await sql`
+            insert into shipping.rescue_cases (
+              id, tenant_id, store_id, shipment_id, state, trigger_reason,
+              priority, assigned_actor_id, summary, due_at, metadata
             ) values (
-              ${rescueCaseId}::uuid, ${context.tenantId}::uuid, ${validated.storeId}::uuid,
-              ${validated.shipmentId}::uuid, ${validated.state}, ${validated.triggerReason},
-              ${validated.priority}, ${validated.assignedActorId ?? null}::uuid, ${validated.summary},
-              ${validated.dueAt ?? null}::timestamptz, ${JSON.stringify(validated.metadata)}::jsonb
-            )`.execute(transaction);
-          await this.appendTimeline(transaction, context, validated.storeId, validated.shipmentId, 'shipping.rescue.opened', {
-            rescueCaseId,
-            triggerReason: validated.triggerReason,
-            priority: validated.priority,
-          });
+              ${rescueCaseId}::uuid,
+              ${context.tenantId}::uuid,
+              ${validated.storeId}::uuid,
+              ${validated.shipmentId}::uuid,
+              ${validated.state},
+              ${validated.triggerReason},
+              ${validated.priority},
+              ${validated.assignedActorId ?? null}::uuid,
+              ${validated.summary},
+              ${validated.dueAt ?? null}::timestamptz,
+              ${JSON.stringify(validated.metadata)}::jsonb
+            )
+          `.execute(transaction);
+          await this.appendTimeline(
+            transaction,
+            context,
+            validated.storeId,
+            validated.shipmentId,
+            'shipping.rescue.opened',
+            {
+              rescueCaseId,
+              triggerReason: validated.triggerReason,
+              priority: validated.priority,
+            },
+          );
           return { rescueCaseId };
         },
       },
@@ -677,52 +990,91 @@ export class ShippingService {
     input: UpdateRescueCaseInput,
   ): Promise<CommandResult<{ rescueCaseId: string; state: string }>> {
     const validated = updateRescueCaseSchema.parse(input);
+
     return this.commands.execute(
       {
         action: 'shipping.rescue.update',
         permission: 'shipping.rescue.manage',
         risk: 'MEDIUM',
-        resource: () => ({ type: 'shipping.rescue_case', id: validated.rescueCaseId }),
+        resource: () => ({
+          type: 'shipping.rescue_case',
+          id: validated.rescueCaseId,
+        }),
         event: {
           type: 'shipping.rescue.updated',
-          data: () => ({ rescueCaseId: validated.rescueCaseId, state: validated.state }),
-          dedupeKey: () => `shipping:rescue:updated:${validated.rescueCaseId}:${idempotencyKey.trim()}`,
+          data: () => ({
+            rescueCaseId: validated.rescueCaseId,
+            state: validated.state,
+          }),
+          dedupeKey: () =>
+            `shipping:rescue:updated:${validated.rescueCaseId}:${idempotencyKey.trim()}`,
         },
-        audit: { afterState: () => ({ rescueCaseId: validated.rescueCaseId, state: validated.state }) },
+        audit: {
+          afterState: () => ({
+            rescueCaseId: validated.rescueCaseId,
+            state: validated.state,
+          }),
+        },
         execute: async (transaction) => {
-          const row = await sql<{ shipment_id: string; state: string }>`select rescue.shipment_id, rescue.state
+          const row = await sql<{ shipment_id: string; state: string }>`
+            select rescue.shipment_id, rescue.state
             from shipping.rescue_cases as rescue
             join shipping.shipments as shipment
-              on shipment.tenant_id = rescue.tenant_id and shipment.id = rescue.shipment_id
+              on shipment.tenant_id = rescue.tenant_id
+             and shipment.id = rescue.shipment_id
             where rescue.tenant_id = ${context.tenantId}::uuid
               and rescue.id = ${validated.rescueCaseId}::uuid
               and shipment.store_id = ${validated.storeId}::uuid
-            for update of rescue`.execute(transaction);
+            for update of rescue
+          `.execute(transaction);
           const current = row.rows[0];
-          if (!current) throw new ShippingInvariantError('Rescue case was not found');
-          if (!canTransitionRescue(current.state, validated.state))
-            throw new ShippingInvariantError(`Rescue case cannot transition from ${current.state} to ${validated.state}`);
-          await sql`update shipping.rescue_cases set
-              state = ${validated.state},
-              priority = coalesce(${validated.priority ?? null}, priority),
-              assigned_actor_id = case
-                when ${validated.assignedActorId === undefined} then assigned_actor_id
-                else ${validated.assignedActorId ?? null}::uuid
-              end,
-              summary = coalesce(${validated.summary ?? null}, summary),
-              due_at = case
-                when ${validated.dueAt === undefined} then due_at
-                else ${validated.dueAt ?? null}::timestamptz
-              end,
-              resolved_at = case when ${validated.state} = 'RESOLVED' then now() else null end,
-              updated_at = now()
-            where tenant_id = ${context.tenantId}::uuid and id = ${validated.rescueCaseId}::uuid`.execute(transaction);
-          await this.appendTimeline(transaction, context, validated.storeId, current.shipment_id, 'shipping.rescue.updated', {
+          if (!current) {
+            throw new ShippingInvariantError('Rescue case was not found');
+          }
+          if (!canTransitionRescue(current.state, validated.state)) {
+            throw new ShippingInvariantError(
+              `Rescue case cannot transition from ${current.state} to ${validated.state}`,
+            );
+          }
+
+          await sql`
+            update shipping.rescue_cases
+            set state = ${validated.state},
+                priority = coalesce(${validated.priority ?? null}, priority),
+                assigned_actor_id = case
+                  when ${validated.assignedActorId === undefined}
+                    then assigned_actor_id
+                  else ${validated.assignedActorId ?? null}::uuid
+                end,
+                summary = coalesce(${validated.summary ?? null}, summary),
+                due_at = case
+                  when ${validated.dueAt === undefined} then due_at
+                  else ${validated.dueAt ?? null}::timestamptz
+                end,
+                resolved_at = case
+                  when ${validated.state} = 'RESOLVED' then now()
+                  else null
+                end,
+                updated_at = now()
+            where tenant_id = ${context.tenantId}::uuid
+              and id = ${validated.rescueCaseId}::uuid
+          `.execute(transaction);
+          await this.appendTimeline(
+            transaction,
+            context,
+            validated.storeId,
+            current.shipment_id,
+            'shipping.rescue.updated',
+            {
+              rescueCaseId: validated.rescueCaseId,
+              previousState: current.state,
+              state: validated.state,
+            },
+          );
+          return {
             rescueCaseId: validated.rescueCaseId,
-            previousState: current.state,
             state: validated.state,
-          });
-          return { rescueCaseId: validated.rescueCaseId, state: validated.state };
+          };
         },
       },
       { context, input: validated, idempotencyKey },
@@ -737,19 +1089,32 @@ export class ShippingService {
   ): Promise<CommandResult<{ providerActionId: string; state: 'QUEUED' }>> {
     const validated = queueProviderActionSchema.parse(input);
     const providerActionId = randomUUID();
+
     return this.commands.execute(
       {
         action: `shipping.shipment.provider.${validated.operation.toLowerCase()}`,
         permission: 'shipping.provider.execute',
         risk: 'HIGH',
-        resource: () => ({ type: 'shipping.shipment', id: validated.shipmentId }),
+        resource: () => ({
+          type: 'shipping.shipment',
+          id: validated.shipmentId,
+        }),
         event: {
           type: 'shipping.shipment.provider_action_queued',
-          data: () => ({ shipmentId: validated.shipmentId, providerActionId, operation: validated.operation }),
-          dedupeKey: () => `shipping:shipment:provider-action:${providerActionId}`,
+          data: () => ({
+            shipmentId: validated.shipmentId,
+            providerActionId,
+            operation: validated.operation,
+          }),
+          dedupeKey: () =>
+            `shipping:shipment:provider-action:${providerActionId}`,
         },
         audit: {
-          afterState: () => ({ shipmentId: validated.shipmentId, providerActionId, operation: validated.operation }),
+          afterState: () => ({
+            shipmentId: validated.shipmentId,
+            providerActionId,
+            operation: validated.operation,
+          }),
         },
         execute: async (transaction) => {
           const shipment = await this.loadShipmentForUpdate(
@@ -758,48 +1123,39 @@ export class ShippingService {
             validated.storeId,
             validated.shipmentId,
           );
-          if (!shipment.carrier_account_id)
-            throw new ShippingInvariantError('Shipment has no carrier account');
-          const route = await sql<{ connection_id: string; connector_key: string }>`select
-                account.connection_id, connection.connector_key
-              from shipping.carrier_accounts as account
-              join integrations.connections as connection
-                on connection.tenant_id = account.tenant_id and connection.id = account.connection_id
-              where account.tenant_id = ${context.tenantId}::uuid
-                and account.id = ${shipment.carrier_account_id}::uuid
-                and account.status = 'ACTIVE'
-                and connection.status in ('CONNECTED', 'DEGRADED')`.execute(transaction);
-          const carrierRoute = route.rows[0];
-          if (!carrierRoute)
-            throw new ShippingInvariantError('Shipment carrier has no dispatchable connection');
-
-          if (validated.operation === 'CREATE_LABEL') {
-            if (!['READY', 'LABEL_PENDING'].includes(shipment.status))
-              throw new ShippingInvariantError('Labels can only be created for ready shipments');
-            await sql`update shipping.shipments set status = 'LABEL_PENDING', provider_sync_state = 'PENDING', updated_at = now()
-              where tenant_id = ${context.tenantId}::uuid and id = ${validated.shipmentId}::uuid`.execute(transaction);
-          } else if (validated.operation === 'REQUEST_PICKUP') {
-            if (shipment.status !== 'LABEL_CREATED')
-              throw new ShippingInvariantError('Pickup requires a created shipping label');
-            await this.markProviderPending(transaction, context.tenantId, validated.shipmentId);
-          } else if (validated.operation === 'CANCEL_SHIPMENT') {
-            if (['DELIVERED', 'RETURNED'].includes(shipment.status))
-              throw new ShippingInvariantError('Delivered or returned shipments cannot be cancelled');
-            await sql`update shipping.shipments set status = 'CANCELLED', provider_sync_state = 'PENDING', updated_at = now()
-              where tenant_id = ${context.tenantId}::uuid and id = ${validated.shipmentId}::uuid`.execute(transaction);
-          } else if (validated.operation === 'RESCHEDULE_DELIVERY') {
-            if (['DELIVERED', 'RETURNED', 'CANCELLED'].includes(shipment.status))
-              throw new ShippingInvariantError('Terminal shipments cannot be rescheduled');
-            await sql`update shipping.shipments set estimated_delivery_at = ${validated.scheduledAt ?? null}::timestamptz,
-                provider_sync_state = 'PENDING', updated_at = now()
-              where tenant_id = ${context.tenantId}::uuid and id = ${validated.shipmentId}::uuid`.execute(transaction);
-          } else {
-            if (['DELIVERED', 'RETURNED', 'CANCELLED'].includes(shipment.status))
-              throw new ShippingInvariantError('Terminal shipments cannot change delivery address');
-            await sql`update shipping.shipments set destination = ${JSON.stringify(validated.destination)}::jsonb,
-                provider_sync_state = 'PENDING', updated_at = now()
-              where tenant_id = ${context.tenantId}::uuid and id = ${validated.shipmentId}::uuid`.execute(transaction);
+          if (!shipment.carrier_account_id) {
+            throw new ShippingInvariantError(
+              'Shipment has no carrier account',
+            );
           }
+
+          const route = await sql<{
+            connection_id: string;
+            connector_key: string;
+          }>`
+            select account.connection_id, connection.connector_key
+            from shipping.carrier_accounts as account
+            join integrations.connections as connection
+              on connection.tenant_id = account.tenant_id
+             and connection.id = account.connection_id
+            where account.tenant_id = ${context.tenantId}::uuid
+              and account.id = ${shipment.carrier_account_id}::uuid
+              and account.status = 'ACTIVE'
+              and connection.status in ('CONNECTED', 'DEGRADED')
+          `.execute(transaction);
+          const carrierRoute = route.rows[0];
+          if (!carrierRoute) {
+            throw new ShippingInvariantError(
+              'Shipment carrier has no dispatchable connection',
+            );
+          }
+
+          await this.prepareProviderAction(
+            transaction,
+            context.tenantId,
+            shipment,
+            validated,
+          );
 
           const actionType = `shipping.shipment.${validated.operation.toLowerCase()}`;
           const providerInput = {
@@ -808,42 +1164,87 @@ export class ShippingService {
             fulfillmentId: shipment.fulfillment_id,
             trackingNumber: shipment.tracking_number,
             ...(validated.reason ? { reason: validated.reason } : {}),
-            ...(validated.scheduledAt ? { scheduledAt: validated.scheduledAt } : {}),
-            ...(validated.destination ? { destination: validated.destination } : {}),
+            ...(validated.scheduledAt
+              ? { scheduledAt: validated.scheduledAt }
+              : {}),
+            ...(validated.destination
+              ? { destination: validated.destination }
+              : {}),
           };
-          await sql`insert into integrations.provider_actions (
-              id, tenant_id, connection_id, action_type, input, idempotency_key
+
+          await sql`
+            insert into integrations.provider_actions (
+              id, tenant_id, connection_id, action_type, input,
+              idempotency_key
             ) values (
-              ${providerActionId}::uuid, ${context.tenantId}::uuid,
-              ${carrierRoute.connection_id}::uuid, ${actionType},
-              ${JSON.stringify(providerInput)}::jsonb, ${idempotencyKey.trim()}
-            )`.execute(transaction);
-          await sql`insert into shipping.shipment_provider_actions (
+              ${providerActionId}::uuid,
+              ${context.tenantId}::uuid,
+              ${carrierRoute.connection_id}::uuid,
+              ${actionType},
+              ${JSON.stringify(providerInput)}::jsonb,
+              ${idempotencyKey.trim()}
+            )
+          `.execute(transaction);
+          await sql`
+            insert into shipping.shipment_provider_actions (
               provider_action_id, tenant_id, store_id, shipment_id, operation
             ) values (
-              ${providerActionId}::uuid, ${context.tenantId}::uuid,
-              ${validated.storeId}::uuid, ${validated.shipmentId}::uuid, ${validated.operation}
-            )`.execute(transaction);
-          await this.appendTimeline(transaction, context, validated.storeId, validated.shipmentId, 'shipping.shipment.provider_action_queued', {
-            providerActionId,
-            operation: validated.operation,
-            connectorKey: carrierRoute.connector_key,
-          });
+              ${providerActionId}::uuid,
+              ${context.tenantId}::uuid,
+              ${validated.storeId}::uuid,
+              ${validated.shipmentId}::uuid,
+              ${validated.operation}
+            )
+          `.execute(transaction);
+          await this.appendTimeline(
+            transaction,
+            context,
+            validated.storeId,
+            validated.shipmentId,
+            'shipping.shipment.provider_action_queued',
+            {
+              providerActionId,
+              operation: validated.operation,
+              connectorKey: carrierRoute.connector_key,
+            },
+          );
           return { providerActionId, state: 'QUEUED' as const };
         },
       },
-      { context, input: validated, idempotencyKey, ...(approvalId ? { approvalId } : {}) },
+      {
+        context,
+        input: validated,
+        idempotencyKey,
+        ...(approvalId ? { approvalId } : {}),
+      },
     );
   }
 
   public async listShipments(
     context: TenantRequestContext,
-    filters: { storeId?: string; status?: string; limit?: number; offset?: number } = {},
-  ): Promise<{ items: readonly ShippingShipmentListItem[]; limit: number; offset: number }> {
+    filters: {
+      storeId?: string;
+      status?: string;
+      limit?: number;
+      offset?: number;
+    } = {},
+  ): Promise<{
+    items: readonly ShippingShipmentListItem[];
+    limit: number;
+    offset: number;
+  }> {
     const storeId = filters.storeId ? uuidSchema.parse(filters.storeId) : null;
-    const status = filters.status ? z.string().trim().min(1).max(50).parse(filters.status) : null;
+    const status = filters.status
+      ? z.string().trim().min(1).max(50).parse(filters.status)
+      : null;
     const limit = z.number().int().min(1).max(100).parse(filters.limit ?? 50);
-    const offset = z.number().int().min(0).max(1_000_000).parse(filters.offset ?? 0);
+    const offset = z
+      .number()
+      .int()
+      .min(0)
+      .max(1_000_000)
+      .parse(filters.offset ?? 0);
+
     return withTenantTransaction(this.database, context, async (transaction) => {
       const result = await sql<{
         id: string;
@@ -858,13 +1259,17 @@ export class ShippingService {
         estimated_delivery_at: Date | null;
         provider_sync_state: string;
         updated_at: Date;
-      }>`select id, store_id, order_id, fulfillment_id, carrier_account_id, carrier_service_id,
-            status, tracking_number, tracking_url, estimated_delivery_at, provider_sync_state, updated_at
-          from shipping.shipments
-          where (${storeId}::uuid is null or store_id = ${storeId}::uuid)
-            and (${status}::text is null or status = ${status})
-          order by updated_at desc, id desc
-          limit ${limit} offset ${offset}`.execute(transaction);
+      }>`
+        select id, store_id, order_id, fulfillment_id, carrier_account_id,
+               carrier_service_id, status, tracking_number, tracking_url,
+               estimated_delivery_at, provider_sync_state, updated_at
+        from shipping.shipments
+        where (${storeId}::uuid is null or store_id = ${storeId}::uuid)
+          and (${status}::text is null or status = ${status})
+        order by updated_at desc, id desc
+        limit ${limit} offset ${offset}
+      `.execute(transaction);
+
       return {
         items: result.rows.map((row) => ({
           id: row.id,
@@ -886,36 +1291,75 @@ export class ShippingService {
     });
   }
 
-  public async getShipment(context: TenantRequestContext, shipmentId: string) {
+  public async getShipment(
+    context: TenantRequestContext,
+    shipmentId: string,
+  ): Promise<
+    | {
+        shipment: Record<string, unknown>;
+        packages: readonly Record<string, unknown>[];
+        trackingEvents: readonly Record<string, unknown>[];
+        deliveryAttempts: readonly Record<string, unknown>[];
+        rescueCases: readonly Record<string, unknown>[];
+        providerActions: readonly Record<string, unknown>[];
+      }
+    | undefined
+  > {
     const id = uuidSchema.parse(shipmentId);
+
     return withTenantTransaction(this.database, context, async (transaction) => {
-      const shipment = await sql<Record<string, unknown>>`select
-          id, store_id, order_id, fulfillment_id, carrier_account_id, carrier_service_id,
-          status, tracking_number, tracking_url, destination, declared_value_minor::text,
-          declared_value_currency, estimated_delivery_at, shipped_at, delivered_at,
-          last_tracking_at, provider_sync_state, metadata, created_at, updated_at
-        from shipping.shipments where id = ${id}::uuid`.execute(transaction);
+      const shipment = await sql<Record<string, unknown>>`
+        select id, store_id, order_id, fulfillment_id, carrier_account_id,
+               carrier_service_id, status, tracking_number, tracking_url,
+               destination, declared_value_minor::text,
+               declared_value_currency, estimated_delivery_at, shipped_at,
+               delivered_at, last_tracking_at, provider_sync_state, metadata,
+               created_at, updated_at
+        from shipping.shipments
+        where id = ${id}::uuid
+      `.execute(transaction);
       if (!shipment.rows[0]) return undefined;
+
       const [packages, tracking, attempts, rescues, actions] = await Promise.all([
-        sql<Record<string, unknown>>`select id, sequence, status, weight_grams, length_mm, width_mm,
-            height_mm, tracking_number, tracking_url, metadata, created_at, updated_at
-          from shipping.packages where shipment_id = ${id}::uuid order by sequence, id`.execute(transaction),
-        sql<Record<string, unknown>>`select id, package_id, event_type, normalized_status, raw_code,
-            description, location_name, country_code, occurred_at, source_type, external_event_id, data
-          from shipping.tracking_events where shipment_id = ${id}::uuid
-          order by occurred_at desc, id desc limit 100`.execute(transaction),
-        sql<Record<string, unknown>>`select id, attempt_number, state, attempted_at, next_attempt_at,
-            failure_code, failure_reason, metadata, created_at, updated_at
-          from shipping.delivery_attempts where shipment_id = ${id}::uuid
-          order by attempt_number desc, id desc`.execute(transaction),
-        sql<Record<string, unknown>>`select id, state, trigger_reason, priority, assigned_actor_id,
-            summary, due_at, resolved_at, metadata, created_at, updated_at
-          from shipping.rescue_cases where shipment_id = ${id}::uuid
-          order by created_at desc, id desc`.execute(transaction),
-        sql<Record<string, unknown>>`select provider_action_id, operation, state, created_at, completed_at
-          from shipping.shipment_provider_actions where shipment_id = ${id}::uuid
-          order by created_at desc, provider_action_id desc`.execute(transaction),
+        sql<Record<string, unknown>>`
+          select id, sequence, status, weight_grams, length_mm, width_mm,
+                 height_mm, tracking_number, tracking_url, metadata,
+                 created_at, updated_at
+          from shipping.packages
+          where shipment_id = ${id}::uuid
+          order by sequence, id
+        `.execute(transaction),
+        sql<Record<string, unknown>>`
+          select id, package_id, event_type, normalized_status, raw_code,
+                 description, location_name, country_code, occurred_at,
+                 source_type, external_event_id, data
+          from shipping.tracking_events
+          where shipment_id = ${id}::uuid
+          order by occurred_at desc, id desc
+          limit 100
+        `.execute(transaction),
+        sql<Record<string, unknown>>`
+          select id, attempt_number, state, attempted_at, next_attempt_at,
+                 failure_code, failure_reason, metadata, created_at, updated_at
+          from shipping.delivery_attempts
+          where shipment_id = ${id}::uuid
+          order by attempt_number desc, id desc
+        `.execute(transaction),
+        sql<Record<string, unknown>>`
+          select id, state, trigger_reason, priority, assigned_actor_id,
+                 summary, due_at, resolved_at, metadata, created_at, updated_at
+          from shipping.rescue_cases
+          where shipment_id = ${id}::uuid
+          order by created_at desc, id desc
+        `.execute(transaction),
+        sql<Record<string, unknown>>`
+          select provider_action_id, operation, state, created_at, completed_at
+          from shipping.shipment_provider_actions
+          where shipment_id = ${id}::uuid
+          order by created_at desc, provider_action_id desc
+        `.execute(transaction),
       ]);
+
       return {
         shipment: shipment.rows[0],
         packages: packages.rows,
@@ -927,47 +1371,148 @@ export class ShippingService {
     });
   }
 
+  private async prepareProviderAction(
+    transaction: PlatformTransaction,
+    tenantId: string,
+    shipment: ShipmentStateRow,
+    input: z.infer<typeof queueProviderActionSchema>,
+  ): Promise<void> {
+    if (input.operation === 'CREATE_LABEL') {
+      if (!['READY', 'LABEL_PENDING'].includes(shipment.status)) {
+        throw new ShippingInvariantError(
+          'Labels can only be created for ready shipments',
+        );
+      }
+      await sql`
+        update shipping.shipments
+        set status = 'LABEL_PENDING',
+            provider_sync_state = 'PENDING',
+            updated_at = now()
+        where tenant_id = ${tenantId}::uuid
+          and id = ${input.shipmentId}::uuid
+      `.execute(transaction);
+      return;
+    }
+
+    if (input.operation === 'REQUEST_PICKUP') {
+      if (shipment.status !== 'LABEL_CREATED') {
+        throw new ShippingInvariantError(
+          'Pickup requires a created shipping label',
+        );
+      }
+      await this.markProviderPending(transaction, tenantId, input.shipmentId);
+      return;
+    }
+
+    if (input.operation === 'CANCEL_SHIPMENT') {
+      if (['DELIVERED', 'RETURNED'].includes(shipment.status)) {
+        throw new ShippingInvariantError(
+          'Delivered or returned shipments cannot be cancelled',
+        );
+      }
+      await sql`
+        update shipping.shipments
+        set status = 'CANCELLED',
+            provider_sync_state = 'PENDING',
+            updated_at = now()
+        where tenant_id = ${tenantId}::uuid
+          and id = ${input.shipmentId}::uuid
+      `.execute(transaction);
+      return;
+    }
+
+    if (input.operation === 'RESCHEDULE_DELIVERY') {
+      this.assertShipmentIsNotTerminal(shipment.status, 'rescheduled');
+      await sql`
+        update shipping.shipments
+        set estimated_delivery_at = ${input.scheduledAt ?? null}::timestamptz,
+            provider_sync_state = 'PENDING',
+            updated_at = now()
+        where tenant_id = ${tenantId}::uuid
+          and id = ${input.shipmentId}::uuid
+      `.execute(transaction);
+      return;
+    }
+
+    this.assertShipmentIsNotTerminal(shipment.status, 'change delivery address');
+    await sql`
+      update shipping.shipments
+      set destination = ${JSON.stringify(input.destination)}::jsonb,
+          provider_sync_state = 'PENDING',
+          updated_at = now()
+      where tenant_id = ${tenantId}::uuid
+        and id = ${input.shipmentId}::uuid
+    `.execute(transaction);
+  }
+
+  private assertShipmentIsNotTerminal(status: string, action: string): void {
+    if (['DELIVERED', 'RETURNED', 'CANCELLED'].includes(status)) {
+      throw new ShippingInvariantError(
+        `Terminal shipments cannot ${action}`,
+      );
+    }
+  }
+
   private async loadShipmentForUpdate(
-    transaction: DatabaseTransaction,
+    transaction: PlatformTransaction,
     tenantId: string,
     storeId: string,
     shipmentId: string,
   ): Promise<ShipmentStateRow> {
-    const result = await sql<ShipmentStateRow>`select id, store_id, order_id, fulfillment_id,
-        carrier_account_id, carrier_service_id, status, tracking_number, destination,
-        provider_sync_state, last_tracking_at
+    const result = await sql<ShipmentStateRow>`
+      select id, store_id, order_id, fulfillment_id, carrier_account_id,
+             carrier_service_id, status, tracking_number,
+             provider_sync_state, last_tracking_at
       from shipping.shipments
-      where tenant_id = ${tenantId}::uuid and store_id = ${storeId}::uuid and id = ${shipmentId}::uuid
-      for update`.execute(transaction);
+      where tenant_id = ${tenantId}::uuid
+        and store_id = ${storeId}::uuid
+        and id = ${shipmentId}::uuid
+      for update
+    `.execute(transaction);
     const shipment = result.rows[0];
-    if (!shipment) throw new ShippingInvariantError('Shipment was not found in this store');
+    if (!shipment) {
+      throw new ShippingInvariantError(
+        'Shipment was not found in this store',
+      );
+    }
     return shipment;
   }
 
   private async markProviderPending(
-    transaction: DatabaseTransaction,
+    transaction: PlatformTransaction,
     tenantId: string,
     shipmentId: string,
   ): Promise<void> {
-    await sql`update shipping.shipments set provider_sync_state = 'PENDING', updated_at = now()
-      where tenant_id = ${tenantId}::uuid and id = ${shipmentId}::uuid`.execute(transaction);
+    await sql`
+      update shipping.shipments
+      set provider_sync_state = 'PENDING', updated_at = now()
+      where tenant_id = ${tenantId}::uuid
+        and id = ${shipmentId}::uuid
+    `.execute(transaction);
   }
 
   private async appendTimeline(
-    transaction: DatabaseTransaction,
+    transaction: PlatformTransaction,
     context: TenantRequestContext,
     storeId: string,
     shipmentId: string,
     eventType: string,
     data: Record<string, unknown>,
   ): Promise<void> {
-    await sql`insert into shipping.shipment_timeline (
-        tenant_id, store_id, shipment_id, event_type, actor_type, actor_id, data
+    await sql`
+      insert into shipping.shipment_timeline (
+        tenant_id, store_id, shipment_id, event_type,
+        actor_type, actor_id, data
       ) values (
-        ${context.tenantId}::uuid, ${storeId}::uuid, ${shipmentId}::uuid,
-        ${eventType}, ${context.actorId ? 'USER' : 'SERVICE'}, ${context.actorId ?? null}::uuid,
+        ${context.tenantId}::uuid,
+        ${storeId}::uuid,
+        ${shipmentId}::uuid,
+        ${eventType},
+        ${context.actorId ? 'USER' : 'SERVICE'},
+        ${context.actorId ?? null}::uuid,
         ${JSON.stringify(data)}::jsonb
-      )`.execute(transaction);
+      )
+    `.execute(transaction);
   }
 }
 
@@ -987,19 +1532,59 @@ const shippingProgression: Record<string, number> = {
 };
 
 function canAdvanceShippingStatus(current: string, incoming: string): boolean {
-  if (['DELIVERED', 'RETURNED', 'CANCELLED'].includes(current)) return current === incoming;
+  if (['DELIVERED', 'RETURNED', 'CANCELLED'].includes(current)) {
+    return current === incoming;
+  }
   if (incoming === 'EXCEPTION') return true;
   if (current === 'EXCEPTION') return incoming !== 'LABEL_CREATED';
-  return (shippingProgression[incoming] ?? -1) >= (shippingProgression[current] ?? -1);
+  return (
+    (shippingProgression[incoming] ?? -1) >=
+    (shippingProgression[current] ?? -1)
+  );
 }
 
 const rescueTransitions: Readonly<Record<string, readonly string[]>> = {
-  OPEN: ['CONTACT_REQUIRED', 'ADDRESS_UPDATE_REQUIRED', 'READY_TO_RETRY', 'RESOLVED', 'CANCELLED'],
-  CONTACT_REQUIRED: ['CONTACTED', 'ADDRESS_UPDATE_REQUIRED', 'RESCHEDULED', 'READY_TO_RETRY', 'RESOLVED', 'CANCELLED'],
-  CONTACTED: ['ADDRESS_UPDATE_REQUIRED', 'RESCHEDULED', 'READY_TO_RETRY', 'RESOLVED', 'CANCELLED'],
-  ADDRESS_UPDATE_REQUIRED: ['CONTACTED', 'RESCHEDULED', 'READY_TO_RETRY', 'RESOLVED', 'CANCELLED'],
-  RESCHEDULED: ['READY_TO_RETRY', 'CONTACT_REQUIRED', 'RESOLVED', 'CANCELLED'],
-  READY_TO_RETRY: ['CONTACT_REQUIRED', 'RESCHEDULED', 'RESOLVED', 'CANCELLED'],
+  OPEN: [
+    'CONTACT_REQUIRED',
+    'ADDRESS_UPDATE_REQUIRED',
+    'READY_TO_RETRY',
+    'RESOLVED',
+    'CANCELLED',
+  ],
+  CONTACT_REQUIRED: [
+    'CONTACTED',
+    'ADDRESS_UPDATE_REQUIRED',
+    'RESCHEDULED',
+    'READY_TO_RETRY',
+    'RESOLVED',
+    'CANCELLED',
+  ],
+  CONTACTED: [
+    'ADDRESS_UPDATE_REQUIRED',
+    'RESCHEDULED',
+    'READY_TO_RETRY',
+    'RESOLVED',
+    'CANCELLED',
+  ],
+  ADDRESS_UPDATE_REQUIRED: [
+    'CONTACTED',
+    'RESCHEDULED',
+    'READY_TO_RETRY',
+    'RESOLVED',
+    'CANCELLED',
+  ],
+  RESCHEDULED: [
+    'READY_TO_RETRY',
+    'CONTACT_REQUIRED',
+    'RESOLVED',
+    'CANCELLED',
+  ],
+  READY_TO_RETRY: [
+    'CONTACT_REQUIRED',
+    'RESCHEDULED',
+    'RESOLVED',
+    'CANCELLED',
+  ],
   RESOLVED: [],
   CANCELLED: [],
 };
