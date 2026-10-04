@@ -45,11 +45,6 @@ function supportsProviderAction(
   );
 }
 
-function providerActionFailureDetail(error: unknown): string {
-  if (error instanceof Error) return `${error.name}: ${error.message}`;
-  return `Non-Error rejection: ${String(error)}`;
-}
-
 /**
  * Calls only previously committed, typed connector actions. It resolves the
  * tenant route in a short transaction, calls the provider outside it, then
@@ -70,8 +65,16 @@ export class ProviderActionProcessor {
       try {
         await this.process(action);
       } catch (error) {
+        const failure = toConnectorError(error);
         process.stderr.write(
-          `[provider-action] id=${action.id} type=${action.action_type} failure=${providerActionFailureDetail(error)}\n`,
+          `${JSON.stringify({
+            level: 'error',
+            event: 'provider_action.processing_failed',
+            providerActionId: action.id,
+            actionType: action.action_type,
+            errorCode: failure.code,
+            retryable: failure.retryable,
+          })}\n`,
         );
         await this.recordFailure(action, error);
       }
