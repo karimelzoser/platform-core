@@ -35,6 +35,8 @@ import { TicketsController } from './tickets.controller.js';
 import { TicketsService } from './tickets.service.js';
 import { IntegrationsController } from './integrations.controller.js';
 import { IntegrationService } from './integration.service.js';
+import { ShippingController } from './shipping.controller.js';
+import { ShippingService } from './shipping.service.js';
 
 @Controller('health')
 class HealthController {
@@ -73,6 +75,7 @@ function createRuntimeConnectorRegistry(): ConnectorRegistry {
     MediaController,
     IntegrationsController,
     CommerceController,
+    ShippingController,
   ],
   providers: [
     ApiDatabaseService,
@@ -101,6 +104,12 @@ function createRuntimeConnectorRegistry(): ConnectorRegistry {
       provide: OrderWorkflowService,
       useFactory: (database: ApiDatabaseService, commands: CommandExecutor) =>
         new OrderWorkflowService(database.database, commands),
+      inject: [ApiDatabaseService, CommandExecutor],
+    },
+    {
+      provide: ShippingService,
+      useFactory: (database: ApiDatabaseService, commands: CommandExecutor) =>
+        new ShippingService(database.database, commands),
       inject: [ApiDatabaseService, CommandExecutor],
     },
     {
