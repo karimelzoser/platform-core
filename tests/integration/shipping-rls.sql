@@ -113,13 +113,12 @@ INSERT INTO shipping.delivery_attempts (
 );
 
 INSERT INTO shipping.rescue_cases (
-  id, tenant_id, store_id, order_id, shipment_id,
+  id, tenant_id, store_id, shipment_id,
   state, trigger_reason, priority, summary, due_at
 ) VALUES (
   'aaaaaaaa-0000-0000-0000-000000000607',
   'aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa',
   'aaaaaaaa-0000-0000-0000-000000000501',
-  'aaaaaaaa-0000-0000-0000-000000000505',
   'aaaaaaaa-0000-0000-0000-000000000603',
   'CONTACT_REQUIRED',
   'CUSTOMER_UNREACHABLE',
@@ -127,6 +126,23 @@ INSERT INTO shipping.rescue_cases (
   'Contact customer before the next delivery attempt',
   now() + interval '4 hours'
 );
+
+DO $$
+BEGIN
+  IF NOT EXISTS (
+    SELECT 1
+    FROM shipping.rescue_cases AS rescue
+    JOIN shipping.shipments AS shipment
+      ON shipment.tenant_id = rescue.tenant_id
+     AND shipment.store_id = rescue.store_id
+     AND shipment.id = rescue.shipment_id
+    WHERE rescue.id = 'aaaaaaaa-0000-0000-0000-000000000607'
+      AND shipment.order_id = 'aaaaaaaa-0000-0000-0000-000000000505'
+  ) THEN
+    RAISE EXCEPTION 'Rescue case does not derive the canonical shipment order identity';
+  END IF;
+END;
+$$;
 
 INSERT INTO shipping.provider_references (
   id, tenant_id, carrier_account_id, entity_type, canonical_id, external_id
@@ -248,6 +264,23 @@ BEGIN
       'Cross Tenant Relationship'
     );
     RAISE EXCEPTION 'Tenant B linked a service to Tenant A carrier account';
+  EXCEPTION WHEN foreign_key_violation THEN
+    NULL;
+  END;
+
+  BEGIN
+    INSERT INTO shipping.rescue_cases (
+      tenant_id, store_id, shipment_id, state, trigger_reason, priority, summary
+    ) VALUES (
+      'bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb',
+      'bbbbbbbb-0000-0000-0000-000000000501',
+      'aaaaaaaa-0000-0000-0000-000000000603',
+      'OPEN',
+      'OTHER',
+      'LOW',
+      'Cross-tenant rescue relation must fail'
+    );
+    RAISE EXCEPTION 'Tenant B linked rescue state to Tenant A shipment';
   EXCEPTION WHEN foreign_key_violation THEN
     NULL;
   END;
