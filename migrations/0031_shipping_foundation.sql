@@ -7,11 +7,8 @@ BEGIN;
 CREATE SCHEMA IF NOT EXISTS shipping;
 GRANT USAGE ON SCHEMA shipping TO platform_app;
 
--- Relationship key used by Shipping to prove that a fulfillment belongs to the
--- same tenant/store/order as its shipment.
-ALTER TABLE commerce.fulfillments
-  ADD CONSTRAINT commerce_fulfillments_order_identity_unique
-    UNIQUE (tenant_id, store_id, order_id, id);
+-- The shipment relationship below relies on the fulfillment order-identity guard
+-- established by 0029_commerce_relationship_guards.sql.
 
 CREATE TABLE shipping.carrier_accounts (
   id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
