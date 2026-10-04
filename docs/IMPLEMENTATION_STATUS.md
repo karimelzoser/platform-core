@@ -1,76 +1,97 @@
 # Implementation Status
 
-**Last updated:** 2026-10-02
-**Branch/workstream:** `main` / Integration SDK completion
+**Last updated:** 2026-10-04
+**Branch/workstream:** `codex/order-workflows-hosted-preview-20261003` / Order gate transition to Shipping
 **Release status:** IN PROGRESS — this is not yet a release candidate.
+
+`docs/CODEX_EXECUTION_QUEUE.md` is the authoritative workstream ledger. A
+repository-scope `COMPLETE` below does not waive the later cross-platform UX,
+security, performance, release-engineering, or complete-release acceptance
+requirements in `TESTING_AND_ACCEPTANCE.md`.
 
 ## Baseline and controls
 
-| Area                                | State       | Evidence / next action                                                                                                             |
-| ----------------------------------- | ----------- | ---------------------------------------------------------------------------------------------------------------------------------- |
-| Production migrations `0001`–`0003` | COMPLETE    | Root copies match the supplied `SHA256SUMS`; Git attributes prevent line-ending conversion and CI will byte-lock historical files. |
-| Secret safety                       | IN PROGRESS | Local credential file is ignored and excluded from Git; CI secret scanning is being added.                                         |
-| Architecture / ADRs                 | IN PROGRESS | Record foundation decisions before implementation changes.                                                                         |
-| Local integration environment       | TESTING     | Isolated Compose stack and CI migration/RLS test path added; not executable on this Docker-less workstation.                       |
+| Area | State | Evidence / next action |
+| --- | --- | --- |
+| Production migrations `0001`–`0003` | COMPLETE | Root copies remain checksum-locked; new changes use later SQL-first migrations. |
+| Secret safety | TESTING | CI verified-secret scan is active; opaque provider secret references are used by runtime integrations. |
+| Architecture / ADRs | IN PROGRESS | Foundational architecture is enforced by `AGENTS.md`; consequential new decisions still require ADRs. |
+| Local/disposable integration environment | COMPLETE | GitHub Actions boots PostgreSQL/pgvector, Keycloak, OPA, NATS/Valkey/Temporal dependencies, applies migrations, runs RLS/application gates, and tears the stack down. |
+| Temporal integration foundation | TESTING | One-time schema bootstrap plus durable server restart verification is green; the later Temporal-baseline workstream still owns full workflow replay/retry/timeout/signal coverage. |
 
 ## Platform workstreams
 
-| Module                            | Database                                   | API / worker | UI          | Tests       | Documentation | State       |
-| --------------------------------- | ------------------------------------------ | ------------ | ----------- | ----------- | ------------- | ----------- |
-| Repository tooling / CI           | N/A                                        | COMPLETE     | N/A         | TESTING     | IN PROGRESS   | TESTING     |
-| Identity, auth, RBAC, approvals   | Existing `0001`–`0002`                     | IN PROGRESS  | IN PROGRESS | TESTING     | IN PROGRESS   | IN PROGRESS |
-| CRM / Customer 360                | Existing `0003`, permissions `0007`        | IN PROGRESS  | IN PROGRESS | IN PROGRESS | IN PROGRESS   | IN PROGRESS |
-| Integrations / connector SDK      | IN PROGRESS (`0004`–`0006`, `0024`–`0026`) | IN PROGRESS  | IN PROGRESS | IN PROGRESS | IN PROGRESS   | IN PROGRESS |
-| Messaging / tickets               | IN PROGRESS (`0011`–`0023`)                | IN PROGRESS  | IN PROGRESS | IN PROGRESS | IN PROGRESS   | IN PROGRESS |
-| Commerce / order operations       | NOT STARTED                                | NOT STARTED  | NOT STARTED | NOT STARTED | NOT STARTED   | NOT STARTED |
-| Shipping / returns / recovery     | NOT STARTED                                | NOT STARTED  | NOT STARTED | NOT STARTED | NOT STARTED   | NOT STARTED |
-| Sales / campaigns                 | NOT STARTED                                | NOT STARTED  | NOT STARTED | NOT STARTED | NOT STARTED   | NOT STARTED |
-| Temporal / automation             | NOT STARTED                                | NOT STARTED  | NOT STARTED | NOT STARTED | NOT STARTED   | NOT STARTED |
-| AI gateway / operators / RAG      | NOT STARTED                                | IN PROGRESS  | IN PROGRESS | IN PROGRESS | NOT STARTED   | IN PROGRESS |
-| Custom data / analytics / billing | NOT STARTED                                | NOT STARTED  | NOT STARTED | NOT STARTED | NOT STARTED   | NOT STARTED |
-| Developer platform / admin center | NOT STARTED                                | NOT STARTED  | NOT STARTED | NOT STARTED | NOT STARTED   | NOT STARTED |
-| Deployment / operations           | NOT STARTED                                | NOT STARTED  | N/A         | NOT STARTED | NOT STARTED   | NOT STARTED |
+| Module | Database | API / worker | UI | Tests | Documentation | State |
+| --- | --- | --- | --- | --- | --- | --- |
+| Repository tooling / CI | N/A | COMPLETE | N/A | COMPLETE | IN PROGRESS | COMPLETE |
+| Identity, auth, RBAC, approvals | Existing `0001`–`0002` | IN PROGRESS | IN PROGRESS | TESTING | IN PROGRESS | IN PROGRESS |
+| CRM / Customer 360 | Existing `0003`, permissions `0007` | IN PROGRESS | IN PROGRESS | IN PROGRESS | IN PROGRESS | IN PROGRESS |
+| Integrations / connector SDK | `0004`–`0006`, `0024`–`0026` | COMPLETE | COMPLETE | COMPLETE | COMPLETE | COMPLETE |
+| Messaging / tickets | `0011`–`0023` | IN PROGRESS | IN PROGRESS | IN PROGRESS | IN PROGRESS | IN PROGRESS |
+| Commerce / order operations | `0027`–`0030` | COMPLETE | COMPLETE | COMPLETE | COMPLETE | COMPLETE |
+| Shipping | STARTING | STARTING | NOT STARTED | NOT STARTED | STARTING | IN PROGRESS |
+| Returns / recovery | NOT STARTED | NOT STARTED | NOT STARTED | NOT STARTED | NOT STARTED | NOT STARTED |
+| Sales | NOT STARTED | NOT STARTED | NOT STARTED | NOT STARTED | NOT STARTED | NOT STARTED |
+| Campaigns | NOT STARTED | NOT STARTED | NOT STARTED | NOT STARTED | NOT STARTED | NOT STARTED |
+| Temporal / automation | Foundation present | Foundation present | NOT STARTED | TESTING | IN PROGRESS | IN PROGRESS |
+| AI gateway / operators / RAG | NOT STARTED | IN PROGRESS | IN PROGRESS | IN PROGRESS | NOT STARTED | IN PROGRESS |
+| Custom data / analytics / billing | NOT STARTED | NOT STARTED | NOT STARTED | NOT STARTED | NOT STARTED | NOT STARTED |
+| Developer platform / admin center | NOT STARTED | NOT STARTED | NOT STARTED | NOT STARTED | NOT STARTED | NOT STARTED |
+| Deployment / operations | Foundation present | Foundation present | N/A | TESTING | IN PROGRESS | IN PROGRESS |
 
-## Objective release gates
+## Objective evidence through Order workflows
 
-No overall completion percentage is recorded: the required release gate is a binary result, and most workstreams are not yet objectively complete. The authoritative acceptance criteria remain in [TESTING_AND_ACCEPTANCE.md](TESTING_AND_ACCEPTANCE.md).
+- Commerce foundation was verified in GitHub Actions run #205 for commit
+  `e01810c`: canonical stores, products/variants, inventory locations/levels,
+  orders/lines/discounts/taxes, payments, fulfillments, provider mappings, order
+  timeline, authorization/idempotency/audit/outbox execution, two-tenant RLS,
+  relationship isolation, and application lifecycle behavior.
+- Order workflows were verified in GitHub Actions run #288 for commit `8cdad1c`.
+  The integration gate passed clean migrations/RLS, Temporal server restart
+  durability, API/worker/commerce builds, and the two-tenant application
+  lifecycle. The disposable preview/browser gate also passed the Order browser
+  journey, which covers duplicate evaluation, confirmation, guarded
+  modification, responsive layouts, LTR/RTL switching, and no unexpected
+  browser console errors.
+- The provider-action failure that previously left Order workflow sync state at
+  `PENDING` was traced to an invalid PostgreSQL lock shape: route resolution
+  used an outer secret join under `FOR SHARE`. It now uses a required active or
+  rotating secret row and explicit row-lock targets. Provider execution remains
+  post-commit and its result is recorded transactionally with workflow sync,
+  timeline, audit, and outbox evidence.
+- Integration RLS verification no longer leaves its provider-action lease
+  fixture eligible to re-enter the global worker queue after lease expiry.
+- The branch-local self-modifying formatter workflow was removed. CI is
+  verification-only for source code; it does not rewrite and push the PR branch.
+- Provider-action processing failures retain operational visibility through a
+  bounded structured JSON error event containing only action identifiers/type,
+  normalized error code, and retryability rather than raw exception text.
 
-## Current blockers
+## Current execution
 
-- Docker and Python 3.11+ are absent locally, so PostgreSQL/RLS, NATS, Temporal, and FastAPI integration checks require the disposable GitHub Actions workflow for objective verification.
-- Production credentials, domains, and provider applications are intentionally unavailable and are not required for repository implementation.
-- Integrations now have protected connection lifecycle, opaque reference
-  rotation, health records, provider asset refresh, durable sync requests, and
-  a typed provider-action request API. Migrations `0024`–`0026` add worker
-  leases, capped retries, terminal sync/action dead-letter behavior, and
-  post-commit provider webhook subscription/action lifecycle.
-  Development Web Chat/API emulators exercise these typed boundaries without a
-  provider network call. Meta-shaped WhatsApp Cloud API, Instagram Messaging,
-  and Messenger fixtures verify the provider HMAC header convention, normalize
-  one bounded text/receipt event per delivery, support deterministic outbound
-  text dispatch, and reject media transport until its production contract is
-  implemented; they are never registered in production. The protected Integrations page lists current action
-  state and exposes only their clearly labelled harmless echo action through
-  the normal request, independent approval, and exact approved execution flow;
-  real provider adapter lifecycle/webhook/backfill/reconciliation
-  implementations remain incomplete.
-- CRM has tenant-scoped customer/tag/segment/import/export/merge foundations.
-  Migration `0022` adds immutable verified provider-consent evidence. Its
-  canonical webhook path verifies a bounded provider payload, writes evidence
-  and a monotonic opt-in preference update in the worker transaction, and emits
-  audit/outbox records only after commit. GitHub Actions run #115 passed the
-  two-tenant consent lifecycle, migration/RLS suite, API image, quality, AI
-  gateway, and secret scan. Direct staff-created opt-ins are deliberately not
-  available. The protected dynamic-segment evaluation UI and quoted-field CSV
-  parser tests are implemented. GitHub Actions run #119 verified the
-  two-tenant CRM application lifecycle: create/import idempotency, dynamic
-  segment evaluation, opt-out, approval-bound merge, export/audit/outbox, and
-  direct-ID RLS isolation. Migration `0023` grants only the dependent-record
-  reconciliation deletes needed by an approved merge; customer deletion remains
-  unavailable to the runtime role. GitHub Actions run #137 for commit
-  `4634601` passed the protected browser acceptance path: owner/approver
-  Keycloak login, customer creation, quoted CSV import, dynamic segment
-  evaluation, approval-bound merge execution, and responsive, RTL, and
-  accessibility checks. CRM remains IN PROGRESS until its full Definition of
-  Done is satisfied.
-- Messaging has tenant-scoped conversations/messages, a read inbox, protected handover, assignment, and close/reopen controls; its canonical inbound worker persists normalized messages through the outbox. The outbound command persists a pending message and its worker has a leased, post-commit typed connector dispatch boundary with provider IDs, sent/dead-letter states, bounded exponential retries, and outbox events. Canonical provider receipts update status monotonically through the persisted webhook worker. The inbox has permission-aware compose, template selection, and template list/create UI backed by protected tenant APIs. Bounded attachment references have tenant RLS, size/count limits, API persistence, and typed post-commit connector dispatch. Development-only local-media upload registration and inbox compose controls are implemented, with a bounded 700 KB browser upload route. Migration `0019` registers tenant-owned uploads and the send transaction claims each uploaded reference once, rejecting expired, reused, mismatched, or cross-tenant references. GitHub Actions run #101 passed the two-tenant application messaging lifecycle suite, migrations/RLS, the API image build, quality, AI gateway, and secret scan. Production provider adapters remain incomplete. Tickets have tenant-scoped schema; protected list/detail/create/comment/update/assignment/resolve/reopen APIs; authorization tests; permission-aware create/detail UI; and GitHub Actions run #104 two-tenant application lifecycle evidence. Migration `0014_messaging_ticket_schema_usage.sql` is present, and migrations `0020`–`0021` add SLA policies with approval-bound create/archive, response/resolution clocks, pause/resume, idempotent worker breach/escalation events, a private worker health endpoint, and protected ticket/approval UI. GitHub Actions run #114 passed the full two-tenant SLA lifecycle, migrations/RLS, quality, API image, AI gateway, and secret scan. Messaging/ticket migrations now extend through `0023`. Temporal workflow coverage, browser E2E, Arabic RTL/LTR visual checks, accessibility, and the full acceptance suites remain incomplete.
+Shipping is the promoted current workstream. Its repository scope is carrier
+abstraction, canonical shipment normalization, tracking updates, delivery rescue,
+tenant/RLS tests, connector boundaries, protected API and operational UI. It
+must link to canonical Commerce orders/fulfillments, keep provider credentials
+opaque, execute provider calls only after commit, and preserve audit/outbox and
+approval guarantees.
+
+## Deferred release-wide gates
+
+These are mandatory before the product can be called complete even when an
+individual module has a green repository-scope gate:
+
+- full English LTR and Arabic RTL visual/accessibility closure across every UI
+- complete Temporal retry/timeout/signal/deterministic-replay coverage
+- structured logs, traces, metrics, performance thresholds and security refresh
+- immutable production images/Compose overlays, upgrade fixture, backup/restore
+  and rollback evidence, smoke tooling and runbook
+- all mandatory checks in `TESTING_AND_ACCEPTANCE.md`, followed by inspection of
+  green release-candidate CI
+
+## External boundaries
+
+Production provider credentials/accounts and deployment access remain
+intentionally unavailable to repository tests. Development fixtures/emulators
+are used for deterministic connector verification. Automated tests must never
+use the production VPS or disturb the existing n8n installation.
