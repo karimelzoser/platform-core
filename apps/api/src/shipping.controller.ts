@@ -270,9 +270,7 @@ export class ShippingController {
       rescueCaseId,
       state: requiredString(object.state, 'state', 100) as never,
       ...(typeof object.priority === 'string' ? { priority: object.priority as never } : {}),
-      ...(object.assignedActorId === undefined
-        ? {}
-        : { assignedActorId: object.assignedActorId }),
+      ...(object.assignedActorId === undefined ? {} : { assignedActorId: object.assignedActorId }),
       ...(typeof object.summary === 'string' ? { summary: object.summary } : {}),
       ...(object.dueAt === undefined ? {} : { dueAt: object.dueAt as string | null }),
     });
