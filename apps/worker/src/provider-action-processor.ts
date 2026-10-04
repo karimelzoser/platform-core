@@ -34,6 +34,12 @@ interface CommerceOrderProviderLink {
   operation: string;
 }
 
+interface ShippingProviderLink {
+  store_id: string;
+  shipment_id: string;
+  operation: string;
+}
+
 function supportsProviderAction(
   connector: Connector,
   actionType: string,
@@ -186,6 +192,38 @@ export class ProviderActionProcessor {
           )`.execute(transaction);
         }
 
+        const shippingLink =
+          await sql<ShippingProviderLink>`update shipping.shipment_provider_actions
+          set state = 'SUCCEEDED', completed_at = ${completedAt}::timestamptz, updated_at = now()
+          where tenant_id = ${action.tenant_id}::uuid and provider_action_id = ${action.id}::uuid
+          returning store_id, shipment_id, operation`.execute(transaction);
+        const shipment = shippingLink.rows[0];
+        if (shipment) {
+          await this.applyShippingProviderSuccess(
+            transaction,
+            action.tenant_id,
+            shipment,
+            providerActionId,
+            result,
+          );
+          await this.refreshShippingProviderSyncState(
+            transaction,
+            action.tenant_id,
+            shipment.shipment_id,
+          );
+          await sql`insert into shipping.shipment_timeline (
+            tenant_id, store_id, shipment_id, event_type, actor_type, data
+          ) values (
+            ${action.tenant_id}::uuid, ${shipment.store_id}::uuid, ${shipment.shipment_id}::uuid,
+            'shipping.shipment.provider_action_succeeded', 'INTEGRATION',
+            ${JSON.stringify({
+              providerActionId: action.id,
+              providerReference: providerActionId,
+              operation: shipment.operation,
+            })}::jsonb
+          )`.execute(transaction);
+        }
+
         await sql`insert into platform.audit_log (
           tenant_id, actor_type, action, resource_type, resource_id, request_id, correlation_id, metadata
         ) values (
@@ -264,6 +302,31 @@ export class ProviderActionProcessor {
           )`.execute(transaction);
         }
 
+        const shippingLink =
+          await sql<ShippingProviderLink>`update shipping.shipment_provider_actions
+          set state = 'DEAD_LETTER', completed_at = now(), updated_at = now()
+          where tenant_id = ${action.tenant_id}::uuid and provider_action_id = ${action.id}::uuid
+          returning store_id, shipment_id, operation`.execute(transaction);
+        const shipment = shippingLink.rows[0];
+        if (shipment) {
+          await sql`update shipping.shipments set provider_sync_state = 'OUT_OF_SYNC', updated_at = now()
+            where tenant_id = ${action.tenant_id}::uuid and id = ${shipment.shipment_id}::uuid`.execute(
+            transaction,
+          );
+          await sql`insert into shipping.shipment_timeline (
+            tenant_id, store_id, shipment_id, event_type, actor_type, data
+          ) values (
+            ${action.tenant_id}::uuid, ${shipment.store_id}::uuid, ${shipment.shipment_id}::uuid,
+            'shipping.shipment.provider_action_dead_lettered', 'INTEGRATION',
+            ${JSON.stringify({
+              providerActionId: action.id,
+              operation: shipment.operation,
+              errorCode: failure.code,
+              attempts: result.attempts,
+            })}::jsonb
+          )`.execute(transaction);
+        }
+
         await sql`insert into platform.dead_letters (
           tenant_id, source, event_type, source_event_id, payload, error_code, error_message, attempts
         ) values (
@@ -285,6 +348,39 @@ export class ProviderActionProcessor {
     );
   }
 
+  private async applyShippingProviderSuccess(
+    transaction: PlatformTransaction,
+    tenantId: string,
+    link: ShippingProviderLink,
+    providerActionId: string,
+    result: Record<string, unknown>,
+  ): Promise<void> {
+    if (link.operation !== 'CREATE_LABEL') return;
+    const trackingNumber = typeof result.trackingNumber === 'string' ? result.trackingNumber : null;
+    const trackingUrl = typeof result.trackingUrl === 'string' ? result.trackingUrl : null;
+    const externalShipmentId =
+      typeof result.externalShipmentId === 'string' ? result.externalShipmentId : null;
+    await sql`update shipping.shipments set
+        status = case when status = 'LABEL_PENDING' then 'LABEL_CREATED' else status end,
+        tracking_number = coalesce(${trackingNumber}, tracking_number),
+        tracking_url = coalesce(${trackingUrl}, tracking_url),
+        updated_at = now()
+      where tenant_id = ${tenantId}::uuid and id = ${link.shipment_id}::uuid`.execute(transaction);
+    if (externalShipmentId)
+      await sql`insert into shipping.provider_references (
+          tenant_id, carrier_account_id, entity_type, canonical_id, external_id, metadata
+        ) select
+          shipment.tenant_id, shipment.carrier_account_id, 'SHIPMENT', shipment.id,
+          ${externalShipmentId}, ${JSON.stringify({ providerActionId })}::jsonb
+        from shipping.shipments as shipment
+        where shipment.tenant_id = ${tenantId}::uuid
+          and shipment.id = ${link.shipment_id}::uuid
+          and shipment.carrier_account_id is not null
+        on conflict (tenant_id, carrier_account_id, entity_type, canonical_id) do update set
+          external_id = excluded.external_id, state = 'ACTIVE', metadata = excluded.metadata,
+          updated_at = now()`.execute(transaction);
+  }
+
   private async refreshOrderProviderSyncState(
     transaction: PlatformTransaction,
     tenantId: string,
@@ -304,5 +400,22 @@ export class ProviderActionProcessor {
           last_provider_sync_at = ${completedAt}::timestamptz,
           updated_at = now()
       where tenant_id = ${tenantId}::uuid and order_id = ${orderId}::uuid`.execute(transaction);
+  }
+
+  private async refreshShippingProviderSyncState(
+    transaction: PlatformTransaction,
+    tenantId: string,
+    shipmentId: string,
+  ): Promise<void> {
+    const states = await sql<{ dead_letter: number; queued: number }>`select
+        count(*) filter (where state = 'DEAD_LETTER')::integer as dead_letter,
+        count(*) filter (where state = 'QUEUED')::integer as queued
+      from shipping.shipment_provider_actions
+      where tenant_id = ${tenantId}::uuid and shipment_id = ${shipmentId}::uuid`.execute(transaction);
+    const state = states.rows[0] ?? { dead_letter: 0, queued: 0 };
+    const providerSyncState =
+      state.dead_letter > 0 ? 'OUT_OF_SYNC' : state.queued > 0 ? 'PENDING' : 'IN_SYNC';
+    await sql`update shipping.shipments set provider_sync_state = ${providerSyncState}, updated_at = now()
+      where tenant_id = ${tenantId}::uuid and id = ${shipmentId}::uuid`.execute(transaction);
   }
 }
