@@ -1,0 +1,37 @@
+name: Shipping format diagnostic
+
+on:
+  push:
+    branches:
+      - codex/shipping-foundation-20261005
+
+permissions:
+  contents: read
+
+jobs:
+  shipping-format-diff:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 9.15.5
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - name: Print exact Prettier patch
+        run: |
+          pnpm exec prettier --write \
+            apps/api/src/shipping.controller.ts \
+            apps/api/src/shipping.service.ts \
+            apps/worker/src/provider-action-processor.ts
+          git diff -- \
+            apps/api/src/shipping.controller.ts \
+            apps/api/src/shipping.service.ts \
+            apps/worker/src/provider-action-processor.ts
+          test -z "$(git status --short -- \
+            apps/api/src/shipping.controller.ts \
+            apps/api/src/shipping.service.ts \
+            apps/worker/src/provider-action-processor.ts)"
