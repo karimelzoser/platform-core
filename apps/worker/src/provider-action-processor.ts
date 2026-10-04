@@ -110,19 +110,20 @@ export class ProviderActionProcessor {
         const result = await sql<{
           connector_key: string;
           settings: Record<string, unknown>;
-          reference: string | null;
+          reference: string;
         }>`select connection.connector_key, connection.settings, secret.reference
           from integrations.provider_actions as action
           join integrations.connections as connection
             on connection.tenant_id = action.tenant_id and connection.id = action.connection_id
-          left join integrations.secret_references as secret
+          join integrations.secret_references as secret
             on secret.tenant_id = connection.tenant_id and secret.id = connection.secret_reference_id
           where action.id = ${action.id}::uuid
             and action.claimed_by = ${this.workerId}
             and connection.status in ('CONNECTED', 'DEGRADED')
-          for share`.execute(transaction);
+            and secret.state in ('ACTIVE', 'ROTATING')
+          for share of action, connection, secret`.execute(transaction);
         const route = result.rows[0];
-        if (!route?.reference) throw new Error('Provider action has no dispatchable connection');
+        if (!route) throw new Error('Provider action has no dispatchable connection');
         return {
           connectorKey: route.connector_key,
           settings: route.settings,
