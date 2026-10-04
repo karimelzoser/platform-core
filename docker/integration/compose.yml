@@ -36,10 +36,23 @@ services:
       retries: 20
     tmpfs: [/data]
 
-  temporal:
+  temporal-schema:
     image: temporalio/auto-setup:1.29.7
     depends_on:
       postgres: { condition: service_healthy }
+    entrypoint: ['/bin/bash', '-ec']
+    command:
+      - |
+        export SQL_PASSWORD='temporal-test-password'
+        temporal-sql-tool --plugin postgres12 --ep postgres -u temporal -p 5432 --db temporal setup-schema -v 0.0
+        temporal-sql-tool --plugin postgres12 --ep postgres -u temporal -p 5432 --db temporal update-schema -d /etc/temporal/schema/postgresql/v12/temporal/versioned
+        temporal-sql-tool --plugin postgres12 --ep postgres -u temporal -p 5432 --db temporal_visibility setup-schema -v 0.0
+        temporal-sql-tool --plugin postgres12 --ep postgres -u temporal -p 5432 --db temporal_visibility update-schema -d /etc/temporal/schema/postgresql/v12/visibility/versioned
+
+  temporal:
+    image: temporalio/auto-setup:1.29.7
+    depends_on:
+      temporal-schema: { condition: service_completed_successfully }
     environment:
       DB: postgres12
       DB_PORT: 5432
@@ -47,11 +60,19 @@ services:
       POSTGRES_USER: temporal
       POSTGRES_PWD: temporal-test-password
       SKIP_DB_CREATE: 'true'
+      SKIP_SCHEMA_SETUP: 'true'
+      SKIP_ADD_CUSTOM_SEARCH_ATTRIBUTES: 'true'
       DEFAULT_NAMESPACE: platform
       DEFAULT_NAMESPACE_RETENTION: 24h
       DYNAMIC_CONFIG_FILE_PATH: config/dynamicconfig/development-sql.yaml
     volumes:
       - ../../docs/production-reference/temporal-dynamicconfig.yaml:/etc/temporal/config/dynamicconfig/development-sql.yaml:ro
+    healthcheck:
+      test: ['CMD-SHELL', 'nc -z 127.0.0.1 7233']
+      interval: 3s
+      timeout: 3s
+      retries: 30
+      start_period: 10s
 
   keycloak:
     image: quay.io/keycloak/keycloak:26.8.0
