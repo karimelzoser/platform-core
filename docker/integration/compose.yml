@@ -71,10 +71,7 @@ services:
       - ../../docs/production-reference/temporal-dynamicconfig.yaml:/etc/temporal/config/dynamicconfig/development-sql.yaml:ro
     healthcheck:
       test:
-        [
-          'CMD-SHELL',
-          'temporal operator cluster health --address 127.0.0.1:7233 | grep -q SERVING',
-        ]
+        ['CMD-SHELL', 'temporal operator cluster health --address 127.0.0.1:7233 | grep -q SERVING']
       interval: 3s
       timeout: 5s
       retries: 30
