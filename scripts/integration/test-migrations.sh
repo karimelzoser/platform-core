@@ -4,6 +4,34 @@ compose='docker compose -f docker/integration/compose.yml'
 
 $compose exec -T postgres psql -U platform_migrator -d platform -v ON_ERROR_STOP=1 -f - < tests/integration/fixtures.sql
 PGPASSWORD=platform-test-app-password $compose exec -T --env PGPASSWORD postgres psql -U platform_app -d platform -v ON_ERROR_STOP=1 -f - < tests/integration/rls.sql
+PGPASSWORD=platform-test-app-password $compose exec -T --env PGPASSWORD postgres psql -U platform_app -d platform -v ON_ERROR_STOP=1 -f - <<'SQL'
+BEGIN;
+SELECT platform.set_request_context(
+  'aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa',
+  '11111111-1111-1111-1111-111111111111',
+  'test-subject-a',
+  'provider-action-worker-cleanup'
+);
+DO $$
+DECLARE affected integer;
+BEGIN
+  UPDATE integrations.provider_actions
+  SET state = 'CANCELED',
+      claimed_by = NULL,
+      claimed_at = NULL,
+      finished_at = now(),
+      updated_at = now()
+  WHERE id = 'aaaaaaaa-0000-0000-0000-000000000107'
+    AND state = 'RUNNING'
+    AND claimed_by = 'integration-test-worker';
+  GET DIAGNOSTICS affected = ROW_COUNT;
+  IF affected <> 1 THEN
+    RAISE EXCEPTION 'Provider action lease fixture cleanup expected exactly one row, updated %', affected;
+  END IF;
+END;
+$$;
+COMMIT;
+SQL
 PGPASSWORD=platform-test-app-password $compose exec -T --env PGPASSWORD postgres psql -U platform_app -d platform -v ON_ERROR_STOP=1 -f - < tests/integration/commerce-rls.sql
 
 $compose exec -T postgres psql -U platform_migrator -d platform -Atqc "SELECT to_regclass('integrations.connections'), to_regclass('integrations.webhook_subscriptions'), to_regclass('integrations.provider_actions'), to_regclass('policy.approval_requests'), to_regclass('messaging.conversations'), to_regclass('messaging.messages'), to_regclass('messaging.message_attachments'), to_regclass('messaging.media_uploads'), to_regclass('messaging.templates'), to_regclass('tickets.records'), to_regclass('tickets.comments'), to_regclass('commerce.stores'), to_regclass('commerce.products'), to_regclass('commerce.variants'), to_regclass('commerce.inventory_levels'), to_regclass('commerce.orders'), to_regclass('commerce.order_lines'), to_regclass('commerce.payments'), to_regclass('commerce.fulfillments'), to_regclass('commerce.provider_mappings'), to_regclass('commerce.order_timeline'), to_regprocedure('integrations.resolve_webhook_connection(text,uuid)'), to_regprocedure('integrations.claim_webhook_deliveries(text,integer,integer)'), to_regprocedure('integrations.claim_sync_runs(text,integer,integer)'), to_regprocedure('integrations.claim_webhook_subscriptions(text,integer,integer)'), to_regprocedure('integrations.claim_provider_actions(text,integer,integer)'), to_regprocedure('messaging.claim_outbound_messages(text,integer,integer)');" | grep -qx 'integrations.connections|integrations.webhook_subscriptions|integrations.provider_actions|policy.approval_requests|messaging.conversations|messaging.messages|messaging.message_attachments|messaging.media_uploads|messaging.templates|tickets.records|tickets.comments|commerce.stores|commerce.products|commerce.variants|commerce.inventory_levels|commerce.orders|commerce.order_lines|commerce.payments|commerce.fulfillments|commerce.provider_mappings|commerce.order_timeline|integrations.resolve_webhook_connection(text,uuid)|integrations.claim_webhook_deliveries(text,integer,integer)|integrations.claim_sync_runs(text,integer,integer)|integrations.claim_webhook_subscriptions(text,integer,integer)|integrations.claim_provider_actions(text,integer,integer)|messaging.claim_outbound_messages(text,integer,integer)'
