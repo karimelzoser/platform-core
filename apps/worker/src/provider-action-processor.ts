@@ -43,8 +43,7 @@ interface ShippingProviderLink {
 function supportsProviderAction(
   connector: Connector,
   actionType: string,
-): connector is Connector &
-  Required<Pick<Connector, 'executeAction' | 'supportedActionTypes'>> {
+): connector is Connector & Required<Pick<Connector, 'executeAction' | 'supportedActionTypes'>> {
   return (
     typeof connector.executeAction === 'function' &&
     Array.isArray(connector.supportedActionTypes) &&
@@ -99,9 +98,7 @@ export class ProviderActionProcessor {
     const route = await this.resolveRoute(action);
     const connector = this.connectors.get(route.connectorKey);
     if (!supportsProviderAction(connector, action.action_type)) {
-      throw new Error(
-        `Connector ${route.connectorKey} cannot execute this provider action`,
-      );
+      throw new Error(`Connector ${route.connectorKey} cannot execute this provider action`);
     }
 
     const result = providerActionResultSchema.parse(
@@ -114,17 +111,10 @@ export class ProviderActionProcessor {
         secretReference: route.secretReference,
       }),
     );
-    await this.recordSuccess(
-      action,
-      result.providerActionId,
-      result.result,
-      result.completedAt,
-    );
+    await this.recordSuccess(action, result.providerActionId, result.result, result.completedAt);
   }
 
-  private async resolveRoute(
-    action: ClaimedProviderAction,
-  ): Promise<ProviderActionRoute> {
+  private async resolveRoute(action: ClaimedProviderAction): Promise<ProviderActionRoute> {
     return withTenantTransaction(
       this.database,
       {
@@ -316,10 +306,7 @@ export class ProviderActionProcessor {
     );
   }
 
-  private async recordFailure(
-    action: ClaimedProviderAction,
-    error: unknown,
-  ): Promise<void> {
+  private async recordFailure(action: ClaimedProviderAction, error: unknown): Promise<void> {
     const failure = toConnectorError(error);
     await withTenantTransaction(
       this.database,
@@ -454,11 +441,7 @@ export class ProviderActionProcessor {
               connectionId: action.connection_id,
               actionType: action.action_type,
             })}::jsonb,
-            ${
-              failure.retryable
-                ? 'PROVIDER_ACTION_MAX_ATTEMPTS'
-                : 'PROVIDER_ACTION_NON_RETRYABLE'
-            },
+            ${failure.retryable ? 'PROVIDER_ACTION_MAX_ATTEMPTS' : 'PROVIDER_ACTION_NON_RETRYABLE'},
             ${failure.code},
             ${result.attempts}
           )
@@ -496,14 +479,10 @@ export class ProviderActionProcessor {
   ): Promise<void> {
     if (link.operation !== 'CREATE_LABEL') return;
 
-    const trackingNumber =
-      typeof result.trackingNumber === 'string' ? result.trackingNumber : null;
-    const trackingUrl =
-      typeof result.trackingUrl === 'string' ? result.trackingUrl : null;
+    const trackingNumber = typeof result.trackingNumber === 'string' ? result.trackingNumber : null;
+    const trackingUrl = typeof result.trackingUrl === 'string' ? result.trackingUrl : null;
     const externalShipmentId =
-      typeof result.externalShipmentId === 'string'
-        ? result.externalShipmentId
-        : null;
+      typeof result.externalShipmentId === 'string' ? result.externalShipmentId : null;
 
     await sql`
       update shipping.shipments
@@ -563,11 +542,7 @@ export class ProviderActionProcessor {
     `.execute(transaction);
     const state = states.rows[0] ?? { dead_letter: 0, queued: 0 };
     const providerSyncState =
-      state.dead_letter > 0
-        ? 'OUT_OF_SYNC'
-        : state.queued > 0
-          ? 'PENDING'
-          : 'IN_SYNC';
+      state.dead_letter > 0 ? 'OUT_OF_SYNC' : state.queued > 0 ? 'PENDING' : 'IN_SYNC';
 
     await sql`
       update commerce.order_workflows
@@ -596,11 +571,7 @@ export class ProviderActionProcessor {
     `.execute(transaction);
     const state = states.rows[0] ?? { dead_letter: 0, queued: 0 };
     const providerSyncState =
-      state.dead_letter > 0
-        ? 'OUT_OF_SYNC'
-        : state.queued > 0
-          ? 'PENDING'
-          : 'IN_SYNC';
+      state.dead_letter > 0 ? 'OUT_OF_SYNC' : state.queued > 0 ? 'PENDING' : 'IN_SYNC';
 
     await sql`
       update shipping.shipments
