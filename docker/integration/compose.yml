@@ -65,14 +65,20 @@ services:
       DEFAULT_NAMESPACE: platform
       DEFAULT_NAMESPACE_RETENTION: 24h
       DYNAMIC_CONFIG_FILE_PATH: config/dynamicconfig/development-sql.yaml
+      BIND_ON_IP: 0.0.0.0
+      TEMPORAL_ADDRESS: 127.0.0.1:7233
     volumes:
       - ../../docs/production-reference/temporal-dynamicconfig.yaml:/etc/temporal/config/dynamicconfig/development-sql.yaml:ro
     healthcheck:
-      test: ['CMD-SHELL', 'nc -z 127.0.0.1 7233']
+      test:
+        [
+          'CMD-SHELL',
+          'temporal operator cluster health --address 127.0.0.1:7233 | grep -q SERVING',
+        ]
       interval: 3s
-      timeout: 3s
+      timeout: 5s
       retries: 30
-      start_period: 10s
+      start_period: 15s
 
   keycloak:
     image: quay.io/keycloak/keycloak:26.8.0
@@ -98,7 +104,7 @@ services:
 
   opa:
     image: openpolicyagent/opa:1.20.2-static
-    command: ['run', '--server', '--addr=0.0.0.0:8181', '/policies/authorization.rego']
+    command: ['run', '--server', '--addr=0.0.0.0:8181', '/policies/authorization.rego:ro']
     volumes:
       - ../../docs/production-reference/authorization.rego:/policies/authorization.rego:ro
 
