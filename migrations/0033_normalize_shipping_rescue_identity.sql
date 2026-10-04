@@ -5,6 +5,8 @@
 BEGIN;
 
 ALTER TABLE shipping.rescue_cases
+  DROP CONSTRAINT IF EXISTS shipping_rescue_cases_shipment_order_fk,
+  DROP CONSTRAINT IF EXISTS rescue_cases_tenant_id_store_id_order_id_fkey,
   DROP COLUMN order_id;
 
 COMMIT;
