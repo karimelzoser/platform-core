@@ -38,7 +38,9 @@ export class ShippingController {
       ...(storeId ? { storeId } : {}),
       ...(status ? { status } : {}),
       ...(limit ? { limit: parseInteger(limit, 'limit', 1, 100) } : {}),
-      ...(offset ? { offset: parseInteger(offset, 'offset', 0, 1_000_000) } : {}),
+      ...(offset
+        ? { offset: parseInteger(offset, 'offset', 0, 1_000_000) }
+        : {}),
     });
   }
 
@@ -67,16 +69,24 @@ export class ShippingController {
     @Headers('x-approval-id') approvalId: string | undefined,
   ) {
     const object = parsedObject(body);
-    if (object.connectionId !== undefined) assertUuid(object.connectionId, 'connectionId');
+    if (object.connectionId !== undefined) {
+      assertUuid(object.connectionId, 'connectionId');
+    }
     const context = await this.context(authorization, tenantId, correlationId);
     this.assertPermission(context.permissions, 'shipping.shipments.manage');
     return this.shipping.createCarrierAccount(
       context,
       requireIdempotency(idempotencyKey),
       {
-        ...(typeof object.connectionId === 'string' ? { connectionId: object.connectionId } : {}),
+        ...(typeof object.connectionId === 'string'
+          ? { connectionId: object.connectionId }
+          : {}),
         carrierKey: requiredString(object.carrierKey, 'carrierKey', 100),
-        accountLabel: requiredString(object.accountLabel, 'accountLabel', 300),
+        accountLabel: requiredString(
+          object.accountLabel,
+          'accountLabel',
+          300,
+        ),
         displayName: requiredString(object.displayName, 'displayName', 300),
         metadata: optionalObject(object.metadata, 'metadata'),
       },
@@ -105,7 +115,8 @@ export class ShippingController {
         serviceCode: requiredString(object.serviceCode, 'serviceCode', 200),
         name: requiredString(object.name, 'name', 300),
         domestic: optionalBoolean(object.domestic, 'domestic') ?? true,
-        international: optionalBoolean(object.international, 'international') ?? false,
+        international:
+          optionalBoolean(object.international, 'international') ?? false,
         metadata: optionalObject(object.metadata, 'metadata'),
       },
       approvalId,
@@ -125,8 +136,12 @@ export class ShippingController {
     assertUuid(object.storeId, 'storeId');
     assertUuid(object.orderId, 'orderId');
     assertUuid(object.fulfillmentId, 'fulfillmentId');
-    if (object.carrierAccountId !== undefined) assertUuid(object.carrierAccountId, 'carrierAccountId');
-    if (object.carrierServiceId !== undefined) assertUuid(object.carrierServiceId, 'carrierServiceId');
+    if (object.carrierAccountId !== undefined) {
+      assertUuid(object.carrierAccountId, 'carrierAccountId');
+    }
+    if (object.carrierServiceId !== undefined) {
+      assertUuid(object.carrierServiceId, 'carrierServiceId');
+    }
     const context = await this.context(authorization, tenantId, correlationId);
     this.assertPermission(context.permissions, 'shipping.shipments.manage');
     return this.shipping.createShipment(
@@ -136,12 +151,23 @@ export class ShippingController {
         storeId: object.storeId,
         orderId: object.orderId,
         fulfillmentId: object.fulfillmentId,
-        ...(typeof object.carrierAccountId === 'string' ? { carrierAccountId: object.carrierAccountId } : {}),
-        ...(typeof object.carrierServiceId === 'string' ? { carrierServiceId: object.carrierServiceId } : {}),
+        ...(typeof object.carrierAccountId === 'string'
+          ? { carrierAccountId: object.carrierAccountId }
+          : {}),
+        ...(typeof object.carrierServiceId === 'string'
+          ? { carrierServiceId: object.carrierServiceId }
+          : {}),
         destination: requiredObject(object.destination, 'destination') as never,
         ...(object.declaredValueMinor === undefined
           ? {}
-          : { declaredValueMinor: requiredInteger(object.declaredValueMinor, 'declaredValueMinor', 0, Number.MAX_SAFE_INTEGER) }),
+          : {
+              declaredValueMinor: requiredInteger(
+                object.declaredValueMinor,
+                'declaredValueMinor',
+                0,
+                Number.MAX_SAFE_INTEGER,
+              ),
+            }),
         ...(typeof object.declaredValueCurrency === 'string'
           ? { declaredValueCurrency: object.declaredValueCurrency }
           : {}),
@@ -150,7 +176,11 @@ export class ShippingController {
           : {}),
         metadata: optionalObject(object.metadata, 'metadata'),
         lines: requiredArray(object.lines, 'lines') as never,
-        ...(object.packages === undefined ? {} : { packages: requiredArray(object.packages, 'packages') as never }),
+        ...(object.packages === undefined
+          ? {}
+          : {
+              packages: requiredArray(object.packages, 'packages') as never,
+            }),
       },
       approvalId,
     );
@@ -168,25 +198,49 @@ export class ShippingController {
     assertUuid(shipmentId, 'shipmentId');
     const object = parsedObject(body);
     assertUuid(object.storeId, 'storeId');
-    if (object.packageId !== undefined) assertUuid(object.packageId, 'packageId');
+    if (object.packageId !== undefined) {
+      assertUuid(object.packageId, 'packageId');
+    }
     const context = await this.context(authorization, tenantId, correlationId);
     this.assertPermission(context.permissions, 'shipping.tracking.record');
-    return this.shipping.recordTrackingEvent(context, requireIdempotency(idempotencyKey), {
-      storeId: object.storeId,
-      shipmentId,
-      ...(typeof object.packageId === 'string' ? { packageId: object.packageId } : {}),
-      eventType: requiredString(object.eventType, 'eventType', 100) as never,
-      normalizedStatus: requiredString(object.normalizedStatus, 'normalizedStatus', 100) as never,
-      ...(typeof object.rawCode === 'string' ? { rawCode: object.rawCode } : {}),
-      ...(typeof object.description === 'string' ? { description: object.description } : {}),
-      ...(typeof object.locationName === 'string' ? { locationName: object.locationName } : {}),
-      ...(typeof object.countryCode === 'string' ? { countryCode: object.countryCode } : {}),
-      occurredAt: requiredString(object.occurredAt, 'occurredAt', 100),
-      sourceType: (typeof object.sourceType === 'string' ? object.sourceType : 'INTEGRATION') as never,
-      ...(typeof object.externalEventId === 'string' ? { externalEventId: object.externalEventId } : {}),
-      dedupeKey: requiredString(object.dedupeKey, 'dedupeKey', 300),
-      data: optionalObject(object.data, 'data'),
-    });
+    return this.shipping.recordTrackingEvent(
+      context,
+      requireIdempotency(idempotencyKey),
+      {
+        storeId: object.storeId,
+        shipmentId,
+        ...(typeof object.packageId === 'string'
+          ? { packageId: object.packageId }
+          : {}),
+        eventType: requiredString(object.eventType, 'eventType', 100) as never,
+        normalizedStatus: requiredString(
+          object.normalizedStatus,
+          'normalizedStatus',
+          100,
+        ) as never,
+        ...(typeof object.rawCode === 'string'
+          ? { rawCode: object.rawCode }
+          : {}),
+        ...(typeof object.description === 'string'
+          ? { description: object.description }
+          : {}),
+        ...(typeof object.locationName === 'string'
+          ? { locationName: object.locationName }
+          : {}),
+        ...(typeof object.countryCode === 'string'
+          ? { countryCode: object.countryCode }
+          : {}),
+        occurredAt: requiredString(object.occurredAt, 'occurredAt', 100),
+        sourceType: (typeof object.sourceType === 'string'
+          ? object.sourceType
+          : 'INTEGRATION') as never,
+        ...(typeof object.externalEventId === 'string'
+          ? { externalEventId: object.externalEventId }
+          : {}),
+        dedupeKey: requiredString(object.dedupeKey, 'dedupeKey', 300),
+        data: optionalObject(object.data, 'data'),
+      },
+    );
   }
 
   @Post('shipments/:shipmentId/rescue-cases')
@@ -201,20 +255,34 @@ export class ShippingController {
     assertUuid(shipmentId, 'shipmentId');
     const object = parsedObject(body);
     assertUuid(object.storeId, 'storeId');
-    if (object.assignedActorId !== undefined) assertUuid(object.assignedActorId, 'assignedActorId');
+    if (object.assignedActorId !== undefined) {
+      assertUuid(object.assignedActorId, 'assignedActorId');
+    }
     const context = await this.context(authorization, tenantId, correlationId);
     this.assertPermission(context.permissions, 'shipping.rescue.manage');
-    return this.shipping.openRescueCase(context, requireIdempotency(idempotencyKey), {
-      storeId: object.storeId,
-      shipmentId,
-      state: (typeof object.state === 'string' ? object.state : 'OPEN') as never,
-      triggerReason: requiredString(object.triggerReason, 'triggerReason', 100) as never,
-      priority: (typeof object.priority === 'string' ? object.priority : 'MEDIUM') as never,
-      ...(typeof object.assignedActorId === 'string' ? { assignedActorId: object.assignedActorId } : {}),
-      summary: requiredString(object.summary, 'summary', 1_000),
-      ...(typeof object.dueAt === 'string' ? { dueAt: object.dueAt } : {}),
-      metadata: optionalObject(object.metadata, 'metadata'),
-    });
+    return this.shipping.openRescueCase(
+      context,
+      requireIdempotency(idempotencyKey),
+      {
+        storeId: object.storeId,
+        shipmentId,
+        state: (typeof object.state === 'string' ? object.state : 'OPEN') as never,
+        triggerReason: requiredString(
+          object.triggerReason,
+          'triggerReason',
+          100,
+        ) as never,
+        priority: (typeof object.priority === 'string'
+          ? object.priority
+          : 'MEDIUM') as never,
+        ...(typeof object.assignedActorId === 'string'
+          ? { assignedActorId: object.assignedActorId }
+          : {}),
+        summary: requiredString(object.summary, 'summary', 1_000),
+        ...(typeof object.dueAt === 'string' ? { dueAt: object.dueAt } : {}),
+        metadata: optionalObject(object.metadata, 'metadata'),
+      },
+    );
   }
 
   @Post('rescue-cases/:rescueCaseId/state')
@@ -229,21 +297,35 @@ export class ShippingController {
     assertUuid(rescueCaseId, 'rescueCaseId');
     const object = parsedObject(body);
     assertUuid(object.storeId, 'storeId');
-    if (object.assignedActorId !== undefined && object.assignedActorId !== null)
+    if (
+      object.assignedActorId !== undefined &&
+      object.assignedActorId !== null
+    ) {
       assertUuid(object.assignedActorId, 'assignedActorId');
+    }
     const context = await this.context(authorization, tenantId, correlationId);
     this.assertPermission(context.permissions, 'shipping.rescue.manage');
-    return this.shipping.updateRescueCase(context, requireIdempotency(idempotencyKey), {
-      storeId: object.storeId,
-      rescueCaseId,
-      state: requiredString(object.state, 'state', 100) as never,
-      ...(typeof object.priority === 'string' ? { priority: object.priority as never } : {}),
-      ...(object.assignedActorId === undefined
-        ? {}
-        : { assignedActorId: object.assignedActorId as string | null }),
-      ...(typeof object.summary === 'string' ? { summary: object.summary } : {}),
-      ...(object.dueAt === undefined ? {} : { dueAt: object.dueAt as string | null }),
-    });
+    return this.shipping.updateRescueCase(
+      context,
+      requireIdempotency(idempotencyKey),
+      {
+        storeId: object.storeId,
+        rescueCaseId,
+        state: requiredString(object.state, 'state', 100) as never,
+        ...(typeof object.priority === 'string'
+          ? { priority: object.priority as never }
+          : {}),
+        ...(object.assignedActorId === undefined
+          ? {}
+          : { assignedActorId: object.assignedActorId as string | null }),
+        ...(typeof object.summary === 'string'
+          ? { summary: object.summary }
+          : {}),
+        ...(object.dueAt === undefined
+          ? {}
+          : { dueAt: object.dueAt as string | null }),
+      },
+    );
   }
 
   @Post('shipments/:shipmentId/provider-actions')
@@ -267,12 +349,25 @@ export class ShippingController {
       {
         storeId: object.storeId,
         shipmentId,
-        operation: requiredString(object.operation, 'operation', 100) as never,
-        ...(typeof object.reason === 'string' ? { reason: object.reason } : {}),
-        ...(typeof object.scheduledAt === 'string' ? { scheduledAt: object.scheduledAt } : {}),
+        operation: requiredString(
+          object.operation,
+          'operation',
+          100,
+        ) as never,
+        ...(typeof object.reason === 'string'
+          ? { reason: object.reason }
+          : {}),
+        ...(typeof object.scheduledAt === 'string'
+          ? { scheduledAt: object.scheduledAt }
+          : {}),
         ...(object.destination === undefined
           ? {}
-          : { destination: requiredObject(object.destination, 'destination') as never }),
+          : {
+              destination: requiredObject(
+                object.destination,
+                'destination',
+              ) as never,
+            }),
       },
       approvalId,
     );
@@ -284,19 +379,32 @@ export class ShippingController {
     correlationId: string | undefined,
   ) {
     try {
-      return await this.authentication.resolve({ authorization, tenantId, correlationId });
+      return await this.authentication.resolve({
+        authorization,
+        tenantId,
+        correlationId,
+      });
     } catch {
-      throw new UnauthorizedException('Invalid authentication or tenant membership');
+      throw new UnauthorizedException(
+        'Invalid authentication or tenant membership',
+      );
     }
   }
 
-  private assertPermission(permissions: readonly string[], permission: string): void {
-    if (!permissions.includes(permission)) throw new ForbiddenException(`${permission} permission is required`);
+  private assertPermission(
+    permissions: readonly string[],
+    permission: string,
+  ): void {
+    if (!permissions.includes(permission)) {
+      throw new ForbiddenException(`${permission} permission is required`);
+    }
   }
 }
 
 function parsedObject(body: unknown): Record<string, unknown> {
-  if (!Buffer.isBuffer(body)) throw new BadRequestException('Shipping body must be JSON');
+  if (!Buffer.isBuffer(body)) {
+    throw new BadRequestException('Shipping body must be JSON');
+  }
   try {
     const parsed: unknown = JSON.parse(body.toString('utf8'));
     return requiredObject(parsed, 'body');
@@ -307,8 +415,9 @@ function parsedObject(body: unknown): Record<string, unknown> {
 }
 
 function requiredObject(value: unknown, field: string): Record<string, unknown> {
-  if (value === null || Array.isArray(value) || typeof value !== 'object')
+  if (value === null || Array.isArray(value) || typeof value !== 'object') {
     throw new BadRequestException(`${field} must be an object`);
+  }
   return value as Record<string, unknown>;
 }
 
@@ -317,42 +426,82 @@ function optionalObject(value: unknown, field: string): Record<string, unknown> 
 }
 
 function requiredArray(value: unknown, field: string): unknown[] {
-  if (!Array.isArray(value)) throw new BadRequestException(`${field} must be an array`);
+  if (!Array.isArray(value)) {
+    throw new BadRequestException(`${field} must be an array`);
+  }
   return value;
 }
 
-function requiredString(value: unknown, field: string, maximum: number): string {
-  if (typeof value !== 'string' || !value.trim() || value.length > maximum)
-    throw new BadRequestException(`${field} must contain between 1 and ${String(maximum)} characters`);
+function requiredString(
+  value: unknown,
+  field: string,
+  maximum: number,
+): string {
+  if (
+    typeof value !== 'string' ||
+    !value.trim() ||
+    value.length > maximum
+  ) {
+    throw new BadRequestException(
+      `${field} must contain between 1 and ${String(maximum)} characters`,
+    );
+  }
   return value.trim();
 }
 
 function optionalBoolean(value: unknown, field: string): boolean | undefined {
   if (value === undefined) return undefined;
-  if (typeof value !== 'boolean') throw new BadRequestException(`${field} must be a boolean`);
+  if (typeof value !== 'boolean') {
+    throw new BadRequestException(`${field} must be a boolean`);
+  }
   return value;
 }
 
-function requiredInteger(value: unknown, field: string, minimum: number, maximum: number): number {
-  if (typeof value !== 'number' || !Number.isInteger(value) || value < minimum || value > maximum)
-    throw new BadRequestException(`${field} must be a whole number between ${String(minimum)} and ${String(maximum)}`);
+function requiredInteger(
+  value: unknown,
+  field: string,
+  minimum: number,
+  maximum: number,
+): number {
+  if (
+    typeof value !== 'number' ||
+    !Number.isInteger(value) ||
+    value < minimum ||
+    value > maximum
+  ) {
+    throw new BadRequestException(
+      `${field} must be a whole number between ${String(minimum)} and ${String(maximum)}`,
+    );
+  }
   return value;
 }
 
-function parseInteger(value: string, field: string, minimum: number, maximum: number): number {
+function parseInteger(
+  value: string,
+  field: string,
+  minimum: number,
+  maximum: number,
+): number {
   return requiredInteger(Number(value), field, minimum, maximum);
 }
 
 function requireIdempotency(value: string | undefined): string {
-  if (!value?.trim()) throw new BadRequestException('Idempotency-Key is required');
-  if (value.length > 200) throw new BadRequestException('Idempotency-Key is too long');
+  if (!value?.trim()) {
+    throw new BadRequestException('Idempotency-Key is required');
+  }
+  if (value.length > 200) {
+    throw new BadRequestException('Idempotency-Key is too long');
+  }
   return value.trim();
 }
 
 function assertUuid(value: unknown, field: string): asserts value is string {
   if (
     typeof value !== 'string' ||
-    !/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/iu.test(value)
-  )
+    !/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/iu.test(
+      value,
+    )
+  ) {
     throw new BadRequestException(`${field} must be a UUID`);
+  }
 }
