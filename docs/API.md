@@ -39,6 +39,18 @@ All non-public endpoints require a valid Keycloak access token, an active applic
 | `GET /v1/integrations/connections/:id/webhook-subscriptions`                             | Implemented | Tenant-scoped provider-webhook subscription state                                                          |
 | `POST /v1/integrations/connections/:id/webhook-subscriptions`                            | Implemented | HIGH-risk, approval-aware desired registration; worker calls the provider only after commit                |
 | `POST /v1/integrations/connections/:id/webhook-subscriptions/:subscriptionId/unregister` | Implemented | HIGH-risk, approval-aware desired unregistration with post-commit provider call                            |
+| `GET /v1/commerce/stores`                                                                | Implemented | Tenant-scoped commerce store catalog used by protected order operations                                    |
+| `GET /v1/commerce/orders`                                                                | Implemented | RLS-scoped order list with bounded pagination and optional store/customer filters                          |
+| `GET /v1/commerce/orders/:orderId`                                                       | Implemented | Canonical order detail plus the current tenant-scoped workflow state                                       |
+| `POST /v1/commerce/orders/:orderId/confirmation/request`                                 | Implemented | Idempotent customer-confirmation request command with audit/outbox evidence                                |
+| `POST /v1/commerce/orders/:orderId/confirmation/response`                                | Implemented | Idempotent confirmed/declined response transition with payment/fulfillment guards                          |
+| `POST /v1/commerce/orders/:orderId/duplicates/evaluate`                                  | Implemented | Idempotent bounded duplicate evaluation against recent canonical tenant orders                             |
+| `POST /v1/commerce/orders/:orderId/duplicates/:candidateId/review`                       | Implemented | Idempotent dismiss/confirm-duplicate review command                                                        |
+| `POST /v1/commerce/orders/:orderId/modifications`                                        | Implemented | Idempotent guarded canonical order-modification request                                                    |
+| `POST /v1/commerce/orders/:orderId/modifications/:requestId/review`                      | Implemented | Idempotent approve/reject modification review and guarded application                                      |
+| `POST /v1/commerce/orders/:orderId/cancellations`                                        | Implemented | Idempotent cancellation request with canonical order state guards                                          |
+| `POST /v1/commerce/orders/:orderId/cancellations/:requestId/review`                      | Implemented | Approval-aware cancellation review with fulfillment/payment safety guards                                 |
+| `POST /v1/commerce/orders/:orderId/provider-actions`                                     | Implemented | Post-commit typed CONFIRM/MODIFY/CANCEL provider action dispatch through a tenant connection              |
 
 Responses for operational failures include a correlation ID. Secret values never appear in API responses or logs.
 
@@ -56,3 +68,11 @@ Customer merge takes `targetCustomerId` and a non-empty `reason` in the JSON
 body; the path customer is always the source. It requires
 `crm.customers.merge`, an exact approved action digest, and `Idempotency-Key`.
 The source becomes historical (`MERGED`) and points at the still-active target.
+
+Order workflow writes require `Idempotency-Key` and the operation-specific
+commerce permission. Cancellation and direct provider execution remain subject
+to policy-driven approval when OPA requires it. Provider calls are never made
+inside the canonical Commerce transaction: the command persists a typed
+provider action, and the worker resolves an active tenant connection/secret,
+executes the connector after commit, then records sync state, audit, timeline,
+and outbox evidence transactionally.
