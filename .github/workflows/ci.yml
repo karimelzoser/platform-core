@@ -140,3 +140,37 @@ jobs:
         with: { fetch-depth: 0 }
       - uses: trufflesecurity/trufflehog@main
         with: { extra_args: --only-verified }
+  format-shipping-routing-repair:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+        with: { version: 9.15.5 }
+      - uses: actions/setup-node@v4
+        with: { node-version: 22, cache: pnpm }
+      - run: pnpm install --frozen-lockfile
+      - name: Repair command contract fields
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+          path = Path('apps/api/src/shipping-routing.service.ts')
+          text = path.read_text()
+          start = text.index("        audit: {\n          beforeState: async (_input, transaction) => {")
+          end = text.index("          afterState: (_input, result) => result,\n        },", start)
+          replacement = "        audit: { afterState: (_input, result) => result },"
+          text = text[:start] + replacement + text[end + len("          afterState: (_input, result) => result,\n        },"):]
+          text = text.replace('context.actor.type', 'context.actorType')
+          text = text.replace('context.actor.id ?? null', 'context.actorId ?? null')
+          path.write_text(text)
+          PY
+      - name: Format repaired sources
+        run: pnpm exec prettier --write apps/api/src/shipping-routing.service.ts apps/api/src/shipping-routing.controller.ts
+      - name: Build repaired API
+        run: pnpm --filter @platform/api... build
+      - uses: actions/upload-artifact@v4
+        with:
+          name: shipping-routing-repair-${{ github.run_id }}
+          path: |
+            apps/api/src/shipping-routing.service.ts
+            apps/api/src/shipping-routing.controller.ts
+          if-no-files-found: error
