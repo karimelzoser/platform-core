@@ -17,7 +17,9 @@ test.describe('Shipping disposable development preview', () => {
 
     await login(page);
     await page.goto('/shipping');
-    await expect(page.getByRole('heading', { name: 'Shipping operations', exact: true })).toBeVisible();
+    await expect(
+      page.getByRole('heading', { name: 'Shipping operations', exact: true }),
+    ).toBeVisible();
     await expect(page.getByText('DEV-PREVIEW-1001', { exact: true }).first()).toBeVisible();
     await expect(page.getByText('PREVIEW-1001', { exact: true }).first()).toBeVisible();
     const shipmentRow = page.getByRole('link').filter({ hasText: 'DEV-PREVIEW-1001' });
@@ -98,7 +100,9 @@ async function assertResponsiveAndRtl(page: Page, testInfo: TestInfo) {
   await page.goto('/shipping');
   await expect(page.locator('html')).toHaveAttribute('dir', 'ltr');
   await page.setViewportSize({ width: 768, height: 1024 });
-  await expect(page.getByRole('heading', { name: 'Shipping operations', exact: true })).toBeVisible();
+  await expect(
+    page.getByRole('heading', { name: 'Shipping operations', exact: true }),
+  ).toBeVisible();
   await assertNoHorizontalOverflow(page);
   await page.setViewportSize({ width: 390, height: 844 });
   await expect(page.getByText('DEV-PREVIEW-1001', { exact: true }).first()).toBeVisible();
