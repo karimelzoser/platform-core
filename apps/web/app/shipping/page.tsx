@@ -37,7 +37,7 @@ export default async function ShippingPage() {
 
   return (
     <main className="customers-page">
-      <header className="customer-profile-header">
+      <header className="customer-profile-header shipping-routing-header">
         <div>
           <p className="eyebrow">SHIPPING</p>
           <h1>Shipping operations</h1>
@@ -46,6 +46,9 @@ export default async function ShippingPage() {
             and delivery rescue from one tenant-isolated workspace.
           </p>
         </div>
+        <Link className="shipping-routing-back" href="/shipping/routing">
+          Routing intelligence
+        </Link>
       </header>
 
       {shipments.kind === 'success' ? (
