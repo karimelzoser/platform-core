@@ -283,8 +283,8 @@ async function main(): Promise<void> {
       `.execute(transaction);
       return result.rows[0];
     });
-    assert.equal(shipmentState?.status, 'LABEL_PENDING');
-    assert.equal(shipmentState?.provider_sync_state, 'PENDING');
+    assert.equal(shipmentState.status, 'LABEL_PENDING');
+    assert.equal(shipmentState.provider_sync_state, 'PENDING');
 
     const registry = new ConnectorRegistry();
     registry.register(developmentApiConnector);
@@ -319,15 +319,15 @@ async function main(): Promise<void> {
         reference: referenceRows.rows[0],
       };
     });
-    assert.equal(providerState.shipment?.status, 'LABEL_CREATED');
-    assert.equal(providerState.shipment?.provider_sync_state, 'IN_SYNC');
-    assert.match(providerState.shipment?.tracking_number ?? '', /^DEV-[A-F0-9]{14}$/u);
+    assert.equal(providerState.shipment.status, 'LABEL_CREATED');
+    assert.equal(providerState.shipment.provider_sync_state, 'IN_SYNC');
+    assert.match(providerState.shipment.tracking_number ?? '', /^DEV-[A-F0-9]{14}$/u);
     assert.match(
-      providerState.shipment?.tracking_url ?? '',
+      providerState.shipment.tracking_url ?? '',
       /^https:\/\/example\.invalid\/tracking\//u,
     );
-    assert.equal(providerState.action?.state, 'SUCCEEDED');
-    assert.ok(providerState.reference?.external_id);
+    assert.equal(providerState.action.state, 'SUCCEEDED');
+    assert.ok(providerState.reference.external_id);
 
     const packageId = shipment.result.packageIds[0];
     assert.ok(packageId);
@@ -369,8 +369,8 @@ async function main(): Promise<void> {
       `.execute(transaction);
       return result.rows[0];
     });
-    assert.equal(shipmentState?.status, 'IN_TRANSIT');
-    assert.equal(shipmentState?.package_status, 'IN_TRANSIT');
+    assert.equal(shipmentState.status, 'IN_TRANSIT');
+    assert.equal(shipmentState.package_status, 'IN_TRANSIT');
 
     const failedDeliveryInput = {
       storeId: store.result.storeId,
@@ -413,8 +413,8 @@ async function main(): Promise<void> {
       `.execute(transaction);
       return result.rows[0];
     });
-    assert.equal(rescueState?.state, 'CONTACT_REQUIRED');
-    assert.equal(rescueState?.priority, 'HIGH');
+    assert.equal(rescueState.state, 'CONTACT_REQUIRED');
+    assert.equal(rescueState.priority, 'HIGH');
 
     await shipping.updateRescueCase(contextA, 'shipping-lifecycle-rescue-contacted', {
       storeId: store.result.storeId,
@@ -435,8 +435,8 @@ async function main(): Promise<void> {
       `.execute(transaction);
       return result.rows[0];
     });
-    assert.equal(rescueState?.state, 'RESOLVED');
-    assert.ok(rescueState?.resolved_at);
+    assert.equal(rescueState.state, 'RESOLVED');
+    assert.ok(rescueState.resolved_at);
 
     assert.equal(await shipping.getShipment(contextB, shipment.result.shipmentId), undefined);
     await withTenantTransaction(database, contextB, async (transaction) => {
@@ -467,10 +467,10 @@ async function main(): Promise<void> {
         sql<{ count: string }>`select count(*)::text as count from platform.outbox_events
           where resource_id = ${shipment.result.shipmentId}`.execute(transaction),
       ]);
-      assert.equal(Number(trackingCount.rows[0]?.count ?? 0), 3);
-      assert.ok(Number(timelineCount.rows[0]?.count ?? 0) >= 7);
-      assert.ok(Number(auditCount.rows[0]?.count ?? 0) >= 3);
-      assert.ok(Number(outboxCount.rows[0]?.count ?? 0) >= 3);
+      assert.equal(Number(trackingCount.rows[0].count), 3);
+      assert.ok(Number(timelineCount.rows[0].count) >= 7);
+      assert.ok(Number(auditCount.rows[0].count) >= 3);
+      assert.ok(Number(outboxCount.rows[0].count) >= 3);
     });
 
     process.stdout.write('Shipping lifecycle integration passed.\n');
