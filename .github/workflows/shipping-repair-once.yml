@@ -2,7 +2,8 @@ name: Shipping repair once
 
 on:
   push:
-    branches: [codex/shipping-foundation-20261005]
+    branches:
+      - codex/shipping-foundation-20261005
 
 permissions:
   contents: write
@@ -16,9 +17,12 @@ jobs:
           ref: codex/shipping-foundation-20261005
           fetch-depth: 0
       - uses: pnpm/action-setup@v4
-        with: { version: 9.15.5 }
+        with:
+          version: 9.15.5
       - uses: actions/setup-node@v4
-        with: { node-version: 22, cache: pnpm }
+        with:
+          node-version: 22
+          cache: pnpm
       - run: pnpm install --frozen-lockfile
       - name: Keep tracking-event fixtures append-only
         run: |
@@ -26,75 +30,32 @@ jobs:
           from pathlib import Path
           path = Path('tests/integration/shipping-routing-rls.sql')
           text = path.read_text()
-          old = '''INSERT INTO shipping.tracking_events (
-  tenant_id, store_id, shipment_id, package_id,
-  event_type, normalized_status, occurred_at, dedupe_key, data
-) VALUES
-  (
-    'aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa',
-    'aaaaaaaa-0000-0000-0000-000000000501',
-    'aaaaaaaa-0000-0000-0000-000000000603',
-    'aaaaaaaa-0000-0000-0000-000000000604',
-    'OUT_FOR_DELIVERY',
-    'OUT_FOR_DELIVERY',
-    now(),
-    'routing-out-for-delivery-1',
-    '{"fixture":"routing"}'::jsonb
-  ),
-  (
-    'aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa',
-    'aaaaaaaa-0000-0000-0000-000000000501',
-    'aaaaaaaa-0000-0000-0000-000000000603',
-    'aaaaaaaa-0000-0000-0000-000000000604',
-    'DELIVERY_FAILED',
-    'EXCEPTION',
-    now() + interval '1 minute',
-    'routing-delivery-failed-1',
-    '{"fixture":"routing"}'::jsonb
-  );
-
-UPDATE shipping.tracking_events
-SET raw_code = 'CUSTOMER_UNAVAILABLE',
-    description = 'Customer unavailable during delivery'
-WHERE tenant_id = 'aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa'
-  AND shipment_id = 'aaaaaaaa-0000-0000-0000-000000000603'
-  AND dedupe_key = 'routing-delivery-failed-1';'''
-          new = '''INSERT INTO shipping.tracking_events (
-  tenant_id, store_id, shipment_id, package_id,
-  event_type, normalized_status, raw_code, description,
-  occurred_at, dedupe_key, data
-) VALUES
-  (
-    'aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa',
-    'aaaaaaaa-0000-0000-0000-000000000501',
-    'aaaaaaaa-0000-0000-0000-000000000603',
-    'aaaaaaaa-0000-0000-0000-000000000604',
-    'OUT_FOR_DELIVERY',
-    'OUT_FOR_DELIVERY',
-    NULL,
-    NULL,
-    now(),
-    'routing-out-for-delivery-1',
-    '{"fixture":"routing"}'::jsonb
-  ),
-  (
-    'aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa',
-    'aaaaaaaa-0000-0000-0000-000000000501',
-    'aaaaaaaa-0000-0000-0000-000000000603',
-    'aaaaaaaa-0000-0000-0000-000000000604',
-    'DELIVERY_FAILED',
-    'EXCEPTION',
-    'CUSTOMER_UNAVAILABLE',
-    'Customer unavailable during delivery',
-    now() + interval '1 minute',
-    'routing-delivery-failed-1',
-    '{"fixture":"routing"}'::jsonb
-  );'''
-          if old not in text:
-              raise SystemExit('expected tracking-events fixture block not found')
-          path.write_text(text.replace(old, new))
+          text = text.replace(
+              '  event_type, normalized_status, occurred_at, dedupe_key, data\n) VALUES',
+              '  event_type, normalized_status, raw_code, description,\n  occurred_at, dedupe_key, data\n) VALUES',
+              1,
+          )
+          text = text.replace(
+              "    'OUT_FOR_DELIVERY',\n    'OUT_FOR_DELIVERY',\n    now(),",
+              "    'OUT_FOR_DELIVERY',\n    'OUT_FOR_DELIVERY',\n    NULL,\n    NULL,\n    now(),",
+              1,
+          )
+          text = text.replace(
+              "    'DELIVERY_FAILED',\n    'EXCEPTION',\n    now() + interval '1 minute',",
+              "    'DELIVERY_FAILED',\n    'EXCEPTION',\n    'CUSTOMER_UNAVAILABLE',\n    'Customer unavailable during delivery',\n    now() + interval '1 minute',",
+              1,
+          )
+          marker = '\nUPDATE shipping.tracking_events\nSET raw_code = '
+          start = text.find(marker)
+          if start == -1:
+              raise SystemExit('tracking-events UPDATE fixture block not found')
+          end = text.find('\n\nDO $$', start)
+          if end == -1:
+              raise SystemExit('tracking-events UPDATE fixture block terminator not found')
+          text = text[:start] + text[end:]
+          path.write_text(text)
           PY
-      - name: Format all flagged sources
+      - name: Format and verify repository
         run: |
           pnpm exec prettier --write \
             apps/web/app/shipping/routing/page.tsx \
