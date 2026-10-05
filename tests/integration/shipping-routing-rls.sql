@@ -221,7 +221,8 @@ $$;
 
 INSERT INTO shipping.tracking_events (
   tenant_id, store_id, shipment_id, package_id,
-  event_type, normalized_status, occurred_at, dedupe_key, data
+  event_type, normalized_status, raw_code, description,
+  occurred_at, dedupe_key, data
 ) VALUES
   (
     'aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa',
@@ -230,6 +231,8 @@ INSERT INTO shipping.tracking_events (
     'aaaaaaaa-0000-0000-0000-000000000604',
     'OUT_FOR_DELIVERY',
     'OUT_FOR_DELIVERY',
+    NULL,
+    NULL,
     now(),
     'routing-out-for-delivery-1',
     '{"fixture":"routing"}'::jsonb
@@ -241,17 +244,13 @@ INSERT INTO shipping.tracking_events (
     'aaaaaaaa-0000-0000-0000-000000000604',
     'DELIVERY_FAILED',
     'EXCEPTION',
+    'CUSTOMER_UNAVAILABLE',
+    'Customer unavailable during delivery',
     now() + interval '1 minute',
     'routing-delivery-failed-1',
     '{"fixture":"routing"}'::jsonb
   );
 
-UPDATE shipping.tracking_events
-SET raw_code = 'CUSTOMER_UNAVAILABLE',
-    description = 'Customer unavailable during delivery'
-WHERE tenant_id = 'aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa'
-  AND shipment_id = 'aaaaaaaa-0000-0000-0000-000000000603'
-  AND dedupe_key = 'routing-delivery-failed-1';
 
 DO $$
 BEGIN

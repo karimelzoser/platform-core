@@ -64,9 +64,7 @@ interface RoutingCatalog {
   serviceZoneRules: ServiceZoneRuleItem[];
 }
 
-type LoadResult =
-  | { kind: 'success'; catalog: RoutingCatalog }
-  | { kind: 'error'; detail: string };
+type LoadResult = { kind: 'success'; catalog: RoutingCatalog } | { kind: 'error'; detail: string };
 
 export default async function ShippingRoutingPage() {
   const result = await loadRoutingCatalog();
@@ -212,9 +210,7 @@ function RoutingWorkspace({ catalog }: { catalog: RoutingCatalog }) {
                       {membership.location_name ?? membership.location_code ?? 'Unknown'}
                     </small>
                   </div>
-                  <RoutingStatus
-                    value={membership.include_descendants ? 'DESCENDANTS' : 'EXACT'}
-                  />
+                  <RoutingStatus value={membership.include_descendants ? 'DESCENDANTS' : 'EXACT'} />
                 </div>
               ))}
             </div>
@@ -315,7 +311,9 @@ function RoutingMetric({ label, value }: { label: string; value: string }) {
 
 function RoutingStatus({ value }: { value: string }) {
   const normalized = value.toLowerCase().replaceAll('_', '-');
-  return <span className={`shipping-routing-status shipping-routing-status-${normalized}`}>{value}</span>;
+  return (
+    <span className={`shipping-routing-status shipping-routing-status-${normalized}`}>{value}</span>
+  );
 }
 
 function EmptyState({ text }: { text: string }) {

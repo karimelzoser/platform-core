@@ -64,7 +64,9 @@ test.describe('Shipping disposable development preview', () => {
 
     await login(page);
     await page.goto('/shipping/routing');
-    await expect(page.getByRole('heading', { name: 'Routing intelligence', exact: true })).toBeVisible();
+    await expect(
+      page.getByRole('heading', { name: 'Routing intelligence', exact: true }),
+    ).toBeVisible();
     await expect(page.getByText('Egypt', { exact: true })).toBeVisible();
     await expect(page.getByText('Cairo Governorate', { exact: true })).toBeVisible();
     await expect(page.getByText('Cairo Metro', { exact: true }).first()).toBeVisible();
