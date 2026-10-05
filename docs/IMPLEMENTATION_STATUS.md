@@ -1,7 +1,7 @@
 # Implementation Status
 
 **Last updated:** 2026-10-05  
-**Main baseline:** `dc41d3b84bc931e6ff42c17abce68430226e30d2` (`Architecture: align full platform execution plan (#4)`)  
+**Full execution architecture baseline:** `dc41d3b84bc931e6ff42c17abce68430226e30d2` (`Architecture: align full platform execution plan (#4)`)  
 **Functional code baseline before active Shipping PR:** `f4758ddcebec6e531596a7f70040c83f0b06b29a` (`Order workflows and hosted preview (#2)`)  
 **Active functional workstream:** PR #3 `codex/shipping-foundation-20261005`  
 **Active Shipping head:** `aeeb313829ff33a58955d70c18383b40b7567f0b`  
