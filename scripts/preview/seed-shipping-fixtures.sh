@@ -186,7 +186,7 @@ INSERT INTO shipping.delivery_attempts (
   'CUSTOMER_UNREACHABLE', 'Customer could not be reached at the delivery address',
   '{"previewFixture":true}'::jsonb
 )
-ON CONFLICT (id) DO UPDATE SET
+ON CONFLICT (tenant_id, shipment_id, attempt_number) DO UPDATE SET
   state = EXCLUDED.state,
   attempted_at = EXCLUDED.attempted_at,
   next_attempt_at = EXCLUDED.next_attempt_at,
