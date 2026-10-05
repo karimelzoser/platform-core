@@ -104,10 +104,52 @@
   .shipping-detail-grid > .customer-card-wide {
     grid-column: auto;
   }
+
+  .shipping-list-row {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 0.9rem 1rem;
+    min-width: 0;
+    padding: 1rem 0;
+    align-items: start;
+  }
+
+  .order-table-head.shipping-list-row {
+    display: none;
+  }
+
+  .shipping-list-row > span {
+    min-width: 0;
+  }
+
+  .shipping-list-row > span::before {
+    content: attr(data-label);
+    display: block;
+    margin-bottom: 0.25rem;
+    color: var(--muted);
+    font-size: 0.68rem;
+    font-weight: 700;
+    letter-spacing: 0.05em;
+    text-transform: uppercase;
+  }
+
+  .shipping-list-row > span:nth-child(5) {
+    grid-column: 1 / -1;
+  }
+}
+
+@media (max-width: 480px) {
+  .shipping-list-row {
+    grid-template-columns: 1fr;
+  }
+
+  .shipping-list-row > span:nth-child(5) {
+    grid-column: auto;
+  }
 }
 
 html[dir='rtl'] .shipping-detail-grid,
 html[dir='rtl'] .shipping-summary-strip,
-html[dir='rtl'] .shipping-timeline {
+html[dir='rtl'] .shipping-timeline,
+html[dir='rtl'] .shipping-list-row {
   text-align: right;
 }
