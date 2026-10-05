@@ -140,3 +140,29 @@ jobs:
         with: { fetch-depth: 0 }
       - uses: trufflesecurity/trufflehog@main
         with: { extra_args: --only-verified }
+  format-repair-artifact:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+        with: { version: 9.15.5 }
+      - uses: actions/setup-node@v4
+        with: { node-version: 22, cache: pnpm }
+      - run: pnpm install --frozen-lockfile
+      - name: Format affected planning documents
+        run: >-
+          pnpm exec prettier --write
+          docs/CODEX_EXECUTION_QUEUE.md
+          docs/EVENT_CATALOG.md
+          docs/IMPLEMENTATION_STATUS.md
+          docs/THREAT_MODEL.md
+      - name: Upload formatted planning documents
+        uses: actions/upload-artifact@v4
+        with:
+          name: formatted-planning-docs-${{ github.run_id }}
+          path: |
+            docs/CODEX_EXECUTION_QUEUE.md
+            docs/EVENT_CATALOG.md
+            docs/IMPLEMENTATION_STATUS.md
+            docs/THREAT_MODEL.md
+          if-no-files-found: error
