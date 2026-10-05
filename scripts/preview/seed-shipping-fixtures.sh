@@ -201,13 +201,12 @@ WHERE tenant_id = 'cccccccc-cccc-cccc-cccc-cccccccccccc'::uuid
   AND id <> 'eeeeeeee-0000-0000-0000-000000000009'::uuid;
 
 INSERT INTO shipping.rescue_cases (
-  id, tenant_id, store_id, order_id, shipment_id, state, trigger_reason,
+  id, tenant_id, store_id, shipment_id, state, trigger_reason,
   priority, summary, due_at, resolved_at, metadata
 ) VALUES (
   'eeeeeeee-0000-0000-0000-000000000009',
   'cccccccc-cccc-cccc-cccc-cccccccccccc',
   'dddddddd-0000-0000-0000-000000000001',
-  'dddddddd-0000-0000-0000-000000000002',
   'eeeeeeee-0000-0000-0000-000000000004',
   'CONTACT_REQUIRED', 'CUSTOMER_UNREACHABLE', 'HIGH',
   'Contact buyer to verify delivery details and arrange a safe retry.',
