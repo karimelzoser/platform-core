@@ -104,7 +104,8 @@ export default async function ShipmentPage({
   const shipment = detail.shipment;
   const [access, order] = await Promise.all([loadAccess(), loadOrder(shipment.order_id)]);
   const permissions = access.kind === 'success' ? access.access.permissions : [];
-  const orderNumber = order.kind === 'success' ? order.summary.order.orderNumber : shipment.order_id;
+  const orderNumber =
+    order.kind === 'success' ? order.summary.order.orderNumber : shipment.order_id;
   const destination = shipment.destination;
   const activeRescue = detail.rescueCases.find(
     (rescue) => !['RESOLVED', 'CANCELLED'].includes(rescue.state),
@@ -162,14 +163,18 @@ export default async function ShipmentPage({
           <address className="shipping-address">
             <strong>{stringField(destination, 'name') ?? 'Recipient not supplied'}</strong>
             <span>{stringField(destination, 'line1') ?? 'Address line unavailable'}</span>
-            {stringField(destination, 'line2') ? <span>{stringField(destination, 'line2')}</span> : null}
+            {stringField(destination, 'line2') ? (
+              <span>{stringField(destination, 'line2')}</span>
+            ) : null}
             <span>
               {[stringField(destination, 'city'), stringField(destination, 'region')]
                 .filter(Boolean)
                 .join(', ')}
             </span>
             <span>{stringField(destination, 'countryCode') ?? 'Country unavailable'}</span>
-            {stringField(destination, 'phone') ? <span>{stringField(destination, 'phone')}</span> : null}
+            {stringField(destination, 'phone') ? (
+              <span>{stringField(destination, 'phone')}</span>
+            ) : null}
           </address>
           <p>
             <Link href={`/orders/${shipment.order_id}`}>Open canonical order</Link>
@@ -204,7 +209,7 @@ export default async function ShipmentPage({
                   <span>{item.tracking_number ?? 'Tracking inherited from shipment'}</span>
                   <small>
                     {item.status}
-                    {item.weight_grams === null ? '' : ` · ${item.weight_grams} g`}
+                    {item.weight_grams === null ? '' : ` · ${String(item.weight_grams)} g`}
                   </small>
                 </li>
               ))}
