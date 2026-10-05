@@ -41,7 +41,7 @@ export default async function ShippingPage() {
         <div>
           <p className="eyebrow">SHIPPING</p>
           <h1>Shipping operations</h1>
-          <p>
+          <p dir="auto">
             Carrier-neutral fulfillment visibility, tracking normalization, provider sync health,
             and delivery rescue from one tenant-isolated workspace.
           </p>
@@ -74,19 +74,21 @@ export default async function ShippingPage() {
                   href={`/shipping/${shipment.id}`}
                   key={shipment.id}
                 >
-                  <span>
-                    <strong>{shipment.trackingNumber ?? 'Tracking pending'}</strong>
-                    <small>{shipment.id}</small>
+                  <span data-label="Shipment">
+                    <strong dir="ltr">{shipment.trackingNumber ?? 'Tracking pending'}</strong>
+                    <small dir="ltr">{shipment.id}</small>
                   </span>
-                  <span>
-                    <strong>{orderNumbers.get(shipment.orderId) ?? shipment.orderId}</strong>
-                    <small>{shipment.fulfillmentId}</small>
+                  <span data-label="Order">
+                    <strong dir="ltr">
+                      {orderNumbers.get(shipment.orderId) ?? shipment.orderId}
+                    </strong>
+                    <small dir="ltr">{shipment.fulfillmentId}</small>
                   </span>
-                  <span>
+                  <span data-label="State">
                     <Status value={shipment.status} />
                   </span>
-                  <span>{shipment.providerSyncState}</span>
-                  <span>
+                  <span data-label="Provider sync">{shipment.providerSyncState}</span>
+                  <span data-label="Delivery / updated" dir="auto">
                     {shipment.estimatedDeliveryAt
                       ? `ETA ${new Date(shipment.estimatedDeliveryAt).toLocaleString()}`
                       : 'ETA unavailable'}
