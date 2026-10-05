@@ -37,6 +37,8 @@ import { IntegrationsController } from './integrations.controller.js';
 import { IntegrationService } from './integration.service.js';
 import { ShippingController } from './shipping.controller.js';
 import { ShippingService } from './shipping.service.js';
+import { ShippingRoutingController } from './shipping-routing.controller.js';
+import { ShippingRoutingService } from './shipping-routing.service.js';
 
 @Controller('health')
 class HealthController {
@@ -76,6 +78,7 @@ function createRuntimeConnectorRegistry(): ConnectorRegistry {
     IntegrationsController,
     CommerceController,
     ShippingController,
+    ShippingRoutingController,
   ],
   providers: [
     ApiDatabaseService,
@@ -110,6 +113,12 @@ function createRuntimeConnectorRegistry(): ConnectorRegistry {
       provide: ShippingService,
       useFactory: (database: ApiDatabaseService, commands: CommandExecutor) =>
         new ShippingService(database.database, commands),
+      inject: [ApiDatabaseService, CommandExecutor],
+    },
+    {
+      provide: ShippingRoutingService,
+      useFactory: (database: ApiDatabaseService, commands: CommandExecutor) =>
+        new ShippingRoutingService(database.database, commands),
       inject: [ApiDatabaseService, CommandExecutor],
     },
     {
