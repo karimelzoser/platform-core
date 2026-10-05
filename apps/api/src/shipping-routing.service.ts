@@ -78,9 +78,7 @@ const upsertCarrierLocationMappingSchema = z.object({
   externalName: z.string().trim().min(1).max(500).optional(),
   metadata: metadataSchema,
 });
-export type UpsertCarrierLocationMappingInput = z.input<
-  typeof upsertCarrierLocationMappingSchema
->;
+export type UpsertCarrierLocationMappingInput = z.input<typeof upsertCarrierLocationMappingSchema>;
 
 const setServiceZoneRuleSchema = z.object({
   carrierAccountId: uuidSchema,
@@ -268,7 +266,11 @@ export class ShippingRoutingService {
               ${JSON.stringify(validated.metadata)}::jsonb
             )
           `.execute(transaction);
-          await this.recalculateTenantShipments(transaction, context.tenantId, validated.countryCode);
+          await this.recalculateTenantShipments(
+            transaction,
+            context.tenantId,
+            validated.countryCode,
+          );
           return { locationId };
         },
       },
@@ -350,8 +352,7 @@ export class ShippingRoutingService {
         event: {
           type: 'shipping.zone.location_assigned',
           data: () => validated,
-          dedupeKey: () =>
-            `shipping:zone-location:${validated.zoneId}:${validated.locationId}`,
+          dedupeKey: () => `shipping:zone-location:${validated.zoneId}:${validated.locationId}`,
         },
         audit: { afterState: () => validated },
         execute: async (transaction) => {
@@ -578,7 +579,12 @@ export class ShippingRoutingService {
         },
         audit: { afterState: (_input, result) => result },
         execute: async (transaction) => {
-          await this.assertShipment(transaction, context.tenantId, validated.storeId, validated.shipmentId);
+          await this.assertShipment(
+            transaction,
+            context.tenantId,
+            validated.storeId,
+            validated.shipmentId,
+          );
           await sql`
             select shipping.refresh_shipment_routing(
               ${context.tenantId}::uuid,
@@ -644,24 +650,14 @@ export class ShippingRoutingService {
           dedupeKey: () =>
             `shipping:shipment:address-reviewed:${validated.shipmentId}:${idempotencyKey.trim()}`,
         },
-        audit: {
-          beforeState: async (_input, transaction) => {
-            const current = await this.loadShipmentRouting(
-              transaction,
-              context.tenantId,
-              validated.shipmentId,
-            );
-            return {
-              normalizedDestination: current.normalized_destination,
-              validationState: current.address_validation_state,
-              confidence: toNumber(current.address_validation_confidence),
-              zoneId: current.zone_id,
-            };
-          },
-          afterState: (_input, result) => result,
-        },
+        audit: { afterState: (_input, result) => result },
         execute: async (transaction) => {
-          await this.assertShipment(transaction, context.tenantId, validated.storeId, validated.shipmentId);
+          await this.assertShipment(
+            transaction,
+            context.tenantId,
+            validated.storeId,
+            validated.shipmentId,
+          );
           await this.assertReviewedHierarchy(transaction, context.tenantId, validated);
 
           await sql`
@@ -966,7 +962,12 @@ export class ShippingRoutingService {
       input.cityLocationId,
       input.districtLocationId,
     ].filter((value): value is string => Boolean(value));
-    const rows = await sql<{ id: string; parent_id: string | null; level: string; country_code: string }>`
+    const rows = await sql<{
+      id: string;
+      parent_id: string | null;
+      level: string;
+      country_code: string;
+    }>`
       select id, parent_id, level, country_code
       from shipping.locations
       where tenant_id = ${tenantId}::uuid
@@ -1045,8 +1046,8 @@ export class ShippingRoutingService {
         ${storeId}::uuid,
         ${shipmentId}::uuid,
         'shipping.shipment.address_normalized',
-        ${context.actor.type},
-        ${context.actor.id ?? null}::uuid,
+        ${context.actorType},
+        ${context.actorId ?? null}::uuid,
         ${JSON.stringify(data)}::jsonb
       )
     `.execute(transaction);

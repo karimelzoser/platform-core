@@ -133,19 +133,15 @@ export class ShippingRoutingController {
     assertUuid(object.locationId, 'locationId');
     const context = await this.context(authorization, tenantId, correlationId);
     this.assertPermission(context.permissions, 'shipping.shipments.manage');
-    return this.routing.upsertCarrierLocationMapping(
-      context,
-      requireIdempotency(idempotencyKey),
-      {
-        carrierAccountId: object.carrierAccountId,
-        locationId: object.locationId,
-        externalCode: requiredString(object.externalCode, 'externalCode', 300),
-        ...(typeof object.externalName === 'string'
-          ? { externalName: requiredString(object.externalName, 'externalName', 500) }
-          : {}),
-        metadata: optionalObject(object.metadata, 'metadata'),
-      },
-    );
+    return this.routing.upsertCarrierLocationMapping(context, requireIdempotency(idempotencyKey), {
+      carrierAccountId: object.carrierAccountId,
+      locationId: object.locationId,
+      externalCode: requiredString(object.externalCode, 'externalCode', 300),
+      ...(typeof object.externalName === 'string'
+        ? { externalName: requiredString(object.externalName, 'externalName', 500) }
+        : {}),
+      metadata: optionalObject(object.metadata, 'metadata'),
+    });
   }
 
   @Post('service-zone-rules')
@@ -185,11 +181,10 @@ export class ShippingRoutingController {
     assertUuid(object.storeId, 'storeId');
     const context = await this.context(authorization, tenantId, correlationId);
     this.assertPermission(context.permissions, 'shipping.shipments.manage');
-    return this.routing.recalculateShipmentRouting(
-      context,
-      requireIdempotency(idempotencyKey),
-      { storeId: object.storeId, shipmentId },
-    );
+    return this.routing.recalculateShipmentRouting(context, requireIdempotency(idempotencyKey), {
+      storeId: object.storeId,
+      shipmentId,
+    });
   }
 
   @Post('shipments/:shipmentId/review')
@@ -344,9 +339,7 @@ function requireIdempotency(value: string | undefined): string {
 function assertUuid(value: unknown, field: string): asserts value is string {
   if (
     typeof value !== 'string' ||
-    !/^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/iu.test(
-      value,
-    )
+    !/^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/iu.test(value)
   ) {
     throw new BadRequestException(`${field} must be a UUID`);
   }
