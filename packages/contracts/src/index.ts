@@ -66,6 +66,33 @@ export const operationalErrorSchema = z.object({
 
 export type OperationalError = z.infer<typeof operationalErrorSchema>;
 
+export const structuredLogSchema = z.object({
+  timestamp: z.string().datetime(),
+  level: z.enum(['debug', 'info', 'warn', 'error']),
+  event: z.string().regex(/^[a-z][a-z0-9_.-]{2,127}$/),
+  service: z.string().min(1).max(100),
+  tenantId: z.string().uuid().optional(),
+  requestId: z.string().min(1).max(300),
+  correlationId: z.string().min(1).max(300),
+  causationId: z.string().min(1).max(300).optional(),
+  traceId: z.string().regex(/^[0-9a-f]{32}$/).optional(),
+  spanId: z.string().regex(/^[0-9a-f]{16}$/).optional(),
+  resource: z
+    .object({
+      type: z.string().regex(/^[a-z][a-z0-9_.-]{0,127}$/),
+      id: z.string().min(1).max(300),
+    })
+    .optional(),
+  attributes: boundedDimensionsSchema.default({}),
+  error: operationalErrorSchema.optional(),
+});
+
+export type StructuredLog = z.infer<typeof structuredLogSchema>;
+
+export function encodeStructuredLog(entry: StructuredLog): string {
+  return JSON.stringify(structuredLogSchema.parse(entry));
+}
+
 export const eventEnvelopeSchema = z.object({
   id: z.string().uuid(),
   type: z.string().min(3),
