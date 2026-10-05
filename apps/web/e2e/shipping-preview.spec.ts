@@ -104,13 +104,16 @@ async function assertResponsiveAndRtl(page: Page, testInfo: TestInfo) {
     page.getByRole('heading', { name: 'Shipping operations', exact: true }),
   ).toBeVisible();
   await assertNoHorizontalOverflow(page);
+  await assertShippingTableFits(page);
   await page.setViewportSize({ width: 390, height: 844 });
   await expect(page.getByText('DEV-PREVIEW-1001', { exact: true }).first()).toBeVisible();
   await assertNoHorizontalOverflow(page);
+  await assertShippingTableFits(page);
   await page.getByRole('button', { name: 'العربية · RTL' }).click();
   await expect(page.locator('html')).toHaveAttribute('dir', 'rtl');
   await expect(page.locator('html')).toHaveAttribute('lang', 'ar');
   await assertNoHorizontalOverflow(page);
+  await assertShippingTableFits(page);
   const screenshot = testInfo.outputPath('shipping-mobile-rtl.png');
   await page.screenshot({ path: screenshot, fullPage: true });
   await testInfo.attach('shipping-mobile-rtl', { path: screenshot, contentType: 'image/png' });
@@ -126,4 +129,10 @@ async function assertNoHorizontalOverflow(page: Page) {
       ),
     )
     .toBe(true);
+}
+
+async function assertShippingTableFits(page: Page) {
+  const table = page.getByRole('table', { name: 'Shipments' });
+  await expect(table).toBeVisible();
+  await expect.poll(() => table.evaluate((element) => element.scrollWidth <= element.clientWidth)).toBe(true);
 }
