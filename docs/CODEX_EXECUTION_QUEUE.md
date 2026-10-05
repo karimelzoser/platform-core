@@ -3,8 +3,7 @@
 This is the authoritative execution ledger. `COMPLETE` is reserved for a verified
 repository/release gate, not for the existence of a schema, endpoint, or page.
 
-The full dependency model is defined in `PLATFORM_EXECUTION_BLUEPRINT.md` and ADR
-0004. `WORK_PLAN.md` defines the program order. This file tells the implementation
+The full dependency model is defined in `PLATFORM_EXECUTION_BLUEPRINT.md` and ADR 0004. `WORK_PLAN.md` defines the program order. This file tells the implementation
 agent what to execute now.
 
 Invariant: unless `BLOCKED` contains the only remaining mandatory work, `CURRENT`
