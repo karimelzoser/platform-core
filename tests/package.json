@@ -5,7 +5,7 @@
   "type": "module",
   "scripts": {
     "typecheck": "tsc --noEmit -p tsconfig.json",
-    "test:integration": "tsx integration/messaging-lifecycle.ts && tsx integration/ticket-lifecycle.ts && tsx integration/crm-lifecycle.ts && tsx integration/commerce-lifecycle.ts && tsx integration/order-workflow-lifecycle.ts && tsx integration/shipping-lifecycle.ts"
+    "test:integration": "tsx integration/messaging-lifecycle.ts && tsx integration/ticket-lifecycle.ts && tsx integration/crm-lifecycle.ts && tsx integration/commerce-lifecycle.ts && tsx integration/order-workflow-lifecycle.ts && tsx integration/shipping-lifecycle.ts && tsx integration/shipping-routing-lifecycle.ts"
   },
   "dependencies": {
     "@platform/authorization": "workspace:*",
