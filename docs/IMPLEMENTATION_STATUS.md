@@ -1,11 +1,12 @@
 # Implementation Status
 
 **Last updated:** 2026-10-05  
-**Main baseline:** `f4758ddcebec6e531596a7f70040c83f0b06b29a` (`Order workflows and hosted preview (#2)`)  
+**Main baseline:** `dc41d3b84bc931e6ff42c17abce68430226e30d2` (`Architecture: align full platform execution plan (#4)`)  
+**Functional code baseline before active Shipping PR:** `f4758ddcebec6e531596a7f70040c83f0b06b29a` (`Order workflows and hosted preview (#2)`)  
 **Active functional workstream:** PR #3 `codex/shipping-foundation-20261005`  
 **Active Shipping head:** `aeeb313829ff33a58955d70c18383b40b7567f0b`  
 **Shipping CI:** GitHub Actions run #337 — `success`  
-**Architecture-plan branch:** `architecture/full-execution-plan-20261005`  
+**Full execution architecture:** merged to `main` via PR #4  
 **Release status:** IN PROGRESS — not a release candidate.
 
 `CODEX_EXECUTION_QUEUE.md` is the authoritative execution ledger.
@@ -108,7 +109,8 @@ Key corrections now reflected in the authoritative plan:
 
 PR #3 is open, draft and mergeable at head
 `aeeb313829ff33a58955d70c18383b40b7567f0b`. GitHub Actions run #337 completed
-successfully.
+successfully. Its PR description has been synchronized with the full execution
+architecture merged by PR #4.
 
 The PR already contains substantial provider-neutral Shipping scope including
 carrier accounts/services, shipments/line allocation, packages, normalized
@@ -117,9 +119,7 @@ append-only timeline, API/service, provider result handling, operational UI,
 worker integration, RLS/relationship migrations, lifecycle tests and browser
 acceptance.
 
-The PR body is stale relative to its actual implementation because it still says
-service/API, provider-result handling, UI and lifecycle/browser tests are pending.
-Before Shipping is declared complete, the workstream must also reconcile the full
+Before Shipping is declared complete, the workstream must reconcile the full
 module catalog and close or explicitly justify the remaining canonical
 location/address/zone/carrier-mapping requirements:
 
