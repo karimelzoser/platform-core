@@ -4,7 +4,9 @@ import {
   approvalActionDigest,
   boundedDimensionsSchema,
   correlationContextSchema,
+  encodeStructuredLog,
   operationalErrorSchema,
+  structuredLogSchema,
   usageRecordSchema,
 } from './index.js';
 
@@ -55,6 +57,37 @@ void test('correlation and operational errors expose bounded safe context', () =
       safeDetails: { provider: 'development-api', attempt: 2 },
     }).success,
     true,
+  );
+});
+
+void test('structured observability stays correlated, machine-readable and bounded', () => {
+  const entry = {
+    timestamp: '2026-10-06T00:00:00.000Z',
+    level: 'error' as const,
+    event: 'provider_action.processing_failed',
+    service: 'worker',
+    tenantId: 'aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa',
+    requestId: 'req-provider-action-1',
+    correlationId: 'cor-provider-action-1',
+    traceId: 'a'.repeat(32),
+    spanId: 'b'.repeat(16),
+    resource: { type: 'provider_action', id: 'action-1' },
+    attributes: { connector_key: 'development-api', retryable: true },
+    error: {
+      code: 'PROVIDER_TIMEOUT',
+      category: 'TIMEOUT' as const,
+      retryable: true,
+      correlationId: 'cor-provider-action-1',
+      safeDetails: { provider: 'development-api' },
+    },
+  };
+
+  assert.equal(structuredLogSchema.safeParse(entry).success, true);
+  assert.deepEqual(JSON.parse(encodeStructuredLog(entry)), entry);
+  assert.equal(
+    structuredLogSchema.safeParse({ ...entry, attributes: { nested: { raw_payload: 'nope' } } })
+      .success,
+    false,
   );
 });
 
