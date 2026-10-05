@@ -48,34 +48,34 @@ Separate trust boundaries include:
 
 ## Primary threats and controls
 
-| Threat | Control | Required verification |
-| --- | --- | --- |
-| Cross-tenant BOLA/IDOR | Membership authorization, tenant-qualified relationships, transaction-local PostgreSQL RLS | Two-tenant read/write/list/search/direct-ID/relationship/export/event/worker/Temporal/AI/RAG tests |
-| Privilege escalation | DB-owned permissions, protected system roles, OPA, scoped actor types | Role mutation, inactive/suspended membership, service/automation/admin actor tests |
-| Approval substitution/replay | Digest-bound immutable action/resource/input, expiry and one-time execution | Changed-payload, expired/reused/concurrent approval rejection |
-| OPA outage bypass | Typed OPA client fails closed for protected writes | Outage contract and recovery tests |
-| Unsafe customer reconciliation | HIGH-risk approval, stable locking/RLS/history | Cross-tenant, conflict, rollback and concurrent merge tests |
-| Forged/replayed webhook | Provider signature/timestamp verification, account mapping, persisted dedupe | Signature/replay/duplicate/oversize tests |
-| Credential disclosure | Opaque secret refs, narrow resolution boundary, sanitized logs/audit | Secret scan, log/dead-letter review, rotation tests |
-| Provider call inside DB transaction | Desired intent committed first, worker/Temporal connector execution after commit | Contract/integration test proving network adapter is not invoked before commit |
-| SSRF / arbitrary provider calls | Typed connectors, URL validation, private/metadata network restrictions, no arbitrary AI/automation HTTP | URL/redirect/DNS/private-range tests |
-| Automation privilege abuse | Canonical typed actions, execution-time RBAC/OPA/approval, immutable published versions | Publisher/executor scope, retry/idempotency, forbidden action tests |
-| Untrusted code execution | No arbitrary SQL/shell/JavaScript/Python; typed action graph only | Schema/action allowlist tests and malicious graph fixtures |
-| Configuration compiler privilege abuse | Declarative allowlisted blueprints, schema/dependency validation, diff, approval, canonical apply | Malicious input, changed candidate/approval invalidation, tenant isolation |
-| Simulation causes real side effects | Separate non-mutating evaluator/planner; no provider network/canonical outbox/business mutation | Network/provider call denial and DB mutation/outbox absence tests |
-| Malicious blueprint/template supply chain | Versioned approved registry, integrity/review, no arbitrary executable content | Unknown/deprecated/tampered version rejection |
-| AI prompt injection/action abuse | Typed tool schemas, tenant/resource context, RBAC, OPA, approvals, audit | Prompt injection, unauthorized tool, changed payload, cross-tenant tests |
-| Cross-tenant RAG/data exfiltration | Tenant/access filtering before retrieval context reaches model | Retrieval isolation, inaccessible-source/citation tests |
-| Model/provider data leakage | Minimum necessary context, provider policy/configuration, bounded telemetry | Sensitive-data eval fixtures and telemetry review |
-| Campaign duplicate/consent violation | Frozen audience/recipient IDs, consent/suppression snapshot, idempotent send | Retry duplicate prevention and suppression/opt-out tests |
-| Billing/usage tampering or double count | Append-only/idempotent usage identity, tenant scope, source correlation | Retry/replay/tenant isolation and billing reconciliation tests |
-| API-key misuse | One-way hash, scopes, expiry/revoke/rotate, rate limits | Scope/tenant/revoke/expiry tests |
-| Outbound webhook leakage | Tenant-scoped subscription, signing, canonical event filtering, bounded payload | Cross-tenant destination/subscription/signature tests |
-| Admin support abuse | Explicit platform-admin identity, scoped privileged commands/views, immutable audit | Unauthorized admin, cross-tenant support action and audit completeness tests |
-| Custom Data permission bypass | RLS + table/field/row/operation permission checks | Direct ID, relationship, export, AI/automation bypass tests |
-| Upload/media abuse | Size/MIME/ownership checks, opaque IDs, safe filenames/storage | Polyglot/spoofed MIME, cross-tenant download, oversized file tests |
-| Data-retention/deletion corruption | Versioned governance workflow, legal/audit retention exceptions, scoped cleanup | Deletion/anonymization/export/retention lifecycle tests |
-| Backup data exposure | Access-controlled encrypted operational process, no production dump in repo/tests | Restore procedure review, artifact handling and secret scan |
+| Threat                                    | Control                                                                                                  | Required verification                                                                              |
+| ----------------------------------------- | -------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------- |
+| Cross-tenant BOLA/IDOR                    | Membership authorization, tenant-qualified relationships, transaction-local PostgreSQL RLS               | Two-tenant read/write/list/search/direct-ID/relationship/export/event/worker/Temporal/AI/RAG tests |
+| Privilege escalation                      | DB-owned permissions, protected system roles, OPA, scoped actor types                                    | Role mutation, inactive/suspended membership, service/automation/admin actor tests                 |
+| Approval substitution/replay              | Digest-bound immutable action/resource/input, expiry and one-time execution                              | Changed-payload, expired/reused/concurrent approval rejection                                      |
+| OPA outage bypass                         | Typed OPA client fails closed for protected writes                                                       | Outage contract and recovery tests                                                                 |
+| Unsafe customer reconciliation            | HIGH-risk approval, stable locking/RLS/history                                                           | Cross-tenant, conflict, rollback and concurrent merge tests                                        |
+| Forged/replayed webhook                   | Provider signature/timestamp verification, account mapping, persisted dedupe                             | Signature/replay/duplicate/oversize tests                                                          |
+| Credential disclosure                     | Opaque secret refs, narrow resolution boundary, sanitized logs/audit                                     | Secret scan, log/dead-letter review, rotation tests                                                |
+| Provider call inside DB transaction       | Desired intent committed first, worker/Temporal connector execution after commit                         | Contract/integration test proving network adapter is not invoked before commit                     |
+| SSRF / arbitrary provider calls           | Typed connectors, URL validation, private/metadata network restrictions, no arbitrary AI/automation HTTP | URL/redirect/DNS/private-range tests                                                               |
+| Automation privilege abuse                | Canonical typed actions, execution-time RBAC/OPA/approval, immutable published versions                  | Publisher/executor scope, retry/idempotency, forbidden action tests                                |
+| Untrusted code execution                  | No arbitrary SQL/shell/JavaScript/Python; typed action graph only                                        | Schema/action allowlist tests and malicious graph fixtures                                         |
+| Configuration compiler privilege abuse    | Declarative allowlisted blueprints, schema/dependency validation, diff, approval, canonical apply        | Malicious input, changed candidate/approval invalidation, tenant isolation                         |
+| Simulation causes real side effects       | Separate non-mutating evaluator/planner; no provider network/canonical outbox/business mutation          | Network/provider call denial and DB mutation/outbox absence tests                                  |
+| Malicious blueprint/template supply chain | Versioned approved registry, integrity/review, no arbitrary executable content                           | Unknown/deprecated/tampered version rejection                                                      |
+| AI prompt injection/action abuse          | Typed tool schemas, tenant/resource context, RBAC, OPA, approvals, audit                                 | Prompt injection, unauthorized tool, changed payload, cross-tenant tests                           |
+| Cross-tenant RAG/data exfiltration        | Tenant/access filtering before retrieval context reaches model                                           | Retrieval isolation, inaccessible-source/citation tests                                            |
+| Model/provider data leakage               | Minimum necessary context, provider policy/configuration, bounded telemetry                              | Sensitive-data eval fixtures and telemetry review                                                  |
+| Campaign duplicate/consent violation      | Frozen audience/recipient IDs, consent/suppression snapshot, idempotent send                             | Retry duplicate prevention and suppression/opt-out tests                                           |
+| Billing/usage tampering or double count   | Append-only/idempotent usage identity, tenant scope, source correlation                                  | Retry/replay/tenant isolation and billing reconciliation tests                                     |
+| API-key misuse                            | One-way hash, scopes, expiry/revoke/rotate, rate limits                                                  | Scope/tenant/revoke/expiry tests                                                                   |
+| Outbound webhook leakage                  | Tenant-scoped subscription, signing, canonical event filtering, bounded payload                          | Cross-tenant destination/subscription/signature tests                                              |
+| Admin support abuse                       | Explicit platform-admin identity, scoped privileged commands/views, immutable audit                      | Unauthorized admin, cross-tenant support action and audit completeness tests                       |
+| Custom Data permission bypass             | RLS + table/field/row/operation permission checks                                                        | Direct ID, relationship, export, AI/automation bypass tests                                        |
+| Upload/media abuse                        | Size/MIME/ownership checks, opaque IDs, safe filenames/storage                                           | Polyglot/spoofed MIME, cross-tenant download, oversized file tests                                 |
+| Data-retention/deletion corruption        | Versioned governance workflow, legal/audit retention exceptions, scoped cleanup                          | Deletion/anonymization/export/retention lifecycle tests                                            |
+| Backup data exposure                      | Access-controlled encrypted operational process, no production dump in repo/tests                        | Restore procedure review, artifact handling and secret scan                                        |
 
 ## High-risk business operations
 
