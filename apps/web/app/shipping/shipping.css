@@ -1,0 +1,113 @@
+.shipping-summary-strip {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(170px, 1fr));
+  gap: 0.75rem;
+  margin: 1rem 0 1.25rem;
+}
+
+.shipping-list-row {
+  grid-template-columns:
+    minmax(180px, 1.1fr) minmax(170px, 0.9fr) minmax(150px, 0.8fr) minmax(150px, 0.8fr)
+    minmax(180px, 1fr);
+}
+
+.shipping-status-exception {
+  border-color: color-mix(in srgb, #9d3029 44%, var(--line));
+  background: color-mix(in srgb, #9d3029 7%, white);
+  color: #7e241f;
+}
+
+.shipping-detail-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 1rem;
+  margin-top: 1rem;
+}
+
+.shipping-detail-grid > .customer-card-wide {
+  grid-column: 1 / -1;
+}
+
+.shipping-address {
+  display: grid;
+  gap: 0.2rem;
+  font-style: normal;
+  line-height: 1.55;
+}
+
+.shipping-timeline {
+  display: grid;
+  gap: 0;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.shipping-timeline li {
+  display: grid;
+  grid-template-columns: 0.8rem minmax(0, 1fr);
+  gap: 0.8rem;
+  position: relative;
+  padding-bottom: 1rem;
+}
+
+.shipping-timeline li::before {
+  content: '';
+  width: 0.62rem;
+  height: 0.62rem;
+  margin-top: 0.35rem;
+  border: 2px solid var(--accent);
+  border-radius: 999px;
+  background: white;
+}
+
+.shipping-timeline li:not(:last-child)::after {
+  content: '';
+  position: absolute;
+  inset-inline-start: 0.27rem;
+  top: 1rem;
+  bottom: 0;
+  width: 1px;
+  background: var(--line);
+}
+
+.shipping-timeline strong,
+.shipping-timeline span,
+.shipping-timeline small {
+  display: block;
+  overflow-wrap: anywhere;
+}
+
+.shipping-timeline span,
+.shipping-timeline small {
+  margin-top: 0.15rem;
+  color: var(--muted);
+}
+
+.shipping-rescue-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.55rem;
+  margin-top: 0.8rem;
+}
+
+.shipping-tracking-link {
+  color: var(--accent);
+  overflow-wrap: anywhere;
+}
+
+@media (max-width: 820px) {
+  .shipping-detail-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .shipping-detail-grid > .customer-card-wide {
+    grid-column: auto;
+  }
+}
+
+html[dir='rtl'] .shipping-detail-grid,
+html[dir='rtl'] .shipping-summary-strip,
+html[dir='rtl'] .shipping-timeline {
+  text-align: right;
+}
