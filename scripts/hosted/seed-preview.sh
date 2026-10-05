@@ -18,5 +18,6 @@ run_embedded_sql() {
 
 run_embedded_sql scripts/preview/seed.sh
 run_embedded_sql scripts/preview/seed-integration-fixtures.sh
+run_embedded_sql scripts/preview/seed-shipping-fixtures.sh
 
 printf '%s\n' 'PRENEURA hosted preview fixtures verified.'

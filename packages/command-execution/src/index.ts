@@ -356,7 +356,10 @@ export class CommandExecutor {
       ${context.correlationId}, ${context.requestId}, ${context.actorType}, ${context.actorId}::uuid,
       ${resource.type}, ${resource.id}, ${JSON.stringify(definition.event.data(input, result))}::jsonb,
       ${definition.event.dedupeKey?.(input, result) ?? null}
-    )`.execute(transaction);
+    )
+    on conflict (tenant_id, dedupe_key)
+    where dedupe_key is not null
+    do nothing`.execute(transaction);
   }
 
   private async completeIdempotency(

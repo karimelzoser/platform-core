@@ -1,0 +1,305 @@
+.shipping-routing-page {
+  display: grid;
+  gap: 1.25rem;
+}
+
+.shipping-routing-header {
+  align-items: flex-start;
+  display: flex;
+  gap: 1rem;
+  justify-content: space-between;
+}
+
+.shipping-routing-back {
+  align-items: center;
+  border: 1px solid var(--line, #d8dee8);
+  border-radius: 0.75rem;
+  color: inherit;
+  display: inline-flex;
+  font-weight: 650;
+  min-height: 2.75rem;
+  padding: 0.65rem 0.9rem;
+  text-decoration: none;
+  transition:
+    background 140ms ease,
+    border-color 140ms ease,
+    transform 140ms ease;
+  white-space: nowrap;
+}
+
+.shipping-routing-back:hover {
+  background: color-mix(in srgb, currentColor 5%, transparent);
+  border-color: color-mix(in srgb, currentColor 28%, transparent);
+  transform: translateY(-1px);
+}
+
+.shipping-routing-back:focus-visible {
+  outline: 3px solid color-mix(in srgb, currentColor 24%, transparent);
+  outline-offset: 3px;
+}
+
+.shipping-routing-summary {
+  display: grid;
+  gap: 0.75rem;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+}
+
+.shipping-routing-metric {
+  background: var(--surface, #ffffff);
+  border: 1px solid var(--line, #d8dee8);
+  border-radius: 1rem;
+  display: grid;
+  gap: 0.35rem;
+  min-height: 6.25rem;
+  padding: 1rem;
+}
+
+.shipping-routing-metric small,
+.shipping-routing-stack-row small,
+.shipping-routing-row small {
+  color: var(--muted, #64748b);
+  display: block;
+  font-size: 0.76rem;
+  line-height: 1.45;
+  overflow-wrap: anywhere;
+}
+
+.shipping-routing-metric strong {
+  align-self: end;
+  font-size: clamp(1.25rem, 2vw, 1.75rem);
+  line-height: 1.05;
+}
+
+.shipping-routing-grid {
+  display: grid;
+  gap: 1rem;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.shipping-routing-card {
+  background: var(--surface, #ffffff);
+  border: 1px solid var(--line, #d8dee8);
+  border-radius: 1rem;
+  min-width: 0;
+  overflow: hidden;
+}
+
+.shipping-routing-card-wide {
+  grid-column: 1 / -1;
+}
+
+.shipping-routing-card-heading {
+  align-items: flex-start;
+  border-bottom: 1px solid var(--line, #d8dee8);
+  display: flex;
+  gap: 1rem;
+  justify-content: space-between;
+  padding: 1rem 1.1rem;
+}
+
+.shipping-routing-card-heading h2 {
+  font-size: 1rem;
+  line-height: 1.25;
+  margin: 0.15rem 0 0;
+}
+
+.shipping-routing-count {
+  align-items: center;
+  background: color-mix(in srgb, currentColor 6%, transparent);
+  border-radius: 999px;
+  display: inline-flex;
+  font-size: 0.75rem;
+  font-variant-numeric: tabular-nums;
+  font-weight: 700;
+  justify-content: center;
+  min-height: 1.75rem;
+  min-width: 1.75rem;
+  padding: 0 0.55rem;
+}
+
+.shipping-routing-table {
+  display: grid;
+  min-width: 0;
+}
+
+.shipping-routing-row {
+  align-items: center;
+  border-bottom: 1px solid color-mix(in srgb, var(--line, #d8dee8) 75%, transparent);
+  display: grid;
+  gap: 0.9rem;
+  grid-template-columns: minmax(7rem, 0.75fr) minmax(10rem, 1.35fr) minmax(8rem, 1fr) minmax(
+      9rem,
+      1.25fr
+    );
+  min-width: 0;
+  padding: 0.85rem 1.1rem;
+}
+
+.shipping-routing-row:last-child {
+  border-bottom: 0;
+}
+
+.shipping-routing-row > span {
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
+.shipping-routing-row-head {
+  background: color-mix(in srgb, currentColor 3%, transparent);
+  color: var(--muted, #64748b);
+  font-size: 0.72rem;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+.shipping-routing-stack {
+  display: grid;
+}
+
+.shipping-routing-stack-row {
+  align-items: center;
+  border-bottom: 1px solid color-mix(in srgb, var(--line, #d8dee8) 75%, transparent);
+  display: flex;
+  gap: 1rem;
+  justify-content: space-between;
+  min-width: 0;
+  padding: 0.9rem 1.1rem;
+}
+
+.shipping-routing-stack-row:last-child {
+  border-bottom: 0;
+}
+
+.shipping-routing-stack-row > div:first-child {
+  min-width: 0;
+}
+
+.shipping-routing-stack-meta {
+  align-items: flex-end;
+  display: grid;
+  flex: 0 0 auto;
+  gap: 0.35rem;
+  justify-items: end;
+}
+
+.shipping-routing-stack-meta > span:last-child {
+  color: var(--muted, #64748b);
+  font-size: 0.72rem;
+}
+
+.shipping-routing-status {
+  align-items: center;
+  background: color-mix(in srgb, currentColor 7%, transparent);
+  border: 1px solid color-mix(in srgb, currentColor 14%, transparent);
+  border-radius: 999px;
+  display: inline-flex;
+  font-size: 0.68rem;
+  font-weight: 750;
+  line-height: 1;
+  min-height: 1.65rem;
+  padding: 0.3rem 0.5rem;
+  white-space: nowrap;
+}
+
+.shipping-routing-status-allowed,
+.shipping-routing-status-active,
+.shipping-routing-status-matched {
+  background: rgba(22, 163, 74, 0.1);
+  border-color: rgba(22, 163, 74, 0.2);
+  color: #15803d;
+}
+
+.shipping-routing-status-blocked,
+.shipping-routing-status-unsupported {
+  background: rgba(220, 38, 38, 0.09);
+  border-color: rgba(220, 38, 38, 0.18);
+  color: #b91c1c;
+}
+
+.shipping-routing-status-manual-review,
+.shipping-routing-status-ambiguous,
+.shipping-routing-status-stale {
+  background: rgba(217, 119, 6, 0.1);
+  border-color: rgba(217, 119, 6, 0.2);
+  color: #b45309;
+}
+
+.shipping-routing-empty {
+  color: var(--muted, #64748b);
+  margin: 0;
+  padding: 1.15rem;
+}
+
+@media (max-width: 960px) {
+  .shipping-routing-summary {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .shipping-routing-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .shipping-routing-card-wide {
+    grid-column: auto;
+  }
+}
+
+@media (max-width: 720px) {
+  .shipping-routing-header {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .shipping-routing-back {
+    justify-content: center;
+    width: 100%;
+  }
+
+  .shipping-routing-summary {
+    grid-template-columns: 1fr 1fr;
+  }
+
+  .shipping-routing-row-head {
+    display: none;
+  }
+
+  .shipping-routing-row {
+    align-items: start;
+    gap: 0.65rem;
+    grid-template-columns: 1fr 1fr;
+  }
+
+  .shipping-routing-row > span::before {
+    color: var(--muted, #64748b);
+    content: attr(data-label);
+    display: block;
+    font-size: 0.65rem;
+    font-weight: 700;
+    letter-spacing: 0.04em;
+    margin-bottom: 0.2rem;
+    text-transform: uppercase;
+  }
+}
+
+@media (max-width: 480px) {
+  .shipping-routing-summary,
+  .shipping-routing-row {
+    grid-template-columns: 1fr;
+  }
+
+  .shipping-routing-stack-row {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+
+  .shipping-routing-stack-meta {
+    align-items: start;
+    justify-items: start;
+  }
+}
+
+[dir='rtl'] .shipping-routing-stack-meta {
+  align-items: start;
+  justify-items: start;
+}
