@@ -1,0 +1,27 @@
+name: Shipping format diagnostic
+
+on:
+  push:
+    branches:
+      - codex/shipping-foundation-20261005
+
+permissions:
+  contents: read
+
+jobs:
+  prettier-diff:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 9.15.5
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - name: Print exact Prettier diff
+        run: |
+          pnpm exec prettier --write apps/web/app/shipping/page.tsx
+          git diff -- apps/web/app/shipping/page.tsx
