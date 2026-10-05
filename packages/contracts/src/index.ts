@@ -34,8 +34,14 @@ export const correlationContextSchema = z.object({
   requestId: z.string().min(1).max(300),
   correlationId: z.string().min(1).max(300),
   causationId: z.string().min(1).max(300).optional(),
-  traceId: z.string().regex(/^[0-9a-f]{32}$/).optional(),
-  spanId: z.string().regex(/^[0-9a-f]{16}$/).optional(),
+  traceId: z
+    .string()
+    .regex(/^[0-9a-f]{32}$/)
+    .optional(),
+  spanId: z
+    .string()
+    .regex(/^[0-9a-f]{16}$/)
+    .optional(),
 });
 
 export type CorrelationContext = z.infer<typeof correlationContextSchema>;
@@ -75,8 +81,14 @@ export const structuredLogSchema = z.object({
   requestId: z.string().min(1).max(300),
   correlationId: z.string().min(1).max(300),
   causationId: z.string().min(1).max(300).optional(),
-  traceId: z.string().regex(/^[0-9a-f]{32}$/).optional(),
-  spanId: z.string().regex(/^[0-9a-f]{16}$/).optional(),
+  traceId: z
+    .string()
+    .regex(/^[0-9a-f]{32}$/)
+    .optional(),
+  spanId: z
+    .string()
+    .regex(/^[0-9a-f]{16}$/)
+    .optional(),
   resource: z
     .object({
       type: z.string().regex(/^[a-z][a-z0-9_.-]{0,127}$/),
@@ -119,9 +131,7 @@ export const meterDefinitionSchema = z.object({
   retryCreatesUnit: z.boolean(),
   mayBeBillable: z.boolean(),
   providerCostApplies: z.boolean(),
-  allowedDimensions: z
-    .array(z.string().regex(/^[a-z][a-z0-9_.-]{0,63}$/))
-    .max(32),
+  allowedDimensions: z.array(z.string().regex(/^[a-z][a-z0-9_.-]{0,63}$/)).max(32),
   status: z.enum(['ACTIVE', 'DEPRECATED']),
 });
 
@@ -140,10 +150,16 @@ export const usageRecordSchema = z
     sourceId: z.string().min(1).max(300),
     resourceType: z.string().regex(/^[a-z][a-z0-9_.-]{0,127}$/),
     resourceId: z.string().min(1).max(300),
-    providerKey: z.string().regex(/^[a-z][a-z0-9_.-]{0,127}$/).optional(),
+    providerKey: z
+      .string()
+      .regex(/^[a-z][a-z0-9_.-]{0,127}$/)
+      .optional(),
     connectionId: z.string().uuid().optional(),
     estimatedCost: z.number().nonnegative().finite().optional(),
-    costCurrency: z.string().regex(/^[A-Z]{3}$/).optional(),
+    costCurrency: z
+      .string()
+      .regex(/^[A-Z]{3}$/)
+      .optional(),
     costState: z.enum(['NONE', 'ESTIMATED', 'FINALIZED']).default('NONE'),
     correlationId: z.string().min(1).max(300),
     causationId: z.string().min(1).max(300).optional(),

@@ -33,52 +33,52 @@ Architecture rules remain unchanged:
 
 ## Baseline and cross-cutting controls
 
-| Area | State | Evidence / next action |
-| --- | --- | --- |
-| Production migrations `0001`–`0003` | COMPLETE | Root copies remain checksum-locked; all new schema work is append-only migration history. |
-| Tenant/RLS foundation | COMPLETE | Transaction tenant context and two-tenant test patterns exist; every new tenant-owned domain extends them. |
-| Auth/RBAC/OPA/approvals foundation | COMPLETE foundation / closure pending | Shared command authorization and digest-bound approvals exist. Team/org lifecycle, role-management UX and full auth E2E are the next major closure. |
-| Idempotency/audit/outbox | COMPLETE foundation | Shared command execution, immutable audit and transactional outbox patterns are established. |
-| Connector SDK | COMPLETE repository foundation | Typed connector boundaries, webhook/sync/reconcile/provider-action infrastructure and deterministic fixtures exist. Real network adapters remain a mandatory Production Connector Closure gate. |
-| Disposable integration/CI | COMPLETE foundation | CI validates migrations, RLS/application lifecycle, Temporal restart durability, browser acceptance and images. |
-| Temporal infrastructure | COMPLETE foundation / TESTING | Server restart durability exists; full retries/timeouts/signals/cancellation/replay/versioning remain in the later Temporal platform closure gate. |
-| Structured observability contracts | IN PROGRESS — PR #6 | Shared bounded correlation/trace/log/error contracts are being added. Production telemetry backend, alerts and full instrumentation remain later hardening work. |
-| Usage/metering source ledger | IN PROGRESS — PR #6 | Migration `0036` introduces versioned meter definitions and tenant-scoped append-only idempotent usage records with explicit provider-cost semantics. Commercial billing remains later. |
-| Analytics/event dimensions | IN PROGRESS — PR #6 | Shared bounded scalar dimension contracts are being established; dashboards/materialized ROI reporting remain later Analytics work. |
-| Shared design system | IN PROGRESS — PR #6 | Reusable logical-property RTL-safe/a11y-aware primitives and tokens are being established; all surfaces still require later product-wide UX closure. |
+| Area                                | State                                 | Evidence / next action                                                                                                                                                                          |
+| ----------------------------------- | ------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Production migrations `0001`–`0003` | COMPLETE                              | Root copies remain checksum-locked; all new schema work is append-only migration history.                                                                                                       |
+| Tenant/RLS foundation               | COMPLETE                              | Transaction tenant context and two-tenant test patterns exist; every new tenant-owned domain extends them.                                                                                      |
+| Auth/RBAC/OPA/approvals foundation  | COMPLETE foundation / closure pending | Shared command authorization and digest-bound approvals exist. Team/org lifecycle, role-management UX and full auth E2E are the next major closure.                                             |
+| Idempotency/audit/outbox            | COMPLETE foundation                   | Shared command execution, immutable audit and transactional outbox patterns are established.                                                                                                    |
+| Connector SDK                       | COMPLETE repository foundation        | Typed connector boundaries, webhook/sync/reconcile/provider-action infrastructure and deterministic fixtures exist. Real network adapters remain a mandatory Production Connector Closure gate. |
+| Disposable integration/CI           | COMPLETE foundation                   | CI validates migrations, RLS/application lifecycle, Temporal restart durability, browser acceptance and images.                                                                                 |
+| Temporal infrastructure             | COMPLETE foundation / TESTING         | Server restart durability exists; full retries/timeouts/signals/cancellation/replay/versioning remain in the later Temporal platform closure gate.                                              |
+| Structured observability contracts  | IN PROGRESS — PR #6                   | Shared bounded correlation/trace/log/error contracts are being added. Production telemetry backend, alerts and full instrumentation remain later hardening work.                                |
+| Usage/metering source ledger        | IN PROGRESS — PR #6                   | Migration `0036` introduces versioned meter definitions and tenant-scoped append-only idempotent usage records with explicit provider-cost semantics. Commercial billing remains later.         |
+| Analytics/event dimensions          | IN PROGRESS — PR #6                   | Shared bounded scalar dimension contracts are being established; dashboards/materialized ROI reporting remain later Analytics work.                                                             |
+| Shared design system                | IN PROGRESS — PR #6                   | Reusable logical-property RTL-safe/a11y-aware primitives and tokens are being established; all surfaces still require later product-wide UX closure.                                            |
 
 ## Platform workstreams
 
-| Module | Database | API / worker | UI | Tests | Production provider | State |
-| --- | --- | --- | --- | --- | --- | --- |
-| Repository tooling / CI | N/A | COMPLETE | N/A | COMPLETE foundation | N/A | COMPLETE foundation |
-| Identity / Organization / approvals | Existing `0001`–`0002` | IN PROGRESS | IN PROGRESS | IN PROGRESS | N/A | NEXT closure workstream |
-| Basic self-service onboarding | Partial org foundation | NOT STARTED | NOT STARTED | NOT STARTED | Integration discovery depends on connectors | NOT STARTED |
-| CRM / Customer 360 | Existing `0003`, later permissions | IN PROGRESS | IN PROGRESS | Strong partial evidence | N/A | IN PROGRESS |
-| Integrations / connector SDK | `0004`–`0006`, `0024`–`0026` | COMPLETE foundation | COMPLETE foundation | COMPLETE foundation | Development fixtures only | FOUNDATION COMPLETE |
-| Messaging / Tickets / SLA | `0011`–`0023` | IN PROGRESS | IN PROGRESS | Strong partial evidence | Real Meta/email adapters pending | IN PROGRESS |
-| Commerce / Order operations | `0027`–`0030` | COMPLETE repository gate | COMPLETE repository gate | COMPLETE repository gate | Real Shopify/WooCommerce adapters pending | COMPLETE repository scope |
-| Shipping | `0031`–`0035` | COMPLETE repository gate | COMPLETE repository gate | COMPLETE repository gate | Real carrier adapters pending | COMPLETE repository scope |
-| Cross-cutting telemetry/usage/UI contracts | `0036` in PR #6 | IN PROGRESS | Shared primitives in PR #6 | Contract/RLS/producer tests in progress | N/A | CURRENT |
-| Returns / Exchanges / Refunds | NOT STARTED | NOT STARTED | NOT STARTED | NOT STARTED | Payment/carrier hooks pending | NOT STARTED |
-| Recovery | NOT STARTED | NOT STARTED | NOT STARTED | NOT STARTED | Uses Messaging/Commerce adapters | NOT STARTED |
-| Sales | NOT STARTED | NOT STARTED | NOT STARTED | NOT STARTED | N/A | NOT STARTED |
-| Campaigns | NOT STARTED | NOT STARTED | NOT STARTED | NOT STARTED | Real messaging adapters pending | NOT STARTED |
-| Temporal workflow suite | Foundation present | Partial workflows/evidence | Operational visibility later | TESTING | Provider activities depend on real adapters | IN PROGRESS foundation |
-| Automation Studio | NOT STARTED | NOT STARTED | Placeholder/surface only | NOT STARTED | Via canonical actions/connectors | NOT STARTED |
-| Configuration Compiler / Simulation | NOT STARTED | NOT STARTED | NOT STARTED | NOT STARTED | Simulation must never call providers | NOT STARTED |
-| AI typed tool platform | Minimal concepts only | NOT STARTED as full registry | NOT STARTED | NOT STARTED | Via canonical commands only | NOT STARTED |
-| AI Gateway | No full persistence yet | Routing skeleton only | Minimal/placeholder | Minimal | External model adapters incomplete | EARLY FOUNDATION |
-| Knowledge / RAG / AI eval | NOT STARTED | NOT STARTED | NOT STARTED | NOT STARTED | Model/embedding adapter pending | NOT STARTED |
-| AI Operators | NOT STARTED | NOT STARTED | Placeholder/surface only | NOT STARTED | Via typed tools only | NOT STARTED |
-| Custom Data | NOT STARTED | NOT STARTED | NOT STARTED | NOT STARTED | N/A | NOT STARTED |
-| Analytics / ROI | Source contracts starting in `0036` | NOT STARTED product layer | NOT STARTED | NOT STARTED | Uses usage/provider cost | FOUNDATION STARTED |
-| Billing / Metering product | Source ledger starting in `0036` | NOT STARTED commercial layer | NOT STARTED | NOT STARTED | Payment provider abstract | FOUNDATION STARTED |
-| Developer Platform | NOT STARTED | NOT STARTED | NOT STARTED | NOT STARTED | Outbound webhook delivery | NOT STARTED |
-| Admin Control Center | Existing skeleton only | Minimal | Skeleton | NOT STARTED | N/A | EARLY FOUNDATION |
-| Data Governance | NOT STARTED formal workstream | NOT STARTED | N/A/partial settings later | NOT STARTED | N/A | NOT STARTED |
-| Full product UX | Partial surfaces + shared primitives starting | N/A | PARTIAL | Partial browser evidence | N/A | IN PROGRESS foundation |
-| Release engineering / operations | Foundation present | Foundation present | N/A | TESTING foundation | N/A | IN PROGRESS foundation |
+| Module                                     | Database                                      | API / worker                 | UI                           | Tests                                   | Production provider                         | State                     |
+| ------------------------------------------ | --------------------------------------------- | ---------------------------- | ---------------------------- | --------------------------------------- | ------------------------------------------- | ------------------------- |
+| Repository tooling / CI                    | N/A                                           | COMPLETE                     | N/A                          | COMPLETE foundation                     | N/A                                         | COMPLETE foundation       |
+| Identity / Organization / approvals        | Existing `0001`–`0002`                        | IN PROGRESS                  | IN PROGRESS                  | IN PROGRESS                             | N/A                                         | NEXT closure workstream   |
+| Basic self-service onboarding              | Partial org foundation                        | NOT STARTED                  | NOT STARTED                  | NOT STARTED                             | Integration discovery depends on connectors | NOT STARTED               |
+| CRM / Customer 360                         | Existing `0003`, later permissions            | IN PROGRESS                  | IN PROGRESS                  | Strong partial evidence                 | N/A                                         | IN PROGRESS               |
+| Integrations / connector SDK               | `0004`–`0006`, `0024`–`0026`                  | COMPLETE foundation          | COMPLETE foundation          | COMPLETE foundation                     | Development fixtures only                   | FOUNDATION COMPLETE       |
+| Messaging / Tickets / SLA                  | `0011`–`0023`                                 | IN PROGRESS                  | IN PROGRESS                  | Strong partial evidence                 | Real Meta/email adapters pending            | IN PROGRESS               |
+| Commerce / Order operations                | `0027`–`0030`                                 | COMPLETE repository gate     | COMPLETE repository gate     | COMPLETE repository gate                | Real Shopify/WooCommerce adapters pending   | COMPLETE repository scope |
+| Shipping                                   | `0031`–`0035`                                 | COMPLETE repository gate     | COMPLETE repository gate     | COMPLETE repository gate                | Real carrier adapters pending               | COMPLETE repository scope |
+| Cross-cutting telemetry/usage/UI contracts | `0036` in PR #6                               | IN PROGRESS                  | Shared primitives in PR #6   | Contract/RLS/producer tests in progress | N/A                                         | CURRENT                   |
+| Returns / Exchanges / Refunds              | NOT STARTED                                   | NOT STARTED                  | NOT STARTED                  | NOT STARTED                             | Payment/carrier hooks pending               | NOT STARTED               |
+| Recovery                                   | NOT STARTED                                   | NOT STARTED                  | NOT STARTED                  | NOT STARTED                             | Uses Messaging/Commerce adapters            | NOT STARTED               |
+| Sales                                      | NOT STARTED                                   | NOT STARTED                  | NOT STARTED                  | NOT STARTED                             | N/A                                         | NOT STARTED               |
+| Campaigns                                  | NOT STARTED                                   | NOT STARTED                  | NOT STARTED                  | NOT STARTED                             | Real messaging adapters pending             | NOT STARTED               |
+| Temporal workflow suite                    | Foundation present                            | Partial workflows/evidence   | Operational visibility later | TESTING                                 | Provider activities depend on real adapters | IN PROGRESS foundation    |
+| Automation Studio                          | NOT STARTED                                   | NOT STARTED                  | Placeholder/surface only     | NOT STARTED                             | Via canonical actions/connectors            | NOT STARTED               |
+| Configuration Compiler / Simulation        | NOT STARTED                                   | NOT STARTED                  | NOT STARTED                  | NOT STARTED                             | Simulation must never call providers        | NOT STARTED               |
+| AI typed tool platform                     | Minimal concepts only                         | NOT STARTED as full registry | NOT STARTED                  | NOT STARTED                             | Via canonical commands only                 | NOT STARTED               |
+| AI Gateway                                 | No full persistence yet                       | Routing skeleton only        | Minimal/placeholder          | Minimal                                 | External model adapters incomplete          | EARLY FOUNDATION          |
+| Knowledge / RAG / AI eval                  | NOT STARTED                                   | NOT STARTED                  | NOT STARTED                  | NOT STARTED                             | Model/embedding adapter pending             | NOT STARTED               |
+| AI Operators                               | NOT STARTED                                   | NOT STARTED                  | Placeholder/surface only     | NOT STARTED                             | Via typed tools only                        | NOT STARTED               |
+| Custom Data                                | NOT STARTED                                   | NOT STARTED                  | NOT STARTED                  | NOT STARTED                             | N/A                                         | NOT STARTED               |
+| Analytics / ROI                            | Source contracts starting in `0036`           | NOT STARTED product layer    | NOT STARTED                  | NOT STARTED                             | Uses usage/provider cost                    | FOUNDATION STARTED        |
+| Billing / Metering product                 | Source ledger starting in `0036`              | NOT STARTED commercial layer | NOT STARTED                  | NOT STARTED                             | Payment provider abstract                   | FOUNDATION STARTED        |
+| Developer Platform                         | NOT STARTED                                   | NOT STARTED                  | NOT STARTED                  | NOT STARTED                             | Outbound webhook delivery                   | NOT STARTED               |
+| Admin Control Center                       | Existing skeleton only                        | Minimal                      | Skeleton                     | NOT STARTED                             | N/A                                         | EARLY FOUNDATION          |
+| Data Governance                            | NOT STARTED formal workstream                 | NOT STARTED                  | N/A/partial settings later   | NOT STARTED                             | N/A                                         | NOT STARTED               |
+| Full product UX                            | Partial surfaces + shared primitives starting | N/A                          | PARTIAL                      | Partial browser evidence                | N/A                                         | IN PROGRESS foundation    |
+| Release engineering / operations           | Foundation present                            | Foundation present           | N/A                          | TESTING foundation                      | N/A                                         | IN PROGRESS foundation    |
 
 ## Objective Shipping closure evidence
 
