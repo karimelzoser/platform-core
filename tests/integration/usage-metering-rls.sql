@@ -12,9 +12,13 @@ DECLARE definition_count integer;
 BEGIN
   SELECT count(*) INTO definition_count
   FROM platform.meter_definitions
-  WHERE meter_key = 'integrations.provider_action.attempt' AND version = 1;
-  IF definition_count <> 1 THEN
-    RAISE EXCEPTION 'Expected seeded provider-action meter definition';
+  WHERE meter_key IN (
+    'integrations.provider_action.processing_attempt',
+    'integrations.provider_action.attempt'
+  )
+    AND version = 1;
+  IF definition_count <> 2 THEN
+    RAISE EXCEPTION 'Expected seeded provider-action meter definitions';
   END IF;
 END;
 $$;
@@ -33,12 +37,69 @@ INSERT INTO platform.usage_records (
   '{"action_type":"CREATE_LABEL","outcome":"succeeded","connector_key":"development-api"}'::jsonb
 );
 
+INSERT INTO integrations.provider_actions (
+  id, tenant_id, connection_id, action_type, input, state, idempotency_key,
+  claimed_by, claimed_at, started_at
+) VALUES (
+  'aaaaaaaa-0000-0000-0000-000000000402',
+  'aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa',
+  'aaaaaaaa-0000-0000-0000-000000000002',
+  'development.usage_test',
+  '{"fixture":true}'::jsonb,
+  'RUNNING',
+  'usage-producer-action-a',
+  'usage-test-worker',
+  now(),
+  now()
+);
+
+UPDATE integrations.provider_actions
+SET state = 'SUCCEEDED',
+    provider_action_id = 'usage-provider-result-a',
+    result = '{"accepted":true}'::jsonb,
+    claimed_by = null,
+    claimed_at = null,
+    finished_at = now(),
+    updated_at = now()
+WHERE id = 'aaaaaaaa-0000-0000-0000-000000000402';
+
 DO $$
-DECLARE visible_count integer;
+DECLARE processing_count integer;
+DECLARE manual_count integer;
+DECLARE processing_outcome text;
 BEGIN
-  SELECT count(*) INTO visible_count FROM platform.usage_records;
-  IF visible_count <> 1 THEN
-    RAISE EXCEPTION 'Tenant A expected exactly one visible usage record, got %', visible_count;
+  SELECT count(*), max(bounded_metadata->>'outcome')
+  INTO processing_count, processing_outcome
+  FROM platform.usage_records
+  WHERE meter_key = 'integrations.provider_action.processing_attempt'
+    AND source_id = 'aaaaaaaa-0000-0000-0000-000000000402';
+  IF processing_count <> 1 OR processing_outcome <> 'succeeded' THEN
+    RAISE EXCEPTION 'Provider action completion did not emit exactly one canonical usage record';
+  END IF;
+
+  SELECT count(*) INTO manual_count
+  FROM platform.usage_records
+  WHERE meter_key = 'integrations.provider_action.attempt'
+    AND id = 'aaaaaaaa-0000-0000-0000-000000000401';
+  IF manual_count <> 1 THEN
+    RAISE EXCEPTION 'Tenant A expected the explicit provider-network usage record';
+  END IF;
+END;
+$$;
+
+UPDATE integrations.provider_actions
+SET state = 'SUCCEEDED', updated_at = now()
+WHERE id = 'aaaaaaaa-0000-0000-0000-000000000402';
+
+DO $$
+DECLARE processing_count integer;
+BEGIN
+  SELECT count(*) INTO processing_count
+  FROM platform.usage_records
+  WHERE meter_key = 'integrations.provider_action.processing_attempt'
+    AND source_id = 'aaaaaaaa-0000-0000-0000-000000000402';
+  IF processing_count <> 1 THEN
+    RAISE EXCEPTION 'Terminal provider-action updates duplicated canonical usage';
   END IF;
 END;
 $$;
