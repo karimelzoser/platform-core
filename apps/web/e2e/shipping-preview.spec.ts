@@ -134,5 +134,7 @@ async function assertNoHorizontalOverflow(page: Page) {
 async function assertShippingTableFits(page: Page) {
   const table = page.getByRole('table', { name: 'Shipments' });
   await expect(table).toBeVisible();
-  await expect.poll(() => table.evaluate((element) => element.scrollWidth <= element.clientWidth)).toBe(true);
+  await expect
+    .poll(() => table.evaluate((element) => element.scrollWidth <= element.clientWidth))
+    .toBe(true);
 }
