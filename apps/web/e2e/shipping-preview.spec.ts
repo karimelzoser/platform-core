@@ -20,6 +20,7 @@ test.describe('Shipping disposable development preview', () => {
     await expect(
       page.getByRole('heading', { name: 'Shipping operations', exact: true }),
     ).toBeVisible();
+    await expect(page.getByRole('link', { name: 'Routing intelligence' })).toBeVisible();
     await expect(page.getByText('DEV-PREVIEW-1001', { exact: true }).first()).toBeVisible();
     await expect(page.getByText('PREVIEW-1001', { exact: true }).first()).toBeVisible();
     const shipmentRow = page.getByRole('link').filter({ hasText: 'DEV-PREVIEW-1001' });
@@ -47,6 +48,51 @@ test.describe('Shipping disposable development preview', () => {
     await expect(page.getByText('RESOLVED', { exact: true })).toBeVisible();
 
     await assertResponsiveAndRtl(page, testInfo);
+    await context.close();
+    expect(consoleErrors, `Unexpected browser errors:\n${consoleErrors.join('\n')}`).toEqual([]);
+  });
+
+  test('shows canonical routing intelligence with responsive RTL acceptance', async ({
+    browser,
+  }, testInfo) => {
+    testInfo.setTimeout(180_000);
+    requireDisposablePreview();
+    const consoleErrors: string[] = [];
+    const context = await browser.newContext({ viewport: { width: 1440, height: 960 } });
+    const page = await context.newPage();
+    monitorBrowserErrors(page, consoleErrors);
+
+    await login(page);
+    await page.goto('/shipping/routing');
+    await expect(page.getByRole('heading', { name: 'Routing intelligence', exact: true })).toBeVisible();
+    await expect(page.getByText('Egypt', { exact: true })).toBeVisible();
+    await expect(page.getByText('Cairo Governorate', { exact: true })).toBeVisible();
+    await expect(page.getByText('Cairo Metro', { exact: true }).first()).toBeVisible();
+    await expect(page.getByText('Preview Delivery Carrier', { exact: true }).first()).toBeVisible();
+    await expect(page.getByText('Standard Cairo Delivery', { exact: true })).toBeVisible();
+    await expect(page.getByText('ALLOWED', { exact: true })).toBeVisible();
+    await assertNoHorizontalOverflow(page);
+
+    await page.setViewportSize({ width: 768, height: 1024 });
+    await expect(page.getByRole('heading', { name: 'Location hierarchy' })).toBeVisible();
+    await assertNoHorizontalOverflow(page);
+    await page.setViewportSize({ width: 390, height: 844 });
+    await expect(page.getByText('Cairo Metro', { exact: true }).first()).toBeVisible();
+    await assertNoHorizontalOverflow(page);
+
+    await page.getByRole('button', { name: 'العربية · RTL' }).click();
+    await expect(page.locator('html')).toHaveAttribute('dir', 'rtl');
+    await expect(page.locator('html')).toHaveAttribute('lang', 'ar');
+    await assertNoHorizontalOverflow(page);
+    const screenshot = testInfo.outputPath('shipping-routing-mobile-rtl.png');
+    await page.screenshot({ path: screenshot, fullPage: true });
+    await testInfo.attach('shipping-routing-mobile-rtl', {
+      path: screenshot,
+      contentType: 'image/png',
+    });
+    await page.getByRole('button', { name: 'English · LTR' }).click();
+    await expect(page.locator('html')).toHaveAttribute('dir', 'ltr');
+
     await context.close();
     expect(consoleErrors, `Unexpected browser errors:\n${consoleErrors.join('\n')}`).toEqual([]);
   });
