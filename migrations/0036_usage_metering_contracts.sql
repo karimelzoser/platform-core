@@ -153,9 +153,15 @@ INSERT INTO platform.meter_definitions (
   retry_creates_unit, may_be_billable, provider_cost_applies, allowed_dimensions
 ) VALUES
 (
+  'integrations.provider_action.processing_attempt', 1,
+  'A claimed provider action processing cycle that completed with success or a classified failure.',
+  'attempt', 'SUM', 'integrations.provider_actions', true, false, false,
+  ARRAY['action_type', 'outcome', 'connector_key']
+),
+(
   'integrations.provider_action.attempt', 1,
-  'A provider action network attempt that was actually executed after commit.',
-  'attempt', 'SUM', 'integrations.provider_actions', true, false, true,
+  'A provider network attempt that was actually executed after commit. Adapters record this explicitly.',
+  'attempt', 'SUM', 'connector_adapter', true, false, true,
   ARRAY['action_type', 'outcome', 'connector_key']
 ),
 (
@@ -176,5 +182,68 @@ INSERT INTO platform.meter_definitions (
   'run', 'COUNT', 'automation_run', false, true, false,
   ARRAY['trigger_type', 'outcome', 'version']
 );
+
+CREATE OR REPLACE FUNCTION platform.record_provider_action_processing_attempt()
+RETURNS trigger
+LANGUAGE plpgsql
+AS $$
+DECLARE
+  connector_key text;
+  attempt_identity text;
+BEGIN
+  IF OLD.state <> 'RUNNING'
+     OR NEW.state NOT IN ('SUCCEEDED', 'FAILED', 'DEAD_LETTER') THEN
+    RETURN NEW;
+  END IF;
+
+  SELECT connection.connector_key
+  INTO connector_key
+  FROM integrations.connections AS connection
+  WHERE connection.tenant_id = NEW.tenant_id
+    AND connection.id = NEW.connection_id;
+
+  IF connector_key IS NULL THEN
+    RAISE EXCEPTION 'Provider action connection was not found for usage attribution'
+      USING ERRCODE = '23503';
+  END IF;
+
+  attempt_identity := NEW.id::text || ':' || coalesce(
+    OLD.claimed_at::text,
+    OLD.updated_at::text,
+    NEW.updated_at::text
+  );
+
+  INSERT INTO platform.usage_records (
+    tenant_id, meter_key, meter_version, quantity, unit, occurred_at,
+    source_type, source_id, resource_type, resource_id, provider_key,
+    connection_id, correlation_id, causation_id, idempotency_key,
+    bounded_metadata
+  ) VALUES (
+    NEW.tenant_id,
+    'integrations.provider_action.processing_attempt', 1, 1, 'attempt',
+    coalesce(NEW.finished_at, NEW.updated_at, now()),
+    'PROVIDER_ACTION', NEW.id::text,
+    'provider_action', NEW.id::text,
+    connector_key, NEW.connection_id,
+    coalesce(platform.current_request_id(), NEW.id::text),
+    NEW.id::text,
+    attempt_identity,
+    jsonb_build_object(
+      'action_type', NEW.action_type,
+      'outcome', lower(NEW.state),
+      'connector_key', connector_key
+    )
+  )
+  ON CONFLICT (tenant_id, meter_key, meter_version, idempotency_key) DO NOTHING;
+
+  RETURN NEW;
+END;
+$$;
+
+CREATE TRIGGER provider_actions_record_processing_usage
+  AFTER UPDATE OF state ON integrations.provider_actions
+  FOR EACH ROW EXECUTE FUNCTION platform.record_provider_action_processing_attempt();
+
+GRANT EXECUTE ON FUNCTION platform.record_provider_action_processing_attempt() TO platform_app;
 
 COMMIT;
