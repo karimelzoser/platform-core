@@ -79,7 +79,7 @@ export default async function ShippingPage() {
                     <small>{shipment.id}</small>
                   </span>
                   <span>
-                    {orderNumbers.get(shipment.orderId) ?? shipment.orderId}
+                    <strong>{orderNumbers.get(shipment.orderId) ?? shipment.orderId}</strong>
                     <small>{shipment.fulfillmentId}</small>
                   </span>
                   <span>
@@ -147,9 +147,7 @@ async function loadShipments(): Promise<
   }
 }
 
-async function loadOrders(): Promise<
-  { kind: 'success'; items: OrderItem[] } | { kind: 'error' }
-> {
+async function loadOrders(): Promise<{ kind: 'success'; items: OrderItem[] } | { kind: 'error' }> {
   const session = await sessionHeaders();
   if (!session) return { kind: 'error' };
   try {
