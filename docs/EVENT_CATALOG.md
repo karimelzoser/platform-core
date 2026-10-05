@@ -43,39 +43,39 @@ Rules:
 
 ## Implemented / current contract families
 
-| Subject | Event | Producer | Consumer behavior |
-| --- | --- | --- | --- |
-| `platform.identity.v1` | `identity.membership.changed` | Identity module | Recompute effective permission projections idempotently |
-| `platform.crm.v1` | `crm.customer.created` | Customer 360 | Refresh search, segments and timeline projections |
-| `platform.crm.v1` | `crm.tag.created` | Customer 360 | Refresh tenant tag catalog |
-| `platform.crm.v1` | `crm.customer.tag.assigned` | Customer 360 | Refresh customer and segment projections |
-| `platform.crm.v1` | `crm.customer.tag.bulk_assigned` | Customer 360 | Refresh tagged customer/segment projections |
-| `platform.crm.v1` | `crm.customer.communication.suppressed` | Customer 360 | Stop disallowed outbound activity and refresh consent projections |
-| `platform.crm.v1` | `crm.customer.communication.opted_in` | Verified consent ingress | Refresh consent from verified provider evidence |
-| `platform.crm.v1` | `crm.customer.merged` | Customer 360 | Repoint projections and reevaluate segments |
-| `platform.crm.v1` | `crm.customer.changed` | Customer 360 | Refresh search/segment/timeline projections |
-| `platform.integrations.v1` | `integration.webhook.received` | Webhook ingress | Normalize/process persisted delivery asynchronously |
-| `platform.integrations.v1` | `integration.sync.requested` | Integration command | Start/continue durable provider sync coordination |
-| `platform.messaging.v1` | `messaging.message.received` | Inbound worker | Refresh tenant inbox/linked operational context |
-| `platform.messaging.v1` | `messaging.message.dispatch_requested` | Messaging command | Claim committed typed outbound send |
-| `platform.messaging.v1` | `messaging.message.sent` | Outbound worker | Refresh inbox/provider acceptance state |
-| `platform.messaging.v1` | `messaging.message.delivery_updated` | Webhook worker | Apply monotonic provider delivery/read state |
-| `platform.messaging.v1` | `messaging.message.dead_lettered` | Outbound worker | Surface exhausted bounded provider failure |
-| `platform.messaging.v1` | `messaging.conversation.assigned` | Messaging command | Refresh assignee work queue |
-| `platform.messaging.v1` | `messaging.conversation.handed_over` | Messaging command | Refresh AI/human ownership projections |
-| `platform.messaging.v1` | `messaging.conversation.closed` | Messaging command | Stop active handling and refresh inbox |
-| `platform.messaging.v1` | `messaging.conversation.reopened` | Messaging command | Resume active handling |
-| `platform.tickets.v1` | `tickets.record.created` | Ticket command | Create/refresh tenant ticket projections |
-| `platform.tickets.v1` | `tickets.record.updated` | Ticket command | Refresh linked ticket views |
-| `platform.tickets.v1` | `tickets.record.assigned` | Ticket command | Refresh assignee work queue |
-| `platform.tickets.v1` | `tickets.record.resolved` | Ticket command | Close resolution-side SLA/reporting state |
-| `platform.tickets.v1` | `tickets.record.reopened` | Ticket command | Resume operational handling |
-| `platform.tickets.v1` | `tickets.comment.created` | Ticket command | Refresh ticket timeline |
-| `platform.tickets.v1` | `tickets.sla.*` | Ticket/SLA worker | Record clock/breach/escalation/resolution projections |
-| `platform.tickets.v1` | `tickets.sla_policy.archived` | Ticket command | Reflect approved policy archive |
-| `platform.tickets.v1` | `tickets.record.paused` | Ticket command | Freeze applicable SLA clock |
-| `platform.tickets.v1` | `tickets.record.resumed` | Ticket command | Resume applicable SLA clock |
-| `platform.policy.v1` | `policy.approval.decided` | Approval service | Continue exact digest-bound operation once |
+| Subject                    | Event                                   | Producer                 | Consumer behavior                                                 |
+| -------------------------- | --------------------------------------- | ------------------------ | ----------------------------------------------------------------- |
+| `platform.identity.v1`     | `identity.membership.changed`           | Identity module          | Recompute effective permission projections idempotently           |
+| `platform.crm.v1`          | `crm.customer.created`                  | Customer 360             | Refresh search, segments and timeline projections                 |
+| `platform.crm.v1`          | `crm.tag.created`                       | Customer 360             | Refresh tenant tag catalog                                        |
+| `platform.crm.v1`          | `crm.customer.tag.assigned`             | Customer 360             | Refresh customer and segment projections                          |
+| `platform.crm.v1`          | `crm.customer.tag.bulk_assigned`        | Customer 360             | Refresh tagged customer/segment projections                       |
+| `platform.crm.v1`          | `crm.customer.communication.suppressed` | Customer 360             | Stop disallowed outbound activity and refresh consent projections |
+| `platform.crm.v1`          | `crm.customer.communication.opted_in`   | Verified consent ingress | Refresh consent from verified provider evidence                   |
+| `platform.crm.v1`          | `crm.customer.merged`                   | Customer 360             | Repoint projections and reevaluate segments                       |
+| `platform.crm.v1`          | `crm.customer.changed`                  | Customer 360             | Refresh search/segment/timeline projections                       |
+| `platform.integrations.v1` | `integration.webhook.received`          | Webhook ingress          | Normalize/process persisted delivery asynchronously               |
+| `platform.integrations.v1` | `integration.sync.requested`            | Integration command      | Start/continue durable provider sync coordination                 |
+| `platform.messaging.v1`    | `messaging.message.received`            | Inbound worker           | Refresh tenant inbox/linked operational context                   |
+| `platform.messaging.v1`    | `messaging.message.dispatch_requested`  | Messaging command        | Claim committed typed outbound send                               |
+| `platform.messaging.v1`    | `messaging.message.sent`                | Outbound worker          | Refresh inbox/provider acceptance state                           |
+| `platform.messaging.v1`    | `messaging.message.delivery_updated`    | Webhook worker           | Apply monotonic provider delivery/read state                      |
+| `platform.messaging.v1`    | `messaging.message.dead_lettered`       | Outbound worker          | Surface exhausted bounded provider failure                        |
+| `platform.messaging.v1`    | `messaging.conversation.assigned`       | Messaging command        | Refresh assignee work queue                                       |
+| `platform.messaging.v1`    | `messaging.conversation.handed_over`    | Messaging command        | Refresh AI/human ownership projections                            |
+| `platform.messaging.v1`    | `messaging.conversation.closed`         | Messaging command        | Stop active handling and refresh inbox                            |
+| `platform.messaging.v1`    | `messaging.conversation.reopened`       | Messaging command        | Resume active handling                                            |
+| `platform.tickets.v1`      | `tickets.record.created`                | Ticket command           | Create/refresh tenant ticket projections                          |
+| `platform.tickets.v1`      | `tickets.record.updated`                | Ticket command           | Refresh linked ticket views                                       |
+| `platform.tickets.v1`      | `tickets.record.assigned`               | Ticket command           | Refresh assignee work queue                                       |
+| `platform.tickets.v1`      | `tickets.record.resolved`               | Ticket command           | Close resolution-side SLA/reporting state                         |
+| `platform.tickets.v1`      | `tickets.record.reopened`               | Ticket command           | Resume operational handling                                       |
+| `platform.tickets.v1`      | `tickets.comment.created`               | Ticket command           | Refresh ticket timeline                                           |
+| `platform.tickets.v1`      | `tickets.sla.*`                         | Ticket/SLA worker        | Record clock/breach/escalation/resolution projections             |
+| `platform.tickets.v1`      | `tickets.sla_policy.archived`           | Ticket command           | Reflect approved policy archive                                   |
+| `platform.tickets.v1`      | `tickets.record.paused`                 | Ticket command           | Freeze applicable SLA clock                                       |
+| `platform.tickets.v1`      | `tickets.record.resumed`                | Ticket command           | Resume applicable SLA clock                                       |
+| `platform.policy.v1`       | `policy.approval.decided`               | Approval service         | Continue exact digest-bound operation once                        |
 
 Commerce/order and Shipping branches may already contain additional concrete
 events. When those contracts are merged, this catalog must be updated to the exact
