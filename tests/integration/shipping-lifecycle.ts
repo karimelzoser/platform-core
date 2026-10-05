@@ -108,6 +108,7 @@ async function main(): Promise<void> {
         status = 'CONNECTED', settings = excluded.settings,
         capabilities = excluded.capabilities`.execute(transaction);
     });
+
     await withTenantTransaction(database, contextB, async (transaction) => {
       await sql`insert into identity.memberships (tenant_id, user_id, status)
         values (${tenantB}::uuid, ${actorB}::uuid, 'ACTIVE')
@@ -178,6 +179,7 @@ async function main(): Promise<void> {
         limit 1`.execute(transaction);
       const lineId = lines.rows[0]?.id;
       assert.ok(lineId, 'Order line must exist before fulfillment');
+
       await sql`insert into commerce.fulfillments (
         id, tenant_id, store_id, order_id, status, metadata
       ) values (
@@ -185,10 +187,10 @@ async function main(): Promise<void> {
         ${order.result.orderId}::uuid, 'IN_PROGRESS', '{"integrationTest":true}'::jsonb
       )`.execute(transaction);
       await sql`insert into commerce.fulfillment_lines (
-        tenant_id, store_id, fulfillment_id, order_line_id, quantity
+        tenant_id, store_id, order_id, fulfillment_id, order_line_id, quantity
       ) values (
-        ${tenantA}::uuid, ${store.result.storeId}::uuid, ${fulfillmentId}::uuid,
-        ${lineId}::uuid, 2
+        ${tenantA}::uuid, ${store.result.storeId}::uuid, ${order.result.orderId}::uuid,
+        ${fulfillmentId}::uuid, ${lineId}::uuid, 2
       )`.execute(transaction);
       return lineId;
     });
@@ -320,7 +322,10 @@ async function main(): Promise<void> {
     assert.equal(providerState.shipment?.status, 'LABEL_CREATED');
     assert.equal(providerState.shipment?.provider_sync_state, 'IN_SYNC');
     assert.match(providerState.shipment?.tracking_number ?? '', /^DEV-[A-F0-9]{14}$/u);
-    assert.match(providerState.shipment?.tracking_url ?? '', /^https:\/\/example\.invalid\/tracking\//u);
+    assert.match(
+      providerState.shipment?.tracking_url ?? '',
+      /^https:\/\/example\.invalid\/tracking\//u,
+    );
     assert.equal(providerState.action?.state, 'SUCCEEDED');
     assert.ok(providerState.reference?.external_id);
 
