@@ -65,7 +65,7 @@ export interface CommandRequest<Input extends JsonRecord> {
   context: TenantRequestContext;
   input: Input;
   idempotencyKey: string;
-  approvalId?: string;
+  approvalId?: string | undefined;
 }
 
 export interface CommandResult<Result extends JsonRecord> {
