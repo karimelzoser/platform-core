@@ -81,6 +81,42 @@ SELECT platform.set_request_context(
   'test-subject-a',
   'identity-fixture-manager'
 );
+
+-- This custom fixture role intentionally models the privilege boundary under test:
+-- it may manage/invite ordinary members, but it may not manage role definitions or
+-- grant privileged Owner/Admin roles.
+INSERT INTO identity.roles (
+  tenant_id, code, name, description, is_system
+) VALUES (
+  'aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa',
+  'member_manager',
+  'Member Manager',
+  'Integration-test role allowed to manage membership lifecycle without role administration.',
+  false
+)
+ON CONFLICT (tenant_id, code) DO UPDATE
+SET name = EXCLUDED.name,
+    description = EXCLUDED.description,
+    is_system = false,
+    updated_at = now();
+
+INSERT INTO identity.role_permissions (tenant_id, role_id, permission_code)
+SELECT
+  role.tenant_id,
+  role.id,
+  permission.permission_code
+FROM identity.roles role
+CROSS JOIN (
+  VALUES
+    ('organization.read'),
+    ('organization.members.read'),
+    ('organization.members.invite'),
+    ('organization.members.manage')
+) AS permission(permission_code)
+WHERE role.tenant_id = 'aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa'
+  AND role.code = 'member_manager'
+ON CONFLICT DO NOTHING;
+
 INSERT INTO identity.memberships (
   tenant_id, user_id, status, invited_by_user_id, joined_at
 ) VALUES (
@@ -98,7 +134,7 @@ SELECT membership.tenant_id, membership.id, role.id
 FROM identity.memberships membership
 JOIN identity.roles role
   ON role.tenant_id = membership.tenant_id
- AND role.code = 'manager'
+ AND role.code = 'member_manager'
 WHERE membership.tenant_id = 'aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa'
   AND membership.user_id = '55555555-5555-5555-5555-555555555555'
 ON CONFLICT DO NOTHING;
