@@ -12,7 +12,7 @@ interface IdentityRequestOptions {
   method?: 'GET' | 'POST';
   body?: Record<string, unknown>;
   idempotent?: boolean;
-  approvalId?: string;
+  approvalId?: string | undefined;
 }
 
 export async function identityRequest<T>(
@@ -46,10 +46,16 @@ export async function identityRequest<T>(
     });
     if (response.status === 401) return { kind: 'authentication_required' };
     if (response.status === 403) {
-      return { kind: 'error', detail: 'Your current role or authentication assurance does not allow this operation.' };
+      return {
+        kind: 'error',
+        detail: 'Your current role or authentication assurance does not allow this operation.',
+      };
     }
     if (!response.ok) {
-      return { kind: 'error', detail: (await safeError(response)) ?? `The API returned ${String(response.status)}.` };
+      return {
+        kind: 'error',
+        detail: (await safeError(response)) ?? `The API returned ${String(response.status)}.`,
+      };
     }
     return { kind: 'success', data: (await response.json()) as T };
   } catch {
@@ -67,7 +73,9 @@ export function resultMessage(result: IdentityApiResult<unknown>): string {
 async function safeError(response: Response): Promise<string | undefined> {
   try {
     const body = (await response.json()) as { message?: unknown };
-    return typeof body.message === 'string' && body.message.length <= 400 ? body.message : undefined;
+    return typeof body.message === 'string' && body.message.length <= 400
+      ? body.message
+      : undefined;
   } catch {
     return undefined;
   }
