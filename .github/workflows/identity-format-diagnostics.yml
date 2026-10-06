@@ -1,0 +1,67 @@
+name: Identity format diagnostics
+
+on:
+  push:
+    branches:
+      - codex/identity-team-organization-closure-20261006
+
+permissions:
+  contents: read
+
+jobs:
+  format:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 9.15.5
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - name: Format identity closure files
+        run: |
+          pnpm prettier --write \
+            apps/api/src/authenticated-context.service.ts \
+            apps/api/src/identity.controller.ts \
+            apps/api/src/identity.service.ts \
+            apps/api/src/session.controller.ts \
+            apps/web/app/identity-api.ts \
+            apps/web/app/onboarding/actions.ts \
+            apps/web/app/onboarding/page.tsx \
+            apps/web/app/organizations/actions.ts \
+            apps/web/app/organizations/page.tsx \
+            apps/web/app/settings/actions.ts \
+            apps/web/app/settings/page.tsx \
+            apps/web/app/team/actions.ts \
+            apps/web/app/team/page.tsx \
+            packages/auth/src/index.test.ts \
+            packages/auth/src/index.ts \
+            packages/command-execution/src/index.ts \
+            packages/database/src/access.ts \
+            packages/database/src/index.ts
+      - uses: actions/upload-artifact@v4
+        with:
+          name: identity-formatted-files
+          path: |
+            apps/api/src/authenticated-context.service.ts
+            apps/api/src/identity.controller.ts
+            apps/api/src/identity.service.ts
+            apps/api/src/session.controller.ts
+            apps/web/app/identity-api.ts
+            apps/web/app/onboarding/actions.ts
+            apps/web/app/onboarding/page.tsx
+            apps/web/app/organizations/actions.ts
+            apps/web/app/organizations/page.tsx
+            apps/web/app/settings/actions.ts
+            apps/web/app/settings/page.tsx
+            apps/web/app/team/actions.ts
+            apps/web/app/team/page.tsx
+            packages/auth/src/index.test.ts
+            packages/auth/src/index.ts
+            packages/command-execution/src/index.ts
+            packages/database/src/access.ts
+            packages/database/src/index.ts
+          if-no-files-found: error
