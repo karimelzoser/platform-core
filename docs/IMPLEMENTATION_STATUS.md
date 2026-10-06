@@ -1,172 +1,156 @@
 # Implementation Status
 
-**Last updated:** 2026-10-05  
-**Full execution architecture baseline:** `dc41d3b84bc931e6ff42c17abce68430226e30d2` (`Architecture: align full platform execution plan (#4)`)  
-**Functional code baseline before active Shipping PR:** `f4758ddcebec6e531596a7f70040c83f0b06b29a` (`Order workflows and hosted preview (#2)`)  
-**Active functional workstream:** PR #3 `codex/shipping-foundation-20261005`  
-**Active Shipping head:** `aeeb313829ff33a58955d70c18383b40b7567f0b`  
-**Shipping CI:** GitHub Actions run #337 — `success`  
-**Full execution architecture:** merged to `main` via PR #4  
+**Last updated:** 2026-10-06  
+**Authoritative architecture baseline:** PR #4 / ADR 0004 / `PLATFORM_EXECUTION_BLUEPRINT.md`  
+**Latest completed functional repository gate on `main`:** Shipping PR #3, merge `602950d787316048c9ed17ebaab5eac1ceb84413`  
+**Active workstream:** PR #6 `codex/cross-cutting-contracts-20261006` — Cross-cutting usage, telemetry and design contracts  
 **Release status:** IN PROGRESS — not a release candidate.
 
-`CODEX_EXECUTION_QUEUE.md` is the authoritative execution ledger.
-`PLATFORM_EXECUTION_BLUEPRINT.md` and ADR 0004 define dependency and domain
-ownership rules. A repository-scope `COMPLETE` does not waive later product-wide
-UX, provider, security, performance, deployment or complete-release acceptance.
+`CODEX_EXECUTION_QUEUE.md` is the authoritative execution ledger. A repository-scope
+`COMPLETE` never waives later production-provider, product-wide UX, security,
+performance, deployment or complete-release acceptance.
 
 ## Current assessment
 
-The repository has a strong production foundation and real implemented core
-operations, but it is not close enough to the complete commercial product to
-justify a release-candidate claim. The current architecture is retained; the
-execution plan has been corrected so the remaining work does not create late
-retrofits or parallel backends.
+The repository now has a strong production foundation plus verified CRM,
+messaging/ticket, Commerce/Order and Shipping operational foundations. The complete
+commercial platform is still in progress. The active workstream is deliberately
+reinforcing shared contracts before more business modules are added, so
+observability, usage/cost attribution, analytics dimensions and UI primitives are
+not retrofitted later.
 
-Key corrections now reflected in the authoritative plan:
+Architecture rules remain unchanged:
 
-- cross-cutting observability, event/analytics instrumentation, usage/cost
-  metering and shared UI contracts start early and continue with every module;
-- Identity/Team/Organization lifecycle and basic self-service onboarding move
-  earlier because ownership, approvals, configuration publishing and billing
-  depend on them;
-- Temporal workflows are added with their domains and later standardized/proven
-  centrally rather than bolted on at the end;
-- self-service setup is separated into durable business-profile onboarding and a
-  later versioned Configuration Compiler + Simulation layer;
-- development connector fixtures are explicitly separated from real production
-  adapters, with a formal Production Connector Closure gate;
-- AI typed tools and evaluation/RAG foundations precede autonomous operators;
-- analytics dashboards/billing remain later, but events and usage records are
-  produced from the beginning;
-- humans, API, automation, Temporal, configuration and AI all use the same
-  canonical domain-command/security path.
+- humans, APIs, automations, Temporal, configuration and AI converge on canonical
+  domain commands and the same tenant/security/approval path;
+- PostgreSQL is canonical state; async effects are committed before external
+  provider execution;
+- provider fixtures are CI emulators, not production adapters;
+- long-running business processes integrate Temporal hooks as their domains are
+  built, followed by a later platform-wide Temporal closure gate;
+- production VPS/n8n remains untouched by repository tests and is out of scope
+  without separate explicit authorization.
 
-## Baseline and controls
+## Baseline and cross-cutting controls
 
-| Area                                | State                                 | Evidence / next action                                                                                                                                                       |
-| ----------------------------------- | ------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Production migrations `0001`–`0003` | COMPLETE                              | Root copies remain checksum-locked; new changes are append-only SQL migrations.                                                                                              |
-| Tenant/RLS foundation               | COMPLETE                              | Runtime tenant context and two-tenant test patterns exist; each new module must extend them.                                                                                 |
-| Auth/RBAC/OPA/approvals foundation  | COMPLETE foundation / closure pending | Shared command authorization, approval digest binding and tenant checks exist; full team/onboarding/role UX and auth E2E remain.                                             |
-| Idempotency/audit/outbox            | COMPLETE foundation                   | Shared command execution and post-commit async intent pattern exist; every new domain must use them.                                                                         |
-| Connector SDK                       | COMPLETE repository foundation        | Typed boundaries, webhook/sync/reconcile/provider-action infrastructure and deterministic fixtures exist. Real production network adapters remain a separate mandatory gate. |
-| Disposable integration/CI           | COMPLETE foundation                   | CI boots platform dependencies and validates migrations/RLS/application/browser/image gates.                                                                                 |
-| Temporal infrastructure             | COMPLETE foundation / TESTING         | Server restart durability exists. Full workflow/activity/replay/retry/timeout/signal coverage remains a later central closure gate while workflows are added incrementally.  |
-| Observability                       | FOUNDATION PRESENT / IN PROGRESS      | JSON logging/correlation conventions exist; shared trace/metric/operational contracts and full production metrics/alerts remain.                                             |
-| Usage/metering                      | NOT STARTED                           | Must be introduced as a shared append-only/idempotent ledger before campaign/AI/billing expansion.                                                                           |
-| Shared design system                | PARTIAL                               | Existing protected surfaces exist; a consistent direction-aware product system must be reinforced before many new surfaces are added.                                        |
+| Area                                | State                                 | Evidence / next action                                                                                                                                                                          |
+| ----------------------------------- | ------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Production migrations `0001`–`0003` | COMPLETE                              | Root copies remain checksum-locked; all new schema work is append-only migration history.                                                                                                       |
+| Tenant/RLS foundation               | COMPLETE                              | Transaction tenant context and two-tenant test patterns exist; every new tenant-owned domain extends them.                                                                                      |
+| Auth/RBAC/OPA/approvals foundation  | COMPLETE foundation / closure pending | Shared command authorization and digest-bound approvals exist. Team/org lifecycle, role-management UX and full auth E2E are the next major closure.                                             |
+| Idempotency/audit/outbox            | COMPLETE foundation                   | Shared command execution, immutable audit and transactional outbox patterns are established.                                                                                                    |
+| Connector SDK                       | COMPLETE repository foundation        | Typed connector boundaries, webhook/sync/reconcile/provider-action infrastructure and deterministic fixtures exist. Real network adapters remain a mandatory Production Connector Closure gate. |
+| Disposable integration/CI           | COMPLETE foundation                   | CI validates migrations, RLS/application lifecycle, Temporal restart durability, browser acceptance and images.                                                                                 |
+| Temporal infrastructure             | COMPLETE foundation / TESTING         | Server restart durability exists; full retries/timeouts/signals/cancellation/replay/versioning remain in the later Temporal platform closure gate.                                              |
+| Structured observability contracts  | IN PROGRESS — PR #6                   | Shared bounded correlation/trace/log/error contracts are being added. Production telemetry backend, alerts and full instrumentation remain later hardening work.                                |
+| Usage/metering source ledger        | IN PROGRESS — PR #6                   | Migration `0036` introduces versioned meter definitions and tenant-scoped append-only idempotent usage records with explicit provider-cost semantics. Commercial billing remains later.         |
+| Analytics/event dimensions          | IN PROGRESS — PR #6                   | Shared bounded scalar dimension contracts are being established; dashboards/materialized ROI reporting remain later Analytics work.                                                             |
+| Shared design system                | IN PROGRESS — PR #6                   | Reusable logical-property RTL-safe/a11y-aware primitives and tokens are being established; all surfaces still require later product-wide UX closure.                                            |
 
 ## Platform workstreams
 
-| Module                              | Database                           | API / worker                  | UI                           | Tests                    | Production provider                         | State                     |
-| ----------------------------------- | ---------------------------------- | ----------------------------- | ---------------------------- | ------------------------ | ------------------------------------------- | ------------------------- |
-| Repository tooling / CI             | N/A                                | COMPLETE                      | N/A                          | COMPLETE foundation      | N/A                                         | COMPLETE foundation       |
-| Identity / Organization / approvals | Existing `0001`–`0002`             | IN PROGRESS                   | IN PROGRESS                  | IN PROGRESS              | N/A                                         | IN PROGRESS               |
-| Basic self-service onboarding       | Partial org foundation             | NOT STARTED                   | NOT STARTED                  | NOT STARTED              | Integration discovery depends on connectors | NOT STARTED               |
-| CRM / Customer 360                  | Existing `0003`, later permissions | IN PROGRESS                   | IN PROGRESS                  | Strong partial evidence  | N/A                                         | IN PROGRESS               |
-| Integrations / connector SDK        | `0004`–`0006`, `0024`–`0026`       | COMPLETE foundation           | COMPLETE foundation          | COMPLETE foundation      | Development fixtures only                   | FOUNDATION COMPLETE       |
-| Messaging / Tickets / SLA           | `0011`–`0023`                      | IN PROGRESS                   | IN PROGRESS                  | Strong partial evidence  | Real Meta/email adapters pending            | IN PROGRESS               |
-| Commerce / Order operations         | `0027`–`0030`                      | COMPLETE repository gate      | COMPLETE repository gate     | COMPLETE repository gate | Real Shopify/WooCommerce adapters pending   | COMPLETE repository scope |
-| Shipping                            | PR #3 migrations `0031`–`0033`     | Strong partial implementation | Operational UI present in PR | CI run #337 green        | Real carrier adapters pending               | IN PROGRESS               |
-| Returns / Exchanges / Refunds       | NOT STARTED                        | NOT STARTED                   | NOT STARTED                  | NOT STARTED              | Payment/carrier hooks pending               | NOT STARTED               |
-| Recovery                            | NOT STARTED                        | NOT STARTED                   | NOT STARTED                  | NOT STARTED              | Uses Messaging/Commerce adapters            | NOT STARTED               |
-| Sales                               | NOT STARTED                        | NOT STARTED                   | NOT STARTED                  | NOT STARTED              | N/A                                         | NOT STARTED               |
-| Campaigns                           | NOT STARTED                        | NOT STARTED                   | NOT STARTED                  | NOT STARTED              | Real messaging adapters pending             | NOT STARTED               |
-| Temporal workflow suite             | Foundation present                 | Partial workflows/evidence    | Operational visibility later | TESTING                  | Provider activities depend on real adapters | IN PROGRESS foundation    |
-| Automation Studio                   | NOT STARTED                        | NOT STARTED                   | Placeholder/surface only     | NOT STARTED              | Via canonical actions/connectors            | NOT STARTED               |
-| Configuration Compiler / Simulation | NOT STARTED                        | NOT STARTED                   | NOT STARTED                  | NOT STARTED              | Must never call providers in simulation     | NOT STARTED               |
-| AI typed tool platform              | Minimal concepts only              | NOT STARTED as full registry  | NOT STARTED                  | NOT STARTED              | Via canonical commands only                 | NOT STARTED               |
-| AI Gateway                          | No full persistence yet            | Routing skeleton only         | Minimal/placeholder          | Minimal                  | External model adapters incomplete          | EARLY FOUNDATION          |
-| Knowledge / RAG / AI eval           | NOT STARTED                        | NOT STARTED                   | NOT STARTED                  | NOT STARTED              | Model/embedding adapter pending             | NOT STARTED               |
-| AI Operators                        | NOT STARTED                        | NOT STARTED                   | Placeholder/surface only     | NOT STARTED              | Via tools only                              | NOT STARTED               |
-| Custom Data                         | NOT STARTED                        | NOT STARTED                   | NOT STARTED                  | NOT STARTED              | N/A                                         | NOT STARTED               |
-| Analytics / ROI                     | NOT STARTED                        | NOT STARTED                   | NOT STARTED                  | NOT STARTED              | Uses usage/provider cost                    | NOT STARTED               |
-| Billing / Metering product          | NOT STARTED                        | NOT STARTED                   | NOT STARTED                  | NOT STARTED              | Payment provider abstract                   | NOT STARTED               |
-| Developer Platform                  | NOT STARTED                        | NOT STARTED                   | NOT STARTED                  | NOT STARTED              | Outbound webhook delivery                   | NOT STARTED               |
-| Admin Control Center                | Existing skeleton only             | Minimal                       | Skeleton                     | NOT STARTED              | N/A                                         | EARLY FOUNDATION          |
-| Data Governance                     | NOT STARTED formal workstream      | NOT STARTED                   | N/A/partial settings later   | NOT STARTED              | N/A                                         | NOT STARTED               |
-| Full product UX                     | Partial surfaces                   | N/A                           | PARTIAL                      | Partial browser evidence | N/A                                         | IN PROGRESS foundation    |
-| Release engineering / operations    | Foundation present                 | Foundation present            | N/A                          | TESTING foundation       | N/A                                         | IN PROGRESS foundation    |
+| Module                                     | Database                                      | API / worker                 | UI                           | Tests                                   | Production provider                         | State                     |
+| ------------------------------------------ | --------------------------------------------- | ---------------------------- | ---------------------------- | --------------------------------------- | ------------------------------------------- | ------------------------- |
+| Repository tooling / CI                    | N/A                                           | COMPLETE                     | N/A                          | COMPLETE foundation                     | N/A                                         | COMPLETE foundation       |
+| Identity / Organization / approvals        | Existing `0001`–`0002`                        | IN PROGRESS                  | IN PROGRESS                  | IN PROGRESS                             | N/A                                         | NEXT closure workstream   |
+| Basic self-service onboarding              | Partial org foundation                        | NOT STARTED                  | NOT STARTED                  | NOT STARTED                             | Integration discovery depends on connectors | NOT STARTED               |
+| CRM / Customer 360                         | Existing `0003`, later permissions            | IN PROGRESS                  | IN PROGRESS                  | Strong partial evidence                 | N/A                                         | IN PROGRESS               |
+| Integrations / connector SDK               | `0004`–`0006`, `0024`–`0026`                  | COMPLETE foundation          | COMPLETE foundation          | COMPLETE foundation                     | Development fixtures only                   | FOUNDATION COMPLETE       |
+| Messaging / Tickets / SLA                  | `0011`–`0023`                                 | IN PROGRESS                  | IN PROGRESS                  | Strong partial evidence                 | Real Meta/email adapters pending            | IN PROGRESS               |
+| Commerce / Order operations                | `0027`–`0030`                                 | COMPLETE repository gate     | COMPLETE repository gate     | COMPLETE repository gate                | Real Shopify/WooCommerce adapters pending   | COMPLETE repository scope |
+| Shipping                                   | `0031`–`0035`                                 | COMPLETE repository gate     | COMPLETE repository gate     | COMPLETE repository gate                | Real carrier adapters pending               | COMPLETE repository scope |
+| Cross-cutting telemetry/usage/UI contracts | `0036` in PR #6                               | IN PROGRESS                  | Shared primitives in PR #6   | Contract/RLS/producer tests in progress | N/A                                         | CURRENT                   |
+| Returns / Exchanges / Refunds              | NOT STARTED                                   | NOT STARTED                  | NOT STARTED                  | NOT STARTED                             | Payment/carrier hooks pending               | NOT STARTED               |
+| Recovery                                   | NOT STARTED                                   | NOT STARTED                  | NOT STARTED                  | NOT STARTED                             | Uses Messaging/Commerce adapters            | NOT STARTED               |
+| Sales                                      | NOT STARTED                                   | NOT STARTED                  | NOT STARTED                  | NOT STARTED                             | N/A                                         | NOT STARTED               |
+| Campaigns                                  | NOT STARTED                                   | NOT STARTED                  | NOT STARTED                  | NOT STARTED                             | Real messaging adapters pending             | NOT STARTED               |
+| Temporal workflow suite                    | Foundation present                            | Partial workflows/evidence   | Operational visibility later | TESTING                                 | Provider activities depend on real adapters | IN PROGRESS foundation    |
+| Automation Studio                          | NOT STARTED                                   | NOT STARTED                  | Placeholder/surface only     | NOT STARTED                             | Via canonical actions/connectors            | NOT STARTED               |
+| Configuration Compiler / Simulation        | NOT STARTED                                   | NOT STARTED                  | NOT STARTED                  | NOT STARTED                             | Simulation must never call providers        | NOT STARTED               |
+| AI typed tool platform                     | Minimal concepts only                         | NOT STARTED as full registry | NOT STARTED                  | NOT STARTED                             | Via canonical commands only                 | NOT STARTED               |
+| AI Gateway                                 | No full persistence yet                       | Routing skeleton only        | Minimal/placeholder          | Minimal                                 | External model adapters incomplete          | EARLY FOUNDATION          |
+| Knowledge / RAG / AI eval                  | NOT STARTED                                   | NOT STARTED                  | NOT STARTED                  | NOT STARTED                             | Model/embedding adapter pending             | NOT STARTED               |
+| AI Operators                               | NOT STARTED                                   | NOT STARTED                  | Placeholder/surface only     | NOT STARTED                             | Via typed tools only                        | NOT STARTED               |
+| Custom Data                                | NOT STARTED                                   | NOT STARTED                  | NOT STARTED                  | NOT STARTED                             | N/A                                         | NOT STARTED               |
+| Analytics / ROI                            | Source contracts starting in `0036`           | NOT STARTED product layer    | NOT STARTED                  | NOT STARTED                             | Uses usage/provider cost                    | FOUNDATION STARTED        |
+| Billing / Metering product                 | Source ledger starting in `0036`              | NOT STARTED commercial layer | NOT STARTED                  | NOT STARTED                             | Payment provider abstract                   | FOUNDATION STARTED        |
+| Developer Platform                         | NOT STARTED                                   | NOT STARTED                  | NOT STARTED                  | NOT STARTED                             | Outbound webhook delivery                   | NOT STARTED               |
+| Admin Control Center                       | Existing skeleton only                        | Minimal                      | Skeleton                     | NOT STARTED                             | N/A                                         | EARLY FOUNDATION          |
+| Data Governance                            | NOT STARTED formal workstream                 | NOT STARTED                  | N/A/partial settings later   | NOT STARTED                             | N/A                                         | NOT STARTED               |
+| Full product UX                            | Partial surfaces + shared primitives starting | N/A                          | PARTIAL                      | Partial browser evidence                | N/A                                         | IN PROGRESS foundation    |
+| Release engineering / operations           | Foundation present                            | Foundation present           | N/A                          | TESTING foundation                      | N/A                                         | IN PROGRESS foundation    |
 
-## Objective evidence through Order workflows
+## Objective Shipping closure evidence
 
-- Commerce repository-scope evidence is green for canonical stores,
-  products/variants, inventory locations/levels, orders/lines/discounts/taxes,
-  payments, fulfillments, provider mappings, order timeline,
-  authorization/idempotency/audit/outbox execution, two-tenant RLS, relationship
-  isolation and application lifecycle behavior.
-- Order workflow repository-scope evidence is green for tenant-scoped
-  confirmation, duplicate evaluation/review, guarded modification/cancellation,
-  payment/fulfillment safety guards, typed post-commit provider actions,
-  provider sync/timeline evidence, Temporal server restart durability and
-  protected responsive LTR/RTL Order browser acceptance.
-- Provider execution is post-commit and a provider result is recorded in a new
-  transaction with canonical workflow/timeline/audit/outbox evidence.
-- CI source verification is not allowed to rewrite/push implementation code as a
-  formatter side effect.
+Shipping is no longer an active draft workstream. The exact architecture-synced
+Shipping head `dd4a8c87a59f04559363070ce489b6a3b9ee95ad` passed GitHub Actions run #373
+before PR #3 merged to `main` as `602950d787316048c9ed17ebaab5eac1ceb84413`.
 
-## Active Shipping workstream
+Repository-scope Shipping includes:
 
-PR #3 is open, draft and mergeable at head
-`aeeb313829ff33a58955d70c18383b40b7567f0b`. GitHub Actions run #337 completed
-successfully. Its PR description has been synchronized with the full execution
-architecture merged by PR #4.
+- carrier accounts/services and canonical country/region/city/district locations;
+- raw and normalized destination state, validation/confidence/source and explicit
+  manual-review behavior;
+- zones, zone membership, carrier-native location mappings and service eligibility;
+- shipments, line allocation, packages, label/provider-reference lifecycle;
+- append-only tracking, delivery attempts and terminal/failure semantics;
+- delivery rescue lifecycle and operational controls;
+- post-commit typed provider actions, retries/dead letters and append-only timeline;
+- protected API/services and operational list/detail/routing UI;
+- tenant RLS and relationship guards;
+- two-tenant lifecycle evidence and protected LTR/RTL/responsive browser acceptance.
 
-The PR already contains substantial provider-neutral Shipping scope including
-carrier accounts/services, shipments/line allocation, packages, normalized
-tracking events, delivery attempts, rescue cases, provider references/actions,
-append-only timeline, API/service, provider result handling, operational UI,
-worker integration, RLS/relationship migrations, lifecycle tests and browser
-acceptance.
+Real carrier network adapters remain intentionally separate and must pass the later
+Production Connector Closure gate. Shipping repository completion is not a claim
+that carrier credentials/certification or production deployment is complete.
 
-Before Shipping is declared complete, the workstream must reconcile the full
-module catalog and close or explicitly justify the remaining canonical
-location/address/zone/carrier-mapping requirements:
+## Active cross-cutting reinforcement evidence
 
-- country/region/city/district or equivalent canonical location hierarchy;
-- raw + normalized address representation;
-- validation state/confidence;
-- shipping zones;
-- carrier location mappings;
-- carrier/service eligibility;
-- complete label/provider-reference lifecycle semantics;
-- final accessibility/security/Definition-of-Done evidence.
+PR #6 establishes the bounded shared source contracts required by later modules:
 
-Real production carrier adapters are not required to be embedded in the Shipping
-domain itself; they are implemented behind the Connector SDK and verified under
-the Production Connector Closure gate.
+- migration `0036_usage_metering_contracts.sql` defines versioned meter definitions
+  and append-only tenant usage records with tenant-qualified idempotency;
+- meter definitions declare source of truth, unit, retry semantics, possible
+  billability/provider cost and allowed bounded dimensions;
+- provider cost is explicitly separated from internal operational processing so
+  worker state cannot falsely imply an external billable request;
+- a provider-action completion hook emits the first canonical operational usage
+  record, while real provider network consumption remains adapter-owned;
+- TypeScript contracts cover correlation/trace context, safe operational errors,
+  structured logs, usage records and analytics dimensions;
+- SQL tests cover two-tenant visibility/write isolation, usage immutability,
+  idempotency and dimension allowlists, plus automatic producer behavior;
+- shared web primitives/tokens use logical CSS properties, responsive behavior,
+  focus states and reduced-motion handling as the baseline for later surfaces.
 
-## Corrected next dependency order
+The workstream remains **IN PROGRESS** until the exact final PR head passes all CI
+jobs and its status/queue evidence is synchronized. It is not yet counted as DONE.
 
-After Shipping closure:
+## Corrected dependency order after the current workstream
 
-1. cross-cutting contracts (observability, usage/cost ledger, analytics dimensions,
-   design-system primitives);
-2. Identity / Team / Organization closure;
-3. basic self-service onboarding/business profile;
-4. Returns / Exchanges / Refunds;
-5. Recovery;
-6. Sales;
-7. Campaigns;
-8. Temporal platform closure;
-9. Automation Studio;
-10. Configuration Compiler;
-11. Configuration Simulation;
-12. Production Connector Closure;
-13. AI typed tool platform;
-14. AI Gateway production foundation;
-15. AI evaluation + Knowledge/RAG;
-16. AI Operators;
-17. Custom Data;
-18. Analytics / ROI;
-19. Billing / Metering commercial closure;
-20. Developer Platform;
-21. Admin Control Center + Data Governance;
-22. Full product UX closure;
-23. Observability/performance/security hardening;
-24. Release engineering + complete release acceptance.
-
-See `WORK_PLAN.md` and `PLATFORM_EXECUTION_BLUEPRINT.md` for detailed dependencies.
+1. Identity / Team / Organization closure;
+2. basic self-service onboarding/business profile;
+3. Returns / Exchanges / Refunds;
+4. Recovery;
+5. Sales;
+6. Campaigns;
+7. Temporal platform closure;
+8. Automation Studio;
+9. Configuration Compiler;
+10. Configuration Simulation;
+11. Production Connector Closure;
+12. AI typed tool platform;
+13. AI Gateway production foundation;
+14. AI evaluation + Knowledge/RAG;
+15. AI Operators;
+16. Custom Data;
+17. Analytics / ROI;
+18. Billing / Metering commercial closure;
+19. Developer Platform;
+20. Admin Control Center + Data Governance;
+21. Full product UX closure;
+22. Observability/performance/security hardening;
+23. Release engineering + complete release acceptance.
 
 ## Release-wide gates still mandatory
 
@@ -178,8 +162,8 @@ Even a green repository-scope module does not waive:
 - real production adapters for every provider claimed for launch;
 - configuration compiler/simulation safety and versioning;
 - AI tool authorization and required eval thresholds for enabled autonomy;
-- logs/traces/metrics/alerts, realistic performance thresholds and security
-  refresh;
+- production logs/traces/metrics/alerts, realistic performance thresholds and
+  security refresh;
 - immutable production images/Compose overlay, previous-release upgrade,
   backup/restore/rollback, smoke/deployment verification and runbook;
 - all mandatory checks in `TESTING_AND_ACCEPTANCE.md`.
