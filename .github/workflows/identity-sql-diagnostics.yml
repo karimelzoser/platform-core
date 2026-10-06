@@ -1,0 +1,40 @@
+name: Identity SQL diagnostics
+
+on:
+  push:
+    branches:
+      - codex/identity-team-organization-closure-20261006
+
+permissions:
+  contents: read
+
+jobs:
+  diagnose:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+      - name: Start isolated integration stack
+        env:
+          INTEGRATION_HOST_PORTS: '1'
+        run: scripts/integration/up.sh
+      - name: Apply migrations
+        run: scripts/integration/migrate.sh
+      - name: Capture identity migration acceptance
+        shell: bash
+        run: |
+          set +e
+          scripts/integration/test-migrations.sh > identity-sql.log 2>&1
+          status=$?
+          cat identity-sql.log
+          echo "$status" > identity-sql.status
+          exit 0
+      - uses: actions/upload-artifact@v4
+        with:
+          name: identity-sql-diagnostics
+          path: |
+            identity-sql.log
+            identity-sql.status
+          if-no-files-found: error
+      - name: Stop isolated integration stack
+        if: always()
+        run: scripts/integration/down.sh
