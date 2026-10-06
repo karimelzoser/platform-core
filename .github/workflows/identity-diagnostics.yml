@@ -1,0 +1,39 @@
+name: Identity build diagnostics
+
+on:
+  push:
+    branches:
+      - codex/identity-team-organization-closure-20261006
+
+permissions:
+  contents: read
+
+jobs:
+  diagnose:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 9.15.5
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - name: Capture API workspace build
+        shell: bash
+        run: |
+          set +e
+          pnpm --filter @platform/api... build > identity-build.log 2>&1
+          status=$?
+          cat identity-build.log
+          echo "$status" > identity-build.status
+          exit 0
+      - uses: actions/upload-artifact@v4
+        with:
+          name: identity-build-diagnostics
+          path: |
+            identity-build.log
+            identity-build.status
+          if-no-files-found: error
