@@ -41,24 +41,24 @@ const customerPermissions = [
 ] as const;
 const contextA = context(tenantA, actorA, customerPermissions, 'a');
 const contextB = context(tenantB, actorB, customerPermissions, 'b');
-const approverContext = context(tenantA, approverA, ['policy.approvals.decide'], 'a-approver');
+const approverContext: TenantRequestContext = {
+  ...context(tenantA, approverA, ['policy.approvals.decide'], 'a-approver'),
+  subject: 'crm-lifecycle-approver',
+};
 
 async function main(): Promise<void> {
   const databaseService = new ApiDatabaseService();
   const database = databaseService.database;
   try {
-    await withTenantTransaction(database, contextA, async (transaction) => {
+    // Identity closure intentionally permits an authenticated subject to create only
+    // its own global identity row. The base tenant A/B owner memberships are seeded
+    // by identity-fixtures.sql, so only the dedicated approval actor is created here.
+    await withTenantTransaction(database, approverContext, async (transaction) => {
       await sql`insert into identity.users (id, keycloak_subject, email)
         values (${approverA}::uuid, 'crm-lifecycle-approver', 'crm-approver@example.test')
         on conflict (id) do nothing`.execute(transaction);
       await sql`insert into identity.memberships (tenant_id, user_id, status)
-        values (${tenantA}::uuid, ${actorA}::uuid, 'ACTIVE'),
-          (${tenantA}::uuid, ${approverA}::uuid, 'ACTIVE')
-        on conflict (tenant_id, user_id) do nothing`.execute(transaction);
-    });
-    await withTenantTransaction(database, contextB, async (transaction) => {
-      await sql`insert into identity.memberships (tenant_id, user_id, status)
-        values (${tenantB}::uuid, ${actorB}::uuid, 'ACTIVE')
+        values (${tenantA}::uuid, ${approverA}::uuid, 'ACTIVE')
         on conflict (tenant_id, user_id) do nothing`.execute(transaction);
     });
 
