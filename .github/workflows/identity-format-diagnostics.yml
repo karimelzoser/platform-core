@@ -21,47 +21,49 @@ jobs:
           node-version: 22
           cache: pnpm
       - run: pnpm install --frozen-lockfile
-      - name: Format identity closure files
+      - name: Capture repository formatting diagnostics
+        shell: bash
         run: |
-          pnpm prettier --write \
-            apps/api/src/authenticated-context.service.ts \
-            apps/api/src/identity.controller.ts \
-            apps/api/src/identity.service.ts \
-            apps/api/src/session.controller.ts \
-            apps/web/app/identity-api.ts \
-            apps/web/app/onboarding/actions.ts \
-            apps/web/app/onboarding/page.tsx \
-            apps/web/app/organizations/actions.ts \
-            apps/web/app/organizations/page.tsx \
-            apps/web/app/settings/actions.ts \
-            apps/web/app/settings/page.tsx \
-            apps/web/app/team/actions.ts \
-            apps/web/app/team/page.tsx \
-            packages/auth/src/index.test.ts \
-            packages/auth/src/index.ts \
-            packages/command-execution/src/index.ts \
-            packages/database/src/access.ts \
-            packages/database/src/index.ts
+          set +e
+          pnpm format:check > format-check.log 2>&1
+          format_status=$?
+          pnpm prettier --write . > format-write.log 2>&1
+          write_status=$?
+          git diff --name-only > prettier-changed-files.txt
+          printf '%s\n' "$format_status" > format-check.status
+          printf '%s\n' "$write_status" > format-write.status
+          cat format-check.log
+          echo '--- prettier changed files ---'
+          cat prettier-changed-files.txt
+          exit 0
       - uses: actions/upload-artifact@v4
         with:
-          name: identity-formatted-files
+          name: identity-format-diagnostics
           path: |
-            apps/api/src/authenticated-context.service.ts
-            apps/api/src/identity.controller.ts
-            apps/api/src/identity.service.ts
-            apps/api/src/session.controller.ts
-            apps/web/app/identity-api.ts
-            apps/web/app/onboarding/actions.ts
-            apps/web/app/onboarding/page.tsx
-            apps/web/app/organizations/actions.ts
-            apps/web/app/organizations/page.tsx
-            apps/web/app/settings/actions.ts
-            apps/web/app/settings/page.tsx
-            apps/web/app/team/actions.ts
-            apps/web/app/team/page.tsx
-            packages/auth/src/index.test.ts
-            packages/auth/src/index.ts
-            packages/command-execution/src/index.ts
-            packages/database/src/access.ts
-            packages/database/src/index.ts
+            format-check.log
+            format-check.status
+            format-write.log
+            format-write.status
+            prettier-changed-files.txt
+          if-no-files-found: error
+
+  preview-image:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+      - name: Capture hosted preview image diagnostics
+        shell: bash
+        run: |
+          set +e
+          docker build --file docker/Dockerfile.preview --tag platform-preview:diagnostic . > preview-build.log 2>&1
+          status=$?
+          printf '%s\n' "$status" > preview-build.status
+          tail -n 200 preview-build.log
+          exit 0
+      - uses: actions/upload-artifact@v4
+        with:
+          name: identity-preview-image-diagnostics
+          path: |
+            preview-build.log
+            preview-build.status
           if-no-files-found: error
