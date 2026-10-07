@@ -1,4 +1,4 @@
-name: Identity format diagnostics
+name: Identity formatting repair
 
 on:
   push:
@@ -6,13 +6,17 @@ on:
       - codex/identity-team-organization-closure-20261006
 
 permissions:
-  contents: read
+  contents: write
 
 jobs:
   format:
+    if: github.event.head_commit.message != 'Apply canonical identity formatting'
     runs-on: ubuntu-24.04
     steps:
       - uses: actions/checkout@v4
+        with:
+          ref: codex/identity-team-organization-closure-20261006
+          fetch-depth: 0
       - uses: pnpm/action-setup@v4
         with:
           version: 9.15.5
@@ -21,49 +25,47 @@ jobs:
           node-version: 22
           cache: pnpm
       - run: pnpm install --frozen-lockfile
-      - name: Capture repository formatting diagnostics
+      - name: Format identity closure files
+        run: |
+          pnpm prettier --write \
+            apps/api/src/identity.controller.ts \
+            apps/api/src/identity.service.ts \
+            apps/web/app/onboarding/page.tsx \
+            apps/web/app/organizations/actions.ts \
+            apps/web/app/organizations/page.tsx \
+            apps/web/app/settings/actions.ts \
+            apps/web/app/settings/page.tsx \
+            apps/web/app/team/actions.ts \
+            apps/web/app/team/page.tsx \
+            packages/auth/src/index.test.ts
+      - name: Commit canonical formatting if needed
         shell: bash
         run: |
-          set +e
-          pnpm format:check > format-check.log 2>&1
-          format_status=$?
-          pnpm prettier --write . > format-write.log 2>&1
-          write_status=$?
-          git diff --name-only > prettier-changed-files.txt
-          printf '%s\n' "$format_status" > format-check.status
-          printf '%s\n' "$write_status" > format-write.status
-          cat format-check.log
-          echo '--- prettier changed files ---'
-          cat prettier-changed-files.txt
-          exit 0
-      - uses: actions/upload-artifact@v4
-        with:
-          name: identity-format-diagnostics
-          path: |
-            format-check.log
-            format-check.status
-            format-write.log
-            format-write.status
-            prettier-changed-files.txt
-          if-no-files-found: error
-
-  preview-image:
-    runs-on: ubuntu-24.04
-    steps:
-      - uses: actions/checkout@v4
-      - name: Capture hosted preview image diagnostics
-        shell: bash
-        run: |
-          set +e
-          docker build --file docker/Dockerfile.preview --tag platform-preview:diagnostic . > preview-build.log 2>&1
-          status=$?
-          printf '%s\n' "$status" > preview-build.status
-          tail -n 200 preview-build.log
-          exit 0
-      - uses: actions/upload-artifact@v4
-        with:
-          name: identity-preview-image-diagnostics
-          path: |
-            preview-build.log
-            preview-build.status
-          if-no-files-found: error
+          if git diff --quiet -- \
+            apps/api/src/identity.controller.ts \
+            apps/api/src/identity.service.ts \
+            apps/web/app/onboarding/page.tsx \
+            apps/web/app/organizations/actions.ts \
+            apps/web/app/organizations/page.tsx \
+            apps/web/app/settings/actions.ts \
+            apps/web/app/settings/page.tsx \
+            apps/web/app/team/actions.ts \
+            apps/web/app/team/page.tsx \
+            packages/auth/src/index.test.ts; then
+            exit 0
+          fi
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add -- \
+            apps/api/src/identity.controller.ts \
+            apps/api/src/identity.service.ts \
+            apps/web/app/onboarding/page.tsx \
+            apps/web/app/organizations/actions.ts \
+            apps/web/app/organizations/page.tsx \
+            apps/web/app/settings/actions.ts \
+            apps/web/app/settings/page.tsx \
+            apps/web/app/team/actions.ts \
+            apps/web/app/team/page.tsx \
+            packages/auth/src/index.test.ts
+          git commit -m 'Apply canonical identity formatting'
+          git push origin HEAD:codex/identity-team-organization-closure-20261006
