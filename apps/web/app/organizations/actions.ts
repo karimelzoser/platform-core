@@ -16,7 +16,9 @@ export async function selectOrganization(formData: FormData): Promise<void> {
     tenant: false,
   });
   if (result.kind !== 'success') {
-    redirect(`/organizations?message=${encodeURIComponent('Unable to verify organization access.')}`);
+    redirect(
+      `/organizations?message=${encodeURIComponent('Unable to verify organization access.')}`,
+    );
   }
   if (!result.data.items.some((item) => item.id === organizationId)) {
     redirect(`/organizations?message=${encodeURIComponent('Organization access is not active.')}`);

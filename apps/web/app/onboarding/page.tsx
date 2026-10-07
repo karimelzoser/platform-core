@@ -17,18 +17,38 @@ export default async function OnboardingPage({ searchParams }: PageProps) {
           eyebrow="ORGANIZATION SETUP"
           title={<span id="onboarding-title">Create your workspace</span>}
           description="Establish the organization identity, language, timezone, and owner boundary. Business profiling continues in the next setup stage."
-          actions={<a className="ds-button ds-button--secondary" href="/organizations">Back to organizations</a>}
+          actions={
+            <a className="ds-button ds-button--secondary" href="/organizations">
+              Back to organizations
+            </a>
+          }
         />
-        {message ? <div className="identity-notice" role="status">{message}</div> : null}
+        {message ? (
+          <div className="identity-notice" role="status">
+            {message}
+          </div>
+        ) : null}
         <SurfaceCard>
           <form action={createOrganization} className="identity-form">
             <div className="identity-field">
               <label htmlFor="organization-name">Organization name</label>
-              <input id="organization-name" name="name" required maxLength={200} autoComplete="organization" />
+              <input
+                id="organization-name"
+                name="name"
+                required
+                maxLength={200}
+                autoComplete="organization"
+              />
             </div>
             <div className="identity-field">
               <label htmlFor="organization-slug">Workspace slug</label>
-              <input id="organization-slug" name="slug" required pattern="[a-z0-9][a-z0-9-]{1,62}" placeholder="acme-egypt" />
+              <input
+                id="organization-slug"
+                name="slug"
+                required
+                pattern="[a-z0-9][a-z0-9-]{1,62}"
+                placeholder="acme-egypt"
+              />
               <small>Lowercase letters, numbers, and hyphens.</small>
             </div>
             <div className="identity-form-grid">
@@ -50,9 +70,13 @@ export default async function OnboardingPage({ searchParams }: PageProps) {
               </div>
             </div>
             <div className="identity-callout">
-              The authenticated Keycloak identity becomes the first active Owner. MFA credentials remain in Keycloak; this application stores only organization policy and assurance evidence.
+              The authenticated Keycloak identity becomes the first active Owner. MFA credentials
+              remain in Keycloak; this application stores only organization policy and assurance
+              evidence.
             </div>
-            <button className="ds-button ds-button--primary" type="submit">Create organization</button>
+            <button className="ds-button ds-button--primary" type="submit">
+              Create organization
+            </button>
           </form>
         </SurfaceCard>
       </Stack>

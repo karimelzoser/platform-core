@@ -76,12 +76,7 @@ function OrganizationContent({
     );
   }
   if (result.kind === 'error') {
-    return (
-      <EmptyState
-        title="Organizations could not be loaded"
-        description={result.detail}
-      />
-    );
+    return <EmptyState title="Organizations could not be loaded" description={result.detail} />;
   }
   if (result.data.items.length === 0) {
     return (
@@ -100,10 +95,7 @@ function OrganizationContent({
   return (
     <div className="identity-grid" aria-label="Available organizations">
       {result.data.items.map((organization) => (
-        <SurfaceCard
-          key={organization.id}
-          className="identity-organization-card"
-        >
+        <SurfaceCard key={organization.id} className="identity-organization-card">
           <Stack gap="compact">
             <div className="identity-card-heading">
               <div>
@@ -120,11 +112,7 @@ function OrganizationContent({
               ))}
             </div>
             <form action={selectOrganization}>
-              <input
-                name="organizationId"
-                type="hidden"
-                value={organization.id}
-              />
+              <input name="organizationId" type="hidden" value={organization.id} />
               <button className="ds-button ds-button--primary" type="submit">
                 Open workspace
               </button>

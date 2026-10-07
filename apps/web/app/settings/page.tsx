@@ -356,11 +356,16 @@ function MfaOption({
 function firstFailure(...results: Array<{ kind: string; detail?: string }>): string | undefined {
   const result = results.find((item) => item.kind !== 'success');
   if (!result) return undefined;
-  if (result.kind === 'authentication_required') return 'Sign in and select an active organization.';
+  if (result.kind === 'authentication_required')
+    return 'Sign in and select an active organization.';
   if (result.kind === 'configuration_error') return 'The server identity API is not configured.';
   return result.detail ?? 'The identity API could not load this workspace.';
 }
 
 function memberName(member: MemberList['items'][number]): string {
-  return [member.firstName, member.lastName].filter(Boolean).join(' ') || member.email || 'Unnamed member';
+  return (
+    [member.firstName, member.lastName].filter(Boolean).join(' ') ||
+    member.email ||
+    'Unnamed member'
+  );
 }

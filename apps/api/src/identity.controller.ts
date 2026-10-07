@@ -339,12 +339,7 @@ export class IdentityController {
     const context = await this.tenantContext(authorization, tenantId, correlationId);
     this.assertPermission(context, 'organization.roles.manage');
     return this.guard(() =>
-      this.identity.deleteRole(
-        context,
-        requireIdempotency(idempotencyKey),
-        roleId,
-        approvalId,
-      ),
+      this.identity.deleteRole(context, requireIdempotency(idempotencyKey), roleId, approvalId),
     );
   }
 
@@ -374,14 +369,16 @@ export class IdentityController {
   }
 
   private assertPermission(context: AuthenticatedTenantContext, permission: string): void {
-    if (!context.permissions.includes(permission)) throw new ForbiddenException('Permission denied');
+    if (!context.permissions.includes(permission))
+      throw new ForbiddenException('Permission denied');
   }
 
   private async guard<T>(operation: () => Promise<T>): Promise<T> {
     try {
       return await operation();
     } catch (error) {
-      if (error instanceof ZodError) throw new BadRequestException(error.issues[0]?.message ?? 'Invalid input');
+      if (error instanceof ZodError)
+        throw new BadRequestException(error.issues[0]?.message ?? 'Invalid input');
       if (error instanceof IdentityInvariantError) throw new ConflictException(error.message);
       if (error instanceof CommandExecutionError) {
         if (error.code === 'authorization_denied') throw new ForbiddenException(error.message);
@@ -403,7 +400,8 @@ function parsedObject(body: unknown): Record<string, unknown> {
 }
 
 function requiredString(value: unknown, field: string): string {
-  if (typeof value !== 'string' || !value.trim()) throw new BadRequestException(`${field} is required`);
+  if (typeof value !== 'string' || !value.trim())
+    throw new BadRequestException(`${field} is required`);
   return value.trim();
 }
 

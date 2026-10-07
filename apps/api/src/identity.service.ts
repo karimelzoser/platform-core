@@ -17,12 +17,23 @@ import type {
 } from './authenticated-context.service.js';
 
 const uuidSchema = z.string().uuid();
-const localeSchema = z.string().trim().regex(/^[a-z]{2}(-[A-Z]{2})?$/u);
+const localeSchema = z
+  .string()
+  .trim()
+  .regex(/^[a-z]{2}(-[A-Z]{2})?$/u);
 const timezoneSchema = z.string().trim().min(1).max(100);
 const emailSchema = z.string().trim().toLowerCase().email().max(320);
-const roleCodeSchema = z.string().trim().toLowerCase().regex(/^[a-z][a-z0-9_-]{1,62}$/u);
+const roleCodeSchema = z
+  .string()
+  .trim()
+  .toLowerCase()
+  .regex(/^[a-z][a-z0-9_-]{1,62}$/u);
 const nameSchema = z.string().trim().min(2).max(200);
-const slugSchema = z.string().trim().toLowerCase().regex(/^[a-z0-9][a-z0-9-]{1,62}$/u);
+const slugSchema = z
+  .string()
+  .trim()
+  .toLowerCase()
+  .regex(/^[a-z0-9][a-z0-9-]{1,62}$/u);
 
 const createOrganizationSchema = z.object({
   name: nameSchema,
@@ -50,7 +61,12 @@ const mfaPolicySchema = z.enum(['OPTIONAL', 'REQUIRED_FOR_PRIVILEGED', 'REQUIRED
 const invitationSchema = z.object({
   email: emailSchema,
   roleIds: z.array(uuidSchema).min(1).max(20),
-  expiresInHours: z.number().int().min(1).max(24 * 30).default(168),
+  expiresInHours: z
+    .number()
+    .int()
+    .min(1)
+    .max(24 * 30)
+    .default(168),
 });
 
 const memberStatusSchema = z.object({
@@ -509,7 +525,11 @@ export class IdentityService {
         resource: () => ({ type: 'identity.organization_invitation', id: invitationId }),
         event: {
           type: 'identity.organization.invitation_created',
-          data: () => ({ invitationId, roleCount: validated.roleIds.length, expiresAt: expiresAt.toISOString() }),
+          data: () => ({
+            invitationId,
+            roleCount: validated.roleIds.length,
+            expiresAt: expiresAt.toISOString(),
+          }),
           dedupeKey: () => `identity:invitation:created:${invitationId}`,
         },
         execute: async (transaction) => {
@@ -581,7 +601,8 @@ export class IdentityService {
               and id = ${id}::uuid and status = 'PENDING'
             returning id
           `.execute(transaction);
-          if (!updated.rows[0]) throw new IdentityInvariantError('Pending invitation was not found');
+          if (!updated.rows[0])
+            throw new IdentityInvariantError('Pending invitation was not found');
           return { invitationId: id, status: 'REVOKED' };
         },
       },
@@ -751,10 +772,12 @@ export class IdentityService {
   ): Promise<CommandResult<Record<string, unknown>>> {
     const validated = customRoleSchema.parse(input);
     const roleId = randomUUID();
-    return this.commands.execute(
-      this.roleDefinition(context, roleId, validated, true),
-      { context, input: validated, idempotencyKey, approvalId },
-    );
+    return this.commands.execute(this.roleDefinition(context, roleId, validated, true), {
+      context,
+      input: validated,
+      idempotencyKey,
+      approvalId,
+    });
   }
 
   public async updateRole(
@@ -766,10 +789,12 @@ export class IdentityService {
   ): Promise<CommandResult<Record<string, unknown>>> {
     const id = uuidSchema.parse(roleId);
     const validated = customRoleSchema.parse(input);
-    return this.commands.execute(
-      this.roleDefinition(context, id, validated, false),
-      { context, input: validated, idempotencyKey, approvalId },
-    );
+    return this.commands.execute(this.roleDefinition(context, id, validated, false), {
+      context,
+      input: validated,
+      idempotencyKey,
+      approvalId,
+    });
   }
 
   public async deleteRole(
@@ -818,10 +843,16 @@ export class IdentityService {
       resource: () => ({ type: 'identity.role', id: roleId }),
       event: {
         type: create ? 'identity.organization.role_created' : 'identity.organization.role_updated',
-        data: () => ({ roleId, code: validated.code, permissionCount: validated.permissionCodes.length }),
+        data: () => ({
+          roleId,
+          code: validated.code,
+          permissionCount: validated.permissionCodes.length,
+        }),
         dedupeKey: () => `identity:role:${create ? 'created' : 'updated'}:${roleId}`,
       },
-      execute: async (transaction: Parameters<Parameters<CommandExecutor['execute']>[0]['execute']>[0]) => {
+      execute: async (
+        transaction: Parameters<Parameters<CommandExecutor['execute']>[0]['execute']>[0],
+      ) => {
         const permissionCodes = [...new Set(validated.permissionCodes)];
         if (permissionCodes.length > 0) {
           const permissions = await sql<{ code: string }>`

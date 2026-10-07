@@ -12,10 +12,11 @@ void test('accepts only a single bearer token', () => {
 });
 
 void test('derives MFA assurance only from explicit authentication methods', () => {
-  assert.deepEqual(
-    authAssuranceFromClaims({ sub: 'subject', amr: ['pwd', 'otp'], acr: '2' }),
-    { mfaSatisfied: true, methods: ['pwd', 'otp'], acr: '2' },
-  );
+  assert.deepEqual(authAssuranceFromClaims({ sub: 'subject', amr: ['pwd', 'otp'], acr: '2' }), {
+    mfaSatisfied: true,
+    methods: ['pwd', 'otp'],
+    acr: '2',
+  });
   assert.deepEqual(authAssuranceFromClaims({ sub: 'subject', amr: ['pwd'] }), {
     mfaSatisfied: false,
     methods: ['pwd'],

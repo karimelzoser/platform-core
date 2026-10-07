@@ -67,18 +67,29 @@ export async function saveRole(formData: FormData): Promise<void> {
     .split(/[\s,]+/u)
     .map((value) => value.trim())
     .filter(Boolean);
-  const result = await identityRequest(roleId ? `/v1/identity/roles/${roleId}` : '/v1/identity/roles', {
-    method: 'POST',
-    idempotent: true,
-    approvalId: optional(formData, 'approvalId'),
-    body: {
-      code,
-      name,
-      ...(optional(formData, 'description') ? { description: optional(formData, 'description') } : {}),
-      permissionCodes,
+  const result = await identityRequest(
+    roleId ? `/v1/identity/roles/${roleId}` : '/v1/identity/roles',
+    {
+      method: 'POST',
+      idempotent: true,
+      approvalId: optional(formData, 'approvalId'),
+      body: {
+        code,
+        name,
+        ...(optional(formData, 'description')
+          ? { description: optional(formData, 'description') }
+          : {}),
+        permissionCodes,
+      },
     },
-  });
-  redirectWith(result.kind === 'success' ? (roleId ? 'Custom role updated.' : 'Custom role created.') : resultMessage(result));
+  );
+  redirectWith(
+    result.kind === 'success'
+      ? roleId
+        ? 'Custom role updated.'
+        : 'Custom role created.'
+      : resultMessage(result),
+  );
 }
 
 export async function deleteRole(formData: FormData): Promise<void> {

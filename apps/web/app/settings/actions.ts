@@ -25,7 +25,8 @@ export async function updateOrganization(formData: FormData): Promise<void> {
   const name = required(formData, 'name');
   const locale = required(formData, 'locale');
   const timezone = required(formData, 'timezone');
-  if (!name || !locale || !timezone) redirectWith('Organization name, locale, and timezone are required.');
+  if (!name || !locale || !timezone)
+    redirectWith('Organization name, locale, and timezone are required.');
 
   const result = await identityRequest('/v1/identity/organization', {
     method: 'POST',
@@ -39,7 +40,9 @@ export async function updateOrganization(formData: FormData): Promise<void> {
         : {}),
     },
   });
-  redirectWith(result.kind === 'success' ? 'Organization settings updated.' : resultMessage(result));
+  redirectWith(
+    result.kind === 'success' ? 'Organization settings updated.' : resultMessage(result),
+  );
 }
 
 export async function updateMfaPolicy(formData: FormData): Promise<void> {
