@@ -17,7 +17,7 @@ const tenantA = 'aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa';
 const tenantB = 'bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb';
 const actorA = '11111111-1111-1111-1111-111111111111';
 const actorB = '22222222-2222-2222-2222-222222222222';
-const approverA = '66666666-6666-6666-6666-666666666666';
+const approverA = '88888888-8888-8888-8888-888888888888';
 const connectionA = 'aaaaaaaa-0000-0000-0000-000000000730';
 const secretA = 'aaaaaaaa-0000-0000-0000-000000000731';
 
@@ -47,6 +47,7 @@ function context(tenantId: string, actorId: string, suffix: string): TenantReque
 
 const contextA = context(tenantA, actorA, 'a');
 const contextB = context(tenantB, actorB, 'b');
+const approverContext = context(tenantA, approverA, 'approver');
 
 async function approvedEvidence(
   database: PlatformDatabase,
@@ -75,14 +76,20 @@ async function main(): Promise<void> {
   const databaseService = new ApiDatabaseService();
   const database = databaseService.database;
   try {
-    await withTenantTransaction(database, contextA, async (transaction) => {
+    // Use a lifecycle-specific approver identity so this test is independent from
+    // commerce/shipping fixtures and satisfies identity.users self-insert RLS.
+    await withTenantTransaction(database, approverContext, async (transaction) => {
       await sql`insert into identity.users (id, keycloak_subject, email)
-        values (${approverA}::uuid, 'order-workflow-approver', 'order-workflow-approver@example.test')
-        on conflict (id) do nothing`.execute(transaction);
+        values (
+          ${approverA}::uuid,
+          'order-workflow-lifecycle-approver',
+          'order-workflow-approver@example.test'
+        ) on conflict (id) do nothing`.execute(transaction);
       await sql`insert into identity.memberships (tenant_id, user_id, status)
-        values (${tenantA}::uuid, ${actorA}::uuid, 'ACTIVE'),
-          (${tenantA}::uuid, ${approverA}::uuid, 'ACTIVE')
+        values (${tenantA}::uuid, ${approverA}::uuid, 'ACTIVE')
         on conflict (tenant_id, user_id) do nothing`.execute(transaction);
+    });
+    await withTenantTransaction(database, contextA, async (transaction) => {
       await sql`insert into integrations.connector_definitions (
         key, version, category, display_name, manifest, enabled
       ) values (
@@ -109,11 +116,6 @@ async function main(): Promise<void> {
         status = 'CONNECTED', settings = excluded.settings, capabilities = excluded.capabilities`.execute(
         transaction,
       );
-    });
-    await withTenantTransaction(database, contextB, async (transaction) => {
-      await sql`insert into identity.memberships (tenant_id, user_id, status)
-        values (${tenantB}::uuid, ${actorB}::uuid, 'ACTIVE')
-        on conflict (tenant_id, user_id) do nothing`.execute(transaction);
     });
 
     const opaUrl = process.env.OPA_URL;
