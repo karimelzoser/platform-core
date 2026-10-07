@@ -1,6 +1,7 @@
 -- Close the asymmetric privileged-role mutation boundary left by migration 0038.
 -- Ordinary member managers may manage membership lifecycle, but assigning, replacing,
--- or removing Owner/Admin system roles requires organization.roles.manage.
+-- or removing roles that control role/security administration requires
+-- organization.roles.manage.
 
 BEGIN;
 
@@ -10,8 +11,8 @@ LANGUAGE plpgsql
 SECURITY INVOKER
 AS $$
 DECLARE
-  v_new_role_code text;
-  v_old_role_code text;
+  v_new_role_privileged boolean := false;
+  v_old_role_privileged boolean := false;
   v_can_manage_roles boolean;
 BEGIN
   -- Trusted SECURITY DEFINER identity bootstrap/acceptance functions execute as
@@ -27,31 +28,49 @@ BEGIN
   v_can_manage_roles := identity.current_actor_has_permission('organization.roles.manage');
 
   IF TG_OP IN ('UPDATE', 'DELETE') THEN
-    SELECT role.code
-    INTO v_old_role_code
-    FROM identity.roles role
-    WHERE role.tenant_id = OLD.tenant_id
-      AND role.id = OLD.role_id
-      AND role.is_system = true;
+    SELECT EXISTS (
+      SELECT 1
+      FROM identity.roles role
+      LEFT JOIN identity.role_permissions role_permission
+        ON role_permission.tenant_id = role.tenant_id
+       AND role_permission.role_id = role.id
+      WHERE role.tenant_id = OLD.tenant_id
+        AND role.id = OLD.role_id
+        AND (
+          (role.is_system = true AND role.code IN ('owner', 'admin'))
+          OR role_permission.permission_code IN (
+            'organization.roles.manage',
+            'organization.security.manage'
+          )
+        )
+    ) INTO v_old_role_privileged;
 
-    IF v_old_role_code IN ('owner', 'admin')
-       AND NOT v_can_manage_roles THEN
-      RAISE EXCEPTION 'removing privileged system roles requires organization.roles.manage'
+    IF v_old_role_privileged AND NOT v_can_manage_roles THEN
+      RAISE EXCEPTION 'removing privileged roles requires organization.roles.manage'
         USING ERRCODE = '42501';
     END IF;
   END IF;
 
   IF TG_OP IN ('INSERT', 'UPDATE') THEN
-    SELECT role.code
-    INTO v_new_role_code
-    FROM identity.roles role
-    WHERE role.tenant_id = NEW.tenant_id
-      AND role.id = NEW.role_id
-      AND role.is_system = true;
+    SELECT EXISTS (
+      SELECT 1
+      FROM identity.roles role
+      LEFT JOIN identity.role_permissions role_permission
+        ON role_permission.tenant_id = role.tenant_id
+       AND role_permission.role_id = role.id
+      WHERE role.tenant_id = NEW.tenant_id
+        AND role.id = NEW.role_id
+        AND (
+          (role.is_system = true AND role.code IN ('owner', 'admin'))
+          OR role_permission.permission_code IN (
+            'organization.roles.manage',
+            'organization.security.manage'
+          )
+        )
+    ) INTO v_new_role_privileged;
 
-    IF v_new_role_code IN ('owner', 'admin')
-       AND NOT v_can_manage_roles THEN
-      RAISE EXCEPTION 'assigning privileged system roles requires organization.roles.manage'
+    IF v_new_role_privileged AND NOT v_can_manage_roles THEN
+      RAISE EXCEPTION 'assigning privileged roles requires organization.roles.manage'
         USING ERRCODE = '42501';
     END IF;
   END IF;
@@ -73,6 +92,7 @@ BEFORE INSERT OR UPDATE OR DELETE ON identity.membership_roles
 FOR EACH ROW EXECUTE FUNCTION identity.guard_privileged_role_assignment();
 
 -- Invitation-role deletion is intentionally left to invitation lifecycle semantics.
--- Assignment/replacement remains guarded by the existing INSERT/UPDATE trigger.
+-- Assignment/replacement remains guarded by the existing INSERT/UPDATE trigger,
+-- which now also classifies privileged custom roles by their permission set.
 
 COMMIT;
