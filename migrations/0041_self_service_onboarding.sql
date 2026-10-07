@@ -57,9 +57,6 @@ CREATE TABLE identity.organization_onboarding_progress (
     CHECK (team_step_status IN ('PENDING', 'SKIPPED')),
   integration_step_status text NOT NULL DEFAULT 'PENDING'
     CHECK (integration_step_status IN ('PENDING', 'SKIPPED')),
-  last_step text NOT NULL DEFAULT 'BUSINESS_PROFILE'
-    CHECK (last_step IN ('BUSINESS_PROFILE', 'TEAM', 'INTEGRATION', 'COMPLETE')),
-  completed_at timestamptz,
   created_at timestamptz NOT NULL DEFAULT now(),
   updated_at timestamptz NOT NULL DEFAULT now()
 );
