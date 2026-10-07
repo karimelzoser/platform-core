@@ -1,5 +1,12 @@
 import type { Metadata } from 'next';
-import { EmptyState, PageHeader, PageShell, Stack, StatusBadge, SurfaceCard } from '../ui-primitives';
+import {
+  EmptyState,
+  PageHeader,
+  PageShell,
+  Stack,
+  StatusBadge,
+  SurfaceCard,
+} from '../ui-primitives';
 import { identityRequest } from '../identity-api';
 import { selectOrganization } from './actions';
 
@@ -21,9 +28,7 @@ interface PageProps {
 
 export default async function OrganizationsPage({ searchParams }: PageProps) {
   const { message } = await searchParams;
-  const result = await identityRequest<OrganizationList>('/v1/identity/organizations', {
-    tenant: false,
-  });
+  const result = await loadOrganizations();
 
   return (
     <PageShell aria-labelledby="organizations-title">
@@ -38,29 +43,56 @@ export default async function OrganizationsPage({ searchParams }: PageProps) {
             </a>
           }
         />
-        {message ? <div className="identity-notice" role="status">{message}</div> : null}
+        {message ? (
+          <div className="identity-notice" role="status">
+            {message}
+          </div>
+        ) : null}
         <OrganizationContent result={result} />
       </Stack>
     </PageShell>
   );
 }
 
-function OrganizationContent({ result }: { result: Awaited<ReturnType<typeof loadOrganizations>> }) {
+function OrganizationContent({
+  result,
+}: {
+  result: Awaited<ReturnType<typeof loadOrganizations>>;
+}) {
   if (result.kind === 'authentication_required') {
-    return <EmptyState title="Sign in to continue" description="Authentication is required before organization discovery." />;
+    return (
+      <EmptyState
+        title="Sign in to continue"
+        description="Authentication is required before organization discovery."
+      />
+    );
   }
   if (result.kind === 'configuration_error') {
-    return <EmptyState title="Identity API is not configured" description="Set API_INTERNAL_URL on the web runtime." />;
+    return (
+      <EmptyState
+        title="Identity API is not configured"
+        description="Set API_INTERNAL_URL on the web runtime."
+      />
+    );
   }
   if (result.kind === 'error') {
-    return <EmptyState title="Organizations could not be loaded" description={result.detail} />;
+    return (
+      <EmptyState
+        title="Organizations could not be loaded"
+        description={result.detail}
+      />
+    );
   }
   if (result.data.items.length === 0) {
     return (
       <EmptyState
         title="No active organization memberships"
         description="Create an organization or accept an invitation linked to your verified identity."
-        action={<a className="ds-button ds-button--primary" href="/onboarding">Create organization</a>}
+        action={
+          <a className="ds-button ds-button--primary" href="/onboarding">
+            Create organization
+          </a>
+        }
       />
     );
   }
@@ -68,7 +100,10 @@ function OrganizationContent({ result }: { result: Awaited<ReturnType<typeof loa
   return (
     <div className="identity-grid" aria-label="Available organizations">
       {result.data.items.map((organization) => (
-        <SurfaceCard key={organization.id} className="identity-organization-card">
+        <SurfaceCard
+          key={organization.id}
+          className="identity-organization-card"
+        >
           <Stack gap="compact">
             <div className="identity-card-heading">
               <div>
@@ -79,12 +114,20 @@ function OrganizationContent({ result }: { result: Awaited<ReturnType<typeof loa
             </div>
             <div className="identity-role-list" aria-label="Assigned roles">
               {organization.roleCodes.map((role) => (
-                <StatusBadge key={role} tone="info">{role}</StatusBadge>
+                <StatusBadge key={role} tone="info">
+                  {role}
+                </StatusBadge>
               ))}
             </div>
             <form action={selectOrganization}>
-              <input name="organizationId" type="hidden" value={organization.id} />
-              <button className="ds-button ds-button--primary" type="submit">Open workspace</button>
+              <input
+                name="organizationId"
+                type="hidden"
+                value={organization.id}
+              />
+              <button className="ds-button ds-button--primary" type="submit">
+                Open workspace
+              </button>
             </form>
           </Stack>
         </SurfaceCard>
@@ -94,5 +137,7 @@ function OrganizationContent({ result }: { result: Awaited<ReturnType<typeof loa
 }
 
 async function loadOrganizations() {
-  return identityRequest<OrganizationList>('/v1/identity/organizations', { tenant: false });
+  return identityRequest<OrganizationList>('/v1/identity/organizations', {
+    tenant: false,
+  });
 }
