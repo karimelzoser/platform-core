@@ -65,6 +65,24 @@ CREATE TRIGGER organization_onboarding_progress_touch_updated_at
 BEFORE UPDATE ON identity.organization_onboarding_progress
 FOR EACH ROW EXECUTE FUNCTION platform.touch_updated_at();
 
+CREATE OR REPLACE FUNCTION identity.initialize_organization_onboarding_progress()
+RETURNS trigger
+LANGUAGE plpgsql
+SECURITY INVOKER
+SET search_path = pg_catalog, identity
+AS $$
+BEGIN
+  INSERT INTO identity.organization_onboarding_progress (tenant_id)
+  VALUES (NEW.id)
+  ON CONFLICT (tenant_id) DO NOTHING;
+  RETURN NEW;
+END;
+$$;
+
+CREATE TRIGGER organizations_initialize_onboarding_progress
+AFTER INSERT ON identity.organizations
+FOR EACH ROW EXECUTE FUNCTION identity.initialize_organization_onboarding_progress();
+
 INSERT INTO identity.organization_onboarding_progress (tenant_id)
 SELECT organization.id
 FROM identity.organizations organization
