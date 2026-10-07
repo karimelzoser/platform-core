@@ -54,20 +54,20 @@ jobs:
           KEYCLOAK_CLIENT_ID: platform-web
         run: |
           set -o pipefail
-          mkdir -p .integration-diagnostics
-          pnpm --filter @platform/integration-tests test:integration 2>&1 | tee .integration-diagnostics/lifecycle.log
+          mkdir -p integration-diagnostics
+          pnpm --filter @platform/integration-tests test:integration 2>&1 | tee integration-diagnostics/lifecycle.log
       - name: Collect integration diagnostics
         if: failure()
         run: |
-          mkdir -p .integration-diagnostics
-          docker compose -f docker/integration/compose.yml ps 2>&1 | tee .integration-diagnostics/compose-ps.log
-          docker compose -f docker/integration/compose.yml logs --no-color 2>&1 | tee .integration-diagnostics/compose.log
+          mkdir -p integration-diagnostics
+          docker compose -f docker/integration/compose.yml ps 2>&1 | tee integration-diagnostics/compose-ps.log
+          docker compose -f docker/integration/compose.yml logs --no-color 2>&1 | tee integration-diagnostics/compose.log
       - name: Upload integration diagnostics
         if: failure()
         uses: actions/upload-artifact@v4
         with:
           name: platform-integration-diagnostics-${{ github.run_id }}
-          path: .integration-diagnostics
+          path: integration-diagnostics
           if-no-files-found: error
       - name: Stop isolated integration stack
         if: always()
