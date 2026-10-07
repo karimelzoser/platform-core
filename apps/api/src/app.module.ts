@@ -24,6 +24,8 @@ import { AuthenticatedContextService } from './authenticated-context.service.js'
 import { CommerceController } from './commerce.controller.js';
 import { loadApiConfig } from './config.js';
 import { CustomersController } from './customers.controller.js';
+import { IdentityController } from './identity.controller.js';
+import { IdentityService } from './identity.service.js';
 import { SessionController } from './session.controller.js';
 import { WebhookController } from './webhook.controller.js';
 import { WebhookIngressService } from './webhook-ingress.service.js';
@@ -69,6 +71,7 @@ function createRuntimeConnectorRegistry(): ConnectorRegistry {
   controllers: [
     HealthController,
     SessionController,
+    IdentityController,
     WebhookController,
     CustomersController,
     ApprovalsController,
@@ -119,6 +122,12 @@ function createRuntimeConnectorRegistry(): ConnectorRegistry {
       provide: ShippingRoutingService,
       useFactory: (database: ApiDatabaseService, commands: CommandExecutor) =>
         new ShippingRoutingService(database.database, commands),
+      inject: [ApiDatabaseService, CommandExecutor],
+    },
+    {
+      provide: IdentityService,
+      useFactory: (database: ApiDatabaseService, commands: CommandExecutor) =>
+        new IdentityService(database.database, commands),
       inject: [ApiDatabaseService, CommandExecutor],
     },
     {

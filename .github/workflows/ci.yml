@@ -52,12 +52,23 @@ jobs:
           KEYCLOAK_ISSUER: http://127.0.0.1:8080/realms/platform
           KEYCLOAK_JWKS_URL: http://127.0.0.1:8080/realms/platform/protocol/openid-connect/certs
           KEYCLOAK_CLIENT_ID: platform-web
-        run: pnpm --filter @platform/integration-tests test:integration
+        run: |
+          set -o pipefail
+          mkdir -p integration-diagnostics
+          pnpm --filter @platform/integration-tests test:integration 2>&1 | tee integration-diagnostics/lifecycle.log
       - name: Collect integration diagnostics
         if: failure()
         run: |
-          docker compose -f docker/integration/compose.yml ps
-          docker compose -f docker/integration/compose.yml logs --no-color
+          mkdir -p integration-diagnostics
+          docker compose -f docker/integration/compose.yml ps 2>&1 | tee integration-diagnostics/compose-ps.log
+          docker compose -f docker/integration/compose.yml logs --no-color 2>&1 | tee integration-diagnostics/compose.log
+      - name: Upload integration diagnostics
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: platform-integration-diagnostics-${{ github.run_id }}
+          path: integration-diagnostics
+          if-no-files-found: error
       - name: Stop isolated integration stack
         if: always()
         run: scripts/integration/down.sh

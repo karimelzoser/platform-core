@@ -35,7 +35,10 @@ function context(tenantId: string, actorId: string): TenantRequestContext {
 
 const contextA = context(tenantA, '11111111-1111-1111-1111-111111111111');
 const contextB = context(tenantB, '22222222-2222-2222-2222-222222222222');
-const contextAApprover = context(tenantA, tenantAApprover);
+const contextAApprover: TenantRequestContext = {
+  ...context(tenantA, tenantAApprover),
+  subject: 'ticket-lifecycle-approver',
+};
 
 async function main(): Promise<void> {
   const databaseService = new ApiDatabaseService();
@@ -51,21 +54,21 @@ async function main(): Promise<void> {
     );
     const tickets = new TicketsService(databaseService, commands);
     const approvals = new ApprovalService(databaseService);
-    await withTenantTransaction(database, contextA, async (transaction) => {
+    // Identity closure intentionally permits a subject to insert only its own global
+    // identity row. Seed the approver under that approver's subject instead of
+    // weakening users_insert_self or bypassing RLS for an integration fixture.
+    // The base tenant A/B memberships are owned by identity-fixtures.sql.
+    await withTenantTransaction(database, contextAApprover, async (transaction) => {
       await sql`insert into identity.users (id, keycloak_subject, email)
         values (${tenantAApprover}::uuid, 'ticket-lifecycle-approver', 'approver@example.test')`.execute(
         transaction,
       );
-      await sql`insert into identity.memberships (tenant_id, user_id, status)
-        values (${tenantA}::uuid, ${contextA.actorId}::uuid, 'ACTIVE')`.execute(transaction);
       await sql`insert into identity.memberships (tenant_id, user_id, status)
         values (${tenantA}::uuid, ${tenantAApprover}::uuid, 'ACTIVE')`.execute(transaction);
       await sql`insert into crm.customers (id, tenant_id, display_name)
         values (${customerA}::uuid, ${tenantA}::uuid, 'Lifecycle customer A')`.execute(transaction);
     });
     await withTenantTransaction(database, contextB, async (transaction) => {
-      await sql`insert into identity.memberships (tenant_id, user_id, status)
-        values (${tenantB}::uuid, ${contextB.actorId}::uuid, 'ACTIVE')`.execute(transaction);
       await sql`insert into crm.customers (id, tenant_id, display_name)
         values (${customerB}::uuid, ${tenantB}::uuid, 'Lifecycle customer B')`.execute(transaction);
     });
@@ -132,7 +135,7 @@ async function main(): Promise<void> {
     assert.equal(await tickets.get(contextB, ticketA), undefined);
     await assert.rejects(
       tickets.create(contextB, 'ticket-lifecycle-cross-customer', {
-        title: 'Invalid customer link',
+        title: 'Invalid tenant link',
         customerId: customerA,
       }),
     );

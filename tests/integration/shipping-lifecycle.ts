@@ -45,6 +45,7 @@ function context(tenantId: string, actorId: string, suffix: string): TenantReque
 
 const contextA = context(tenantA, actorA, 'a');
 const contextB = context(tenantB, actorB, 'b');
+const approverContext = context(tenantA, approverA, 'approver');
 
 async function approvedEvidence(
   database: PlatformDatabase,
@@ -74,14 +75,18 @@ async function main(): Promise<void> {
   const database = databaseService.database;
 
   try {
-    await withTenantTransaction(database, contextA, async (transaction) => {
+    // Identity closure permits a subject to create only its own global user row.
+    // Base tenant owner memberships are already seeded by identity-fixtures.sql.
+    await withTenantTransaction(database, approverContext, async (transaction) => {
       await sql`insert into identity.users (id, keycloak_subject, email)
         values (${approverA}::uuid, 'shipping-lifecycle-approver', 'shipping-approver@example.test')
         on conflict (id) do nothing`.execute(transaction);
       await sql`insert into identity.memberships (tenant_id, user_id, status)
-        values (${tenantA}::uuid, ${actorA}::uuid, 'ACTIVE'),
-          (${tenantA}::uuid, ${approverA}::uuid, 'ACTIVE')
+        values (${tenantA}::uuid, ${approverA}::uuid, 'ACTIVE')
         on conflict (tenant_id, user_id) do nothing`.execute(transaction);
+    });
+
+    await withTenantTransaction(database, contextA, async (transaction) => {
       await sql`insert into integrations.connector_definitions (
         key, version, category, display_name, manifest, enabled
       ) values (
@@ -107,12 +112,6 @@ async function main(): Promise<void> {
         secret_reference_id = excluded.secret_reference_id,
         status = 'CONNECTED', settings = excluded.settings,
         capabilities = excluded.capabilities`.execute(transaction);
-    });
-
-    await withTenantTransaction(database, contextB, async (transaction) => {
-      await sql`insert into identity.memberships (tenant_id, user_id, status)
-        values (${tenantB}::uuid, ${actorB}::uuid, 'ACTIVE')
-        on conflict (tenant_id, user_id) do nothing`.execute(transaction);
     });
 
     const opaUrl = process.env.OPA_URL;

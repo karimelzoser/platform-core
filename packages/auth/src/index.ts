@@ -5,9 +5,32 @@ export const keycloakClaimsSchema = z.object({
   sub: z.string().min(1),
   preferred_username: z.string().min(1).optional(),
   email: z.string().email().optional(),
+  email_verified: z.boolean().optional(),
+  given_name: z.string().min(1).optional(),
+  family_name: z.string().min(1).optional(),
+  locale: z.string().min(2).max(32).optional(),
+  acr: z.string().min(1).max(200).optional(),
+  amr: z.array(z.string().min(1).max(100)).max(16).optional(),
 });
 
 export type KeycloakClaims = z.infer<typeof keycloakClaimsSchema> & JWTPayload;
+
+export interface AuthAssurance {
+  mfaSatisfied: boolean;
+  methods: readonly string[];
+  acr?: string;
+}
+
+const mfaMethods = new Set(['otp', 'mfa', 'hwk', 'fido', 'fido2', 'webauthn']);
+
+export function authAssuranceFromClaims(claims: KeycloakClaims): AuthAssurance {
+  const methods = (claims.amr ?? []).map((method) => method.toLowerCase());
+  return {
+    mfaSatisfied: methods.some((method) => mfaMethods.has(method)),
+    methods,
+    ...(claims.acr ? { acr: claims.acr } : {}),
+  };
+}
 
 export interface JwtVerifierOptions {
   issuer: string;

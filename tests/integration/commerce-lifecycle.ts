@@ -45,6 +45,7 @@ function context(tenantId: string, actorId: string, suffix: string): TenantReque
 
 const contextA = context(tenantA, actorA, 'a');
 const contextB = context(tenantB, actorB, 'b');
+const approverContext = context(tenantA, approverA, 'approver');
 
 async function approvedEvidence(
   database: PlatformDatabase,
@@ -73,14 +74,17 @@ async function main(): Promise<void> {
   const databaseService = new ApiDatabaseService();
   const database = databaseService.database;
   try {
-    await withTenantTransaction(database, contextA, async (transaction) => {
+    // Identity closure permits a subject to create only its own global user row.
+    // Base tenant owner memberships are already seeded by identity-fixtures.sql.
+    await withTenantTransaction(database, approverContext, async (transaction) => {
       await sql`insert into identity.users (id, keycloak_subject, email)
         values (${approverA}::uuid, 'commerce-lifecycle-approver', 'commerce-approver@example.test')
         on conflict (id) do nothing`.execute(transaction);
       await sql`insert into identity.memberships (tenant_id, user_id, status)
-        values (${tenantA}::uuid, ${actorA}::uuid, 'ACTIVE'),
-          (${tenantA}::uuid, ${approverA}::uuid, 'ACTIVE')
+        values (${tenantA}::uuid, ${approverA}::uuid, 'ACTIVE')
         on conflict (tenant_id, user_id) do nothing`.execute(transaction);
+    });
+    await withTenantTransaction(database, contextA, async (transaction) => {
       await sql`insert into integrations.connections (
         id, tenant_id, connector_key, display_name, status
       ) values (
@@ -89,9 +93,6 @@ async function main(): Promise<void> {
       ) on conflict (id) do nothing`.execute(transaction);
     });
     await withTenantTransaction(database, contextB, async (transaction) => {
-      await sql`insert into identity.memberships (tenant_id, user_id, status)
-        values (${tenantB}::uuid, ${actorB}::uuid, 'ACTIVE')
-        on conflict (tenant_id, user_id) do nothing`.execute(transaction);
       await sql`insert into integrations.connections (
         id, tenant_id, connector_key, display_name, status
       ) values (
