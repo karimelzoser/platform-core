@@ -1,5 +1,6 @@
 -- Verify that membership managers cannot assign, replace, or remove privileged
--- Owner/Admin roles without organization.roles.manage, while authorized Owners can.
+-- Owner/Admin roles or privileged custom roles without organization.roles.manage,
+-- while authorized Owners can mutate a non-final privileged role.
 
 BEGIN;
 SELECT platform.set_request_context(
@@ -11,9 +12,11 @@ SELECT platform.set_request_context(
 
 DO $$
 DECLARE
+  manager_membership uuid;
   secondary_owner_membership uuid;
   owner_role uuid;
   agent_role uuid;
+  delegated_role_admin uuid;
   can_manage_members boolean;
   can_manage_roles boolean;
 BEGIN
@@ -29,6 +32,12 @@ BEGIN
   IF NOT can_manage_members OR can_manage_roles THEN
     RAISE EXCEPTION 'Manager fixture does not represent the intended privilege boundary';
   END IF;
+
+  SELECT membership.id INTO manager_membership
+  FROM identity.memberships membership
+  WHERE membership.tenant_id = 'aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa'
+    AND membership.user_id = '55555555-5555-5555-5555-555555555555'
+    AND membership.status = 'ACTIVE';
 
   SELECT membership.id INTO secondary_owner_membership
   FROM identity.memberships membership
@@ -48,7 +57,17 @@ BEGIN
     AND role.code = 'agent'
     AND role.is_system = true;
 
-  IF secondary_owner_membership IS NULL OR owner_role IS NULL OR agent_role IS NULL THEN
+  SELECT role.id INTO delegated_role_admin
+  FROM identity.roles role
+  WHERE role.tenant_id = 'aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa'
+    AND role.code = 'delegated_role_admin'
+    AND role.is_system = false;
+
+  IF manager_membership IS NULL
+     OR secondary_owner_membership IS NULL
+     OR owner_role IS NULL
+     OR agent_role IS NULL
+     OR delegated_role_admin IS NULL THEN
     RAISE EXCEPTION 'Privileged-role guard fixture is incomplete';
   END IF;
 
@@ -73,13 +92,57 @@ BEGIN
     NULL;
   END;
 
+  BEGIN
+    INSERT INTO identity.membership_roles (tenant_id, membership_id, role_id)
+    VALUES (
+      'aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa',
+      manager_membership,
+      delegated_role_admin
+    );
+    RAISE EXCEPTION 'Member manager escalated through privileged custom role';
+  EXCEPTION WHEN insufficient_privilege THEN
+    NULL;
+  END;
+
+  INSERT INTO identity.organization_invitations (
+    id, tenant_id, email, invited_by_user_id, expires_at
+  ) VALUES (
+    'aaaaaaaa-0000-0000-0000-000000000591',
+    'aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa',
+    'privileged-custom-role-invite@example.test',
+    '55555555-5555-5555-5555-555555555555',
+    now() + interval '1 day'
+  );
+
+  BEGIN
+    INSERT INTO identity.organization_invitation_roles (
+      tenant_id, invitation_id, role_id
+    ) VALUES (
+      'aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa',
+      'aaaaaaaa-0000-0000-0000-000000000591',
+      delegated_role_admin
+    );
+    RAISE EXCEPTION 'Member manager invited a privileged custom role';
+  EXCEPTION WHEN insufficient_privilege THEN
+    NULL;
+  END;
+
   IF NOT EXISTS (
     SELECT 1 FROM identity.membership_roles
     WHERE tenant_id = 'aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa'
       AND membership_id = secondary_owner_membership
       AND role_id = owner_role
   ) THEN
-    RAISE EXCEPTION 'Denied privileged-role mutation changed persisted state';
+    RAISE EXCEPTION 'Denied privileged-role mutation changed persisted Owner state';
+  END IF;
+
+  IF EXISTS (
+    SELECT 1 FROM identity.membership_roles
+    WHERE tenant_id = 'aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa'
+      AND membership_id = manager_membership
+      AND role_id = delegated_role_admin
+  ) THEN
+    RAISE EXCEPTION 'Denied custom-role escalation changed persisted membership state';
   END IF;
 END;
 $$;
