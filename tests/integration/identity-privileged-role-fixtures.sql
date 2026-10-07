@@ -1,6 +1,8 @@
 -- Privileged-role mutation fixture applied as platform_migrator.
 -- A second active Owner is required so removal authorization can be tested
--- independently from the separate final-active-owner invariant.
+-- independently from the separate final-active-owner invariant. A custom role
+-- carrying role-management permission proves indirect privilege escalation is
+-- guarded as well as Owner/Admin system-role assignment.
 
 INSERT INTO identity.users (
   id, keycloak_subject, email, first_name, last_name, locale, timezone
@@ -44,5 +46,28 @@ JOIN identity.roles role
  AND role.is_system = true
 WHERE membership.tenant_id = 'aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa'
   AND membership.user_id = '99999999-9999-9999-9999-999999999999'
+ON CONFLICT DO NOTHING;
+
+INSERT INTO identity.roles (
+  id, tenant_id, code, name, description, is_system
+) VALUES (
+  'aaaaaaaa-0000-0000-0000-000000000590',
+  'aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa',
+  'delegated_role_admin',
+  'Delegated Role Admin',
+  'Integration fixture custom role carrying organization.roles.manage.',
+  false
+)
+ON CONFLICT (tenant_id, code) DO UPDATE
+SET name = EXCLUDED.name,
+    description = EXCLUDED.description,
+    is_system = false,
+    updated_at = now();
+
+INSERT INTO identity.role_permissions (tenant_id, role_id, permission_code)
+SELECT role.tenant_id, role.id, 'organization.roles.manage'
+FROM identity.roles role
+WHERE role.tenant_id = 'aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa'
+  AND role.code = 'delegated_role_admin'
 ON CONFLICT DO NOTHING;
 COMMIT;
