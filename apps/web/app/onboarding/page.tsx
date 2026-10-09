@@ -1,4 +1,5 @@
 import type { Metadata } from 'next';
+import { identityRequest, resultMessage } from '../identity-api';
 import {
   EmptyState,
   MetricCard,
@@ -8,10 +9,17 @@ import {
   StatusBadge,
   SurfaceCard,
 } from '../ui-primitives';
-import { identityRequest, resultMessage } from '../identity-api';
 import { saveBusinessProfile, setOnboardingStep } from './actions';
 
 export const metadata: Metadata = { title: 'Onboarding | Platform' };
+
+type VolumeBand =
+  | 'NONE'
+  | '1_100'
+  | '101_1000'
+  | '1001_5000'
+  | '5001_20000'
+  | '20000_PLUS';
 
 interface OnboardingState {
   organization: {
@@ -54,8 +62,6 @@ interface OnboardingState {
     connectedConnectionCount: number;
   };
 }
-
-type VolumeBand = 'NONE' | '1_100' | '101_1000' | '1001_5000' | '5001_20000' | '20000_PLUS';
 
 interface PageProps {
   searchParams: Promise<{ message?: string }>;
@@ -140,17 +146,23 @@ export default async function OnboardingPage({ searchParams }: PageProps) {
           <MetricCard
             label="Team"
             value={state.progress.team}
-            detail={`${String(state.progress.activeMemberCount)} active · ${String(state.progress.pendingInvitationCount)} pending invite(s)`}
+            detail={`${String(state.progress.activeMemberCount)} active · ${String(
+              state.progress.pendingInvitationCount,
+            )} pending invite(s)`}
           />
           <MetricCard
             label="Integration"
             value={state.progress.integration}
-            detail={`${String(state.progress.connectedConnectionCount)} connected of ${String(state.progress.connectionCount)}`}
+            detail={`${String(state.progress.connectedConnectionCount)} connected of ${String(
+              state.progress.connectionCount,
+            )}`}
           />
           <MetricCard
             label="Current step"
             value={currentStep}
-            detail={state.progress.complete ? 'Workspace setup is ready' : 'Resume where you left off'}
+            detail={
+              state.progress.complete ? 'Workspace setup is ready' : 'Resume where you left off'
+            }
           />
         </div>
 
@@ -161,7 +173,9 @@ export default async function OnboardingPage({ searchParams }: PageProps) {
                 <p className="ds-eyebrow">STEP 1 · BUSINESS PROFILE</p>
                 <h2>Reusable business context</h2>
               </div>
-              <StatusBadge tone={state.progress.businessProfile === 'COMPLETE' ? 'success' : 'warning'}>
+              <StatusBadge
+                tone={state.progress.businessProfile === 'COMPLETE' ? 'success' : 'warning'}
+              >
                 {state.progress.businessProfile}
               </StatusBadge>
             </div>
@@ -186,6 +200,7 @@ export default async function OnboardingPage({ searchParams }: PageProps) {
                   />
                   <small id="onboarding-country-help">ISO 3166-1 alpha-2, e.g. EG, SA, AE.</small>
                 </div>
+
                 <div className="identity-field">
                   <label htmlFor="onboarding-currency">Currency code</label>
                   <input
@@ -200,17 +215,19 @@ export default async function OnboardingPage({ searchParams }: PageProps) {
                   />
                   <small id="onboarding-currency-help">ISO 4217, e.g. EGP, SAR, AED, USD.</small>
                 </div>
+
                 <div className="identity-field">
                   <label htmlFor="onboarding-locale">Primary language</label>
                   <select
                     id="onboarding-locale"
                     name="locale"
-                    defaultValue={profile?.locale ?? state.organization.locale ?? 'en'}
+                    defaultValue={profile?.locale ?? state.organization.locale}
                   >
                     <option value="en">English</option>
                     <option value="ar">العربية</option>
                   </select>
                 </div>
+
                 <div className="identity-field">
                   <label htmlFor="onboarding-timezone">Timezone</label>
                   <input
@@ -232,6 +249,7 @@ export default async function OnboardingPage({ searchParams }: PageProps) {
                     <option value="UTC" />
                   </datalist>
                 </div>
+
                 <div className="identity-field">
                   <label htmlFor="onboarding-industry">Industry</label>
                   <select
@@ -252,6 +270,7 @@ export default async function OnboardingPage({ searchParams }: PageProps) {
                     <option value="OTHER">Other</option>
                   </select>
                 </div>
+
                 <div className="identity-field">
                   <label htmlFor="onboarding-customer-model">Customer model</label>
                   <select
@@ -264,6 +283,7 @@ export default async function OnboardingPage({ searchParams }: PageProps) {
                     <option value="HYBRID">B2B + B2C</option>
                   </select>
                 </div>
+
                 <div className="identity-field">
                   <label htmlFor="onboarding-commerce-model">Commerce model</label>
                   <select
@@ -280,6 +300,7 @@ export default async function OnboardingPage({ searchParams }: PageProps) {
                     <option value="OTHER">Other</option>
                   </select>
                 </div>
+
                 <div className="identity-field">
                   <label htmlFor="onboarding-order-volume">Monthly order volume</label>
                   <select
@@ -294,8 +315,11 @@ export default async function OnboardingPage({ searchParams }: PageProps) {
                     ))}
                   </select>
                 </div>
+
                 <div className="identity-field">
-                  <label htmlFor="onboarding-conversation-volume">Monthly conversation volume</label>
+                  <label htmlFor="onboarding-conversation-volume">
+                    Monthly conversation volume
+                  </label>
                   <select
                     id="onboarding-conversation-volume"
                     name="monthlyConversationVolumeBand"
@@ -410,7 +434,11 @@ export default async function OnboardingPage({ searchParams }: PageProps) {
             <div className="identity-section-heading">
               <div>
                 <p className="ds-eyebrow">STEP 4 · READY</p>
-                <h2>{state.progress.complete ? 'Workspace setup is ready' : 'Finish the required setup'}</h2>
+                <h2>
+                  {state.progress.complete
+                    ? 'Workspace setup is ready'
+                    : 'Finish the required setup'}
+                </h2>
               </div>
               <StatusBadge tone={state.progress.complete ? 'success' : 'warning'}>
                 {state.progress.complete ? 'READY' : 'IN PROGRESS'}
