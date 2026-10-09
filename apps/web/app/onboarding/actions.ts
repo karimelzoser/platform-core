@@ -16,7 +16,9 @@ export async function createOrganization(formData: FormData): Promise<void> {
   const locale = required(formData, 'locale') ?? 'en';
   const timezone = required(formData, 'timezone') ?? 'UTC';
   if (!name || !slug) {
-    redirect('/organizations/new?message=Organization%20name%20and%20slug%20are%20required.');
+    redirect(
+      '/organizations/new?message=Organization%20name%20and%20slug%20are%20required.',
+    );
   }
 
   const result = await identityRequest<CreatedOrganization>('/v1/identity/organizations', {
@@ -35,7 +37,9 @@ export async function createOrganization(formData: FormData): Promise<void> {
     secure: process.env.APP_ENV === 'production',
     path: '/',
   });
-  redirect('/onboarding?message=Organization%20workspace%20created.%20Complete%20the%20business%20profile%20next.');
+  redirect(
+    '/onboarding?message=Organization%20workspace%20created.%20Complete%20the%20business%20profile%20next.',
+  );
 }
 
 export async function saveBusinessProfile(formData: FormData): Promise<void> {
@@ -66,7 +70,9 @@ export async function saveBusinessProfile(formData: FormData): Promise<void> {
     !monthlyConversationVolumeBand ||
     goals.length === 0
   ) {
-    redirect('/onboarding?message=Complete%20all%20business%20profile%20fields%20and%20choose%20at%20least%20one%20goal.');
+    redirect(
+      '/onboarding?message=Complete%20all%20business%20profile%20fields%20and%20choose%20at%20least%20one%20goal.',
+    );
   }
 
   const result = await identityRequest('/v1/onboarding/profile', {
@@ -95,7 +101,10 @@ export async function saveBusinessProfile(formData: FormData): Promise<void> {
 export async function setOnboardingStep(formData: FormData): Promise<void> {
   const step = required(formData, 'step')?.toUpperCase();
   const status = required(formData, 'status')?.toUpperCase();
-  if ((step !== 'TEAM' && step !== 'INTEGRATION') || (status !== 'PENDING' && status !== 'SKIPPED')) {
+  if (
+    (step !== 'TEAM' && step !== 'INTEGRATION') ||
+    (status !== 'PENDING' && status !== 'SKIPPED')
+  ) {
     redirect('/onboarding?message=Invalid%20onboarding%20step%20update.');
   }
 
@@ -108,7 +117,8 @@ export async function setOnboardingStep(formData: FormData): Promise<void> {
     redirect(`/onboarding?message=${encodeURIComponent(resultMessage(result))}`);
   }
 
-  const message = status === 'SKIPPED' ? `${step} step skipped for now.` : `${step} step reopened.`;
+  const message =
+    status === 'SKIPPED' ? `${step} step skipped for now.` : `${step} step reopened.`;
   redirect(`/onboarding?message=${encodeURIComponent(message)}`);
 }
 
