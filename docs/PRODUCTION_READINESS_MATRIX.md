@@ -6,8 +6,10 @@ is present on the exact code being evaluated. Repository completion is not equiv
 public production readiness when a row still has provider, deployment, security, performance
 or acceptance work outstanding.
 
-**Overall release state:** IN PROGRESS  
-**Current workstream:** Basic self-service onboarding  
+**Overall release state:** IN PROGRESS
+
+**Current workstream:** Basic self-service onboarding
+
 **Current `main` baseline:** `63bdb1bf5127684f2d15fb2a4dc05157af724617` — Identity / Team / Organization closure
 
 ## Readiness levels
