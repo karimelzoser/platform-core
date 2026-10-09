@@ -12,11 +12,7 @@ const actorB = '22222222-2222-2222-2222-222222222222';
 
 const permissions = ['organization.read', 'organization.update'] as const;
 
-function context(
-  tenantId: string,
-  actorId: string,
-  suffix: string,
-): TenantRequestContext {
+function context(tenantId: string, actorId: string, suffix: string): TenantRequestContext {
   return {
     tenantId,
     actorId,
