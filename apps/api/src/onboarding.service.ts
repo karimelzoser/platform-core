@@ -85,7 +85,6 @@ interface ProfileRow {
 interface ProgressRow {
   team_step_status: z.infer<typeof stepDispositionSchema>;
   integration_step_status: z.infer<typeof stepDispositionSchema>;
-  updated_at: Date;
 }
 
 interface EvidenceRow {
@@ -96,13 +95,7 @@ interface EvidenceRow {
 }
 
 export interface OnboardingState {
-  organization: {
-    id: string;
-    name: string;
-    slug: string;
-    timezone: string;
-    locale: string;
-  };
+  organization: OrganizationRow;
   profile: null | {
     countryCode: string;
     currencyCode: string;
@@ -152,7 +145,7 @@ export class OnboardingService {
           where tenant_id = ${context.tenantId}::uuid
         `.execute(transaction),
         sql<ProgressRow>`
-          select team_step_status, integration_step_status, updated_at
+          select team_step_status, integration_step_status
           from identity.organization_onboarding_progress
           where tenant_id = ${context.tenantId}::uuid
         `.execute(transaction),
@@ -179,43 +172,36 @@ export class OnboardingService {
       ]);
 
       const organization = organizationResult.rows[0];
-      if (!organization) throw new Error('Organization was not found');
-      const profile = profileResult.rows[0] ?? null;
-      const progress = progressResult.rows[0] ?? null;
       const evidence = evidenceResult.rows[0];
+      if (!organization) throw new Error('Organization was not found');
       if (!evidence) throw new Error('Onboarding evidence could not be loaded');
 
+      const profile = profileResult.rows[0] ?? null;
+      const progress = progressResult.rows[0] ?? null;
       const activeMemberCount = Number(evidence.active_member_count);
       const pendingInvitationCount = Number(evidence.pending_invitation_count);
       const connectionCount = Number(evidence.connection_count);
       const connectedConnectionCount = Number(evidence.connected_connection_count);
-
-      const businessProfile = profile ? 'COMPLETE' : 'PENDING';
+      const businessProfile = profile ? ('COMPLETE' as const) : ('PENDING' as const);
       const team =
         activeMemberCount > 1 || pendingInvitationCount > 0
-          ? 'COMPLETE'
+          ? ('COMPLETE' as const)
           : (progress?.team_step_status ?? 'PENDING');
       const integration =
         connectedConnectionCount > 0
-          ? 'COMPLETE'
+          ? ('COMPLETE' as const)
           : (progress?.integration_step_status ?? 'PENDING');
       const currentStep =
         businessProfile === 'PENDING'
-          ? 'BUSINESS_PROFILE'
+          ? ('BUSINESS_PROFILE' as const)
           : team === 'PENDING'
-            ? 'TEAM'
+            ? ('TEAM' as const)
             : integration === 'PENDING'
-              ? 'INTEGRATION'
-              : 'COMPLETE';
+              ? ('INTEGRATION' as const)
+              : ('COMPLETE' as const);
 
       return {
-        organization: {
-          id: organization.id,
-          name: organization.name,
-          slug: organization.slug,
-          timezone: organization.timezone,
-          locale: organization.locale,
-        },
+        organization,
         profile: profile
           ? {
               countryCode: profile.country_code,
@@ -292,7 +278,9 @@ export class OnboardingService {
         execute: async (transaction) => {
           const organization = await sql<{ id: string }>`
             update identity.organizations
-            set timezone = ${validated.timezone}, locale = ${validated.locale}, updated_at = now()
+            set timezone = ${validated.timezone},
+                locale = ${validated.locale},
+                updated_at = now()
             where id = ${context.tenantId}::uuid
             returning id
           `.execute(transaction);
@@ -340,7 +328,13 @@ export class OnboardingService {
     idempotencyKey: string,
     step: OnboardingStep,
     disposition: OnboardingStepDisposition,
-  ): Promise<CommandResult<{ tenantId: string; step: OnboardingStep; status: OnboardingStepDisposition }>> {
+  ): Promise<
+    CommandResult<{
+      tenantId: string;
+      step: OnboardingStep;
+      status: OnboardingStepDisposition;
+    }>
+  > {
     const parsedStep = stepSchema.parse(step);
     const parsedDisposition = stepDispositionSchema.parse(disposition);
 
@@ -381,6 +375,7 @@ export class OnboardingService {
                 updated_at = now()
             `.execute(transaction);
           }
+
           return {
             tenantId: context.tenantId,
             step: parsedStep,
