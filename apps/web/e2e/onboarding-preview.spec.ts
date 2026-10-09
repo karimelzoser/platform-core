@@ -6,46 +6,51 @@ const ownerPassword = requiredEnvironment('PREVIEW_E2E_OWNER_PASSWORD');
 test.describe.configure({ mode: 'serial' });
 
 test.describe('Self-service onboarding disposable preview', () => {
-  test('persists business profile and verifies responsive LTR/RTL setup state', async ({ browser }, testInfo) => {
-    testInfo.setTimeout(120_000);
-    requireDisposablePreview();
-    const consoleErrors: string[] = [];
-    const context = await browser.newContext({ viewport: { width: 1440, height: 960 } });
-    const page = await context.newPage();
-    monitorBrowserErrors(page, consoleErrors);
+  test(
+    'persists business profile and verifies responsive LTR/RTL setup state',
+    async ({ browser }, testInfo) => {
+      testInfo.setTimeout(120_000);
+      requireDisposablePreview();
+      const consoleErrors: string[] = [];
+      const context = await browser.newContext({ viewport: { width: 1440, height: 960 } });
+      const page = await context.newPage();
+      monitorBrowserErrors(page, consoleErrors);
 
-    await login(page, owner, ownerPassword);
-    await page.goto('/onboarding');
-    await expect(page.getByRole('heading', { name: 'Set up Preview Tenant' })).toBeVisible();
-    await expect(page.getByRole('heading', { name: 'Reusable business context' })).toBeVisible();
-    await expect(page.getByText('2 active member(s)', { exact: true })).toBeVisible();
-    await expect(page.getByText(/connected$/).first()).toBeVisible();
+      await login(page, owner, ownerPassword);
+      await page.goto('/onboarding');
+      await expect(page.getByRole('heading', { name: 'Set up Preview Tenant' })).toBeVisible();
+      await expect(page.getByRole('heading', { name: 'Reusable business context' })).toBeVisible();
+      await expect(page.getByText('2 active member(s)', { exact: true })).toBeVisible();
+      await expect(page.getByText(/connected$/).first()).toBeVisible();
 
-    await page.getByLabel('Country code').fill('EG');
-    await page.getByLabel('Currency code').fill('EGP');
-    await page.getByLabel('Primary language').selectOption('en');
-    await page.getByLabel('Timezone').fill('Africa/Cairo');
-    await page.getByLabel('Industry').selectOption('ECOMMERCE');
-    await page.getByLabel('Customer model').selectOption('B2C');
-    await page.getByLabel('Commerce model').selectOption('ECOMMERCE');
-    await page.getByLabel('Monthly order volume').selectOption('1001_5000');
-    await page.getByLabel('Monthly conversation volume').selectOption('5001_20000');
-    const analyticsGoal = page.getByRole('checkbox', { name: 'Analytics & ROI' });
-    if (!(await analyticsGoal.isChecked())) await analyticsGoal.check();
+      await page.getByLabel('Country code').fill('EG');
+      await page.getByLabel('Currency code').fill('EGP');
+      await page.getByLabel('Primary language').selectOption('en');
+      await page.getByLabel('Timezone').fill('Africa/Cairo');
+      await page.getByLabel('Industry').selectOption('ECOMMERCE');
+      await page.getByLabel('Customer model').selectOption('B2C');
+      await page.getByLabel('Commerce model').selectOption('ECOMMERCE');
+      await page.getByLabel('Monthly order volume').selectOption('1001_5000');
+      await page.getByLabel('Monthly conversation volume').selectOption('5001_20000');
+      const analyticsGoal = page.getByRole('checkbox', { name: 'Analytics & ROI' });
+      if (!(await analyticsGoal.isChecked())) await analyticsGoal.check();
 
-    await page.getByRole('button', { name: /Save business profile|Update business profile/ }).click();
-    await expect(page.getByRole('status')).toHaveText('Business profile saved.');
-    await expect(page.getByText('EG · EGP', { exact: true })).toBeVisible();
-    await expect(page.getByText('Workspace setup is ready', { exact: true })).toBeVisible();
-    await expect(page.getByText('READY', { exact: true })).toBeVisible();
+      await page
+        .getByRole('button', { name: /Save business profile|Update business profile/ })
+        .click();
+      await expect(page.getByRole('status')).toHaveText('Business profile saved.');
+      await expect(page.getByText('EG · EGP', { exact: true })).toBeVisible();
+      await expect(page.getByText('Workspace setup is ready', { exact: true })).toBeVisible();
+      await expect(page.getByText('READY', { exact: true })).toBeVisible();
 
-    await page.keyboard.press('Tab');
-    await expect(page.locator(':focus')).toBeVisible();
-    await assertResponsiveAndRtl(page, testInfo);
+      await page.keyboard.press('Tab');
+      await expect(page.locator(':focus')).toBeVisible();
+      await assertResponsiveAndRtl(page, testInfo);
 
-    await context.close();
-    expect(consoleErrors, `Unexpected browser errors:\n${consoleErrors.join('\n')}`).toEqual([]);
-  });
+      await context.close();
+      expect(consoleErrors, `Unexpected browser errors:\n${consoleErrors.join('\n')}`).toEqual([]);
+    },
+  );
 });
 
 function requiredEnvironment(name: string): string {
@@ -105,7 +110,10 @@ async function assertResponsiveAndRtl(page: Page, testInfo: TestInfo) {
   await expect(page.locator('html')).toHaveAttribute('lang', 'ar');
   const screenshot = testInfo.outputPath('onboarding-mobile-rtl.png');
   await page.screenshot({ path: screenshot, fullPage: true });
-  await testInfo.attach('onboarding-mobile-rtl', { path: screenshot, contentType: 'image/png' });
+  await testInfo.attach('onboarding-mobile-rtl', {
+    path: screenshot,
+    contentType: 'image/png',
+  });
   await page.getByRole('button', { name: 'English · LTR' }).click();
   await expect(page.locator('html')).toHaveAttribute('dir', 'ltr');
 }
