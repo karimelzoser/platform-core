@@ -1,9 +1,13 @@
 # Implementation Status
 
-**Last updated:** 2026-10-07  
-**Authoritative architecture baseline:** PR #4 / ADR 0004 / `PLATFORM_EXECUTION_BLUEPRINT.md`  
-**Latest completed repository gate on `main`:** Identity / Team / Organization PR #7, merge `63bdb1bf5127684f2d15fb2a4dc05157af724617`  
-**Active workstream:** `codex/onboarding-production-closure-20261007` — Basic self-service onboarding  
+**Last updated:** 2026-10-07
+
+**Authoritative architecture baseline:** PR #4 / ADR 0004 / `PLATFORM_EXECUTION_BLUEPRINT.md`
+
+**Latest completed repository gate on `main`:** Identity / Team / Organization PR #7, merge `63bdb1bf5127684f2d15fb2a4dc05157af724617`
+
+**Active workstream:** `codex/onboarding-production-closure-20261007` — Basic self-service onboarding
+
 **Release status:** IN PROGRESS — not a release candidate.
 
 `CODEX_EXECUTION_QUEUE.md` is the authoritative execution ledger. A repository-scope
