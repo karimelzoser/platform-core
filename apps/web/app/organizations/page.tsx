@@ -38,7 +38,7 @@ export default async function OrganizationsPage({ searchParams }: PageProps) {
           title={<span id="organizations-title">Organizations</span>}
           description="Choose the tenant workspace you are authorized to operate, or create a new organization."
           actions={
-            <a className="ds-button ds-button--primary" href="/onboarding">
+            <a className="ds-button ds-button--primary" href="/organizations/new">
               New organization
             </a>
           }
@@ -84,7 +84,7 @@ function OrganizationContent({
         title="No active organization memberships"
         description="Create an organization or accept an invitation linked to your verified identity."
         action={
-          <a className="ds-button ds-button--primary" href="/onboarding">
+          <a className="ds-button ds-button--primary" href="/organizations/new">
             Create organization
           </a>
         }
