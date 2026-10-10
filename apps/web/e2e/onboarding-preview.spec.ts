@@ -38,7 +38,9 @@ test.describe('Self-service onboarding disposable preview', () => {
     await page
       .getByRole('button', { name: /Save business profile|Update business profile/ })
       .click();
-    await expect(page.getByRole('status')).toHaveText('Business profile saved.');
+    await expect(page.locator('.identity-notice[role="status"]')).toHaveText(
+      'Business profile saved.',
+    );
     await expect(page.getByText('EG · EGP', { exact: true })).toBeVisible();
     await expect(page.getByRole('heading', { name: 'Workspace setup is ready' })).toBeVisible();
     await expect(page.getByText('READY', { exact: true })).toBeVisible();
