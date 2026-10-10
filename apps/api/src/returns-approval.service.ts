@@ -1,3 +1,4 @@
+import { Injectable } from '@nestjs/common';
 import { randomUUID } from 'node:crypto';
 import type { TenantRequestContext } from '@platform/command-execution';
 import { approvalActionDigest } from '@platform/contracts';
@@ -10,6 +11,7 @@ import {
 
 export class ReturnsApprovalError extends Error {}
 
+@Injectable()
 export class ReturnsApprovalService {
   public constructor(private readonly database: ApiDatabaseService) {}
 
