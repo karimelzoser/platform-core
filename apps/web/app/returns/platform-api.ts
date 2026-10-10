@@ -13,7 +13,7 @@ export async function platformRequest<T>(
     method?: 'GET' | 'POST';
     body?: Record<string, unknown>;
     idempotent?: boolean;
-    approvalId?: string;
+    approvalId?: string | undefined;
   } = {},
 ): Promise<PlatformApiResult<T>> {
   const store = await cookies();
