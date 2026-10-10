@@ -1,0 +1,64 @@
+name: Returns branch formatter
+
+on:
+  push:
+    branches:
+      - codex/returns-exchanges-refunds-closure-20261010
+
+permissions:
+  contents: write
+
+jobs:
+  format:
+    if: github.actor != 'github-actions[bot]'
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: codex/returns-exchanges-refunds-closure-20261010
+          fetch-depth: 0
+      - uses: pnpm/action-setup@v4
+        with: { version: 9.15.5 }
+      - uses: actions/setup-node@v4
+        with: { node-version: 22, cache: pnpm }
+      - run: pnpm install --frozen-lockfile
+      - name: Fix returns detail lint and format exact workstream files
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+          path = Path('apps/web/app/returns/[requestId]/page.tsx')
+          text = path.read_text()
+          old = '${event.eventType}-${event.occurredAt}-${index}'
+          new = '${event.eventType}-${event.occurredAt}-${String(index)}'
+          if old not in text:
+              raise SystemExit('Expected returns timeline key expression was not found')
+          path.write_text(text.replace(old, new, 1))
+          PY
+          pnpm exec prettier --write \
+            apps/api/src/returns.controller.ts \
+            apps/api/src/returns.service.ts \
+            'apps/web/app/returns/[requestId]/page.tsx' \
+            apps/web/app/returns/actions.ts \
+            apps/web/app/returns/new/page.tsx \
+            apps/web/app/returns/page.tsx \
+            apps/web/e2e/returns-preview.spec.ts \
+            apps/web/e2e/orders-preview.spec.ts
+      - name: Commit exact formatting changes
+        run: |
+          if git diff --quiet; then
+            echo 'No formatting changes required.'
+            exit 0
+          fi
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add \
+            apps/api/src/returns.controller.ts \
+            apps/api/src/returns.service.ts \
+            'apps/web/app/returns/[requestId]/page.tsx' \
+            apps/web/app/returns/actions.ts \
+            apps/web/app/returns/new/page.tsx \
+            apps/web/app/returns/page.tsx \
+            apps/web/e2e/returns-preview.spec.ts \
+            apps/web/e2e/orders-preview.spec.ts
+          git commit -m 'style: format returns workstream'
+          git push origin HEAD:codex/returns-exchanges-refunds-closure-20261010
