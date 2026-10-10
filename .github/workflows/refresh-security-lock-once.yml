@@ -1,0 +1,39 @@
+name: One-time security lock refresh
+
+on:
+  push:
+    branches:
+      - codex/onboarding-production-closure-20261007
+
+permissions:
+  contents: write
+
+jobs:
+  refresh:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: codex/onboarding-production-closure-20261007
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 9.15.5
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+      - name: Refresh lockfile
+        run: pnpm install --lockfile-only
+      - name: Reject moderate-or-higher dependency advisories
+        run: pnpm audit --audit-level moderate
+      - name: Commit lockfile
+        run: |
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add pnpm-lock.yaml
+          if git diff --cached --quiet; then
+            echo 'Lockfile already current.'
+          else
+            git commit -m 'chore: refresh patched dependency lockfile'
+            git push origin HEAD:codex/onboarding-production-closure-20261007
+          fi
