@@ -31,7 +31,7 @@ export async function selectOrganization(formData: FormData): Promise<void> {
     secure: process.env.APP_ENV === 'production',
     path: '/',
   });
-  redirect('/team');
+  redirect('/onboarding');
 }
 
 function required(formData: FormData, key: string): string | undefined {
