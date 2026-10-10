@@ -33,6 +33,8 @@ import { ReturnsApprovalsController } from './returns-approvals.controller.js';
 import { ReturnsController } from './returns.controller.js';
 import { ReturnsOptionsController } from './returns-options.controller.js';
 import { ReturnsOptionsService } from './returns-options.service.js';
+import { ReturnsResolutionController } from './returns-resolution.controller.js';
+import { ReturnsResolutionService } from './returns-resolution.service.js';
 import { ReturnsService } from './returns.service.js';
 import { SessionController } from './session.controller.js';
 import { WebhookController } from './webhook.controller.js';
@@ -84,6 +86,7 @@ function createRuntimeConnectorRegistry(): ConnectorRegistry {
     ReturnsController,
     ReturnsApprovalsController,
     ReturnsOptionsController,
+    ReturnsResolutionController,
     WebhookController,
     CustomersController,
     ApprovalsController,
@@ -101,6 +104,7 @@ function createRuntimeConnectorRegistry(): ConnectorRegistry {
     ApprovalService,
     ReturnsApprovalService,
     ReturnsOptionsService,
+    ReturnsResolutionService,
     WebhookIngressService,
     MessagingService,
     MediaService,
