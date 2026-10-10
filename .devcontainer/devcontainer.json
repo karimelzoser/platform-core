@@ -3,6 +3,7 @@
   "image": "mcr.microsoft.com/devcontainers/javascript-node:1-22-bookworm",
   "features": { "ghcr.io/devcontainers/features/docker-in-docker:2": {} },
   "postCreateCommand": "corepack enable && corepack pnpm install --frozen-lockfile && python -m pip install './apps/ai-gateway[dev]'",
+  "postStartCommand": "sh scripts/codespaces/start-preview.sh",
   "forwardPorts": [3000, 3001, 4000],
   "portsAttributes": {
     "3000": { "label": "Platform Web", "onAutoForward": "openBrowser", "visibility": "private" },
