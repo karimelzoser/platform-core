@@ -3,7 +3,10 @@ import { CommandAuthorizer, OpaClient } from '@platform/authorization';
 import { CommandExecutor, type TenantRequestContext } from '@platform/command-execution';
 import { sql, withTenantTransaction } from '@platform/database';
 import { ApiDatabaseService } from '../../apps/api/src/api-database.service.js';
-import { OnboardingService } from '../../apps/api/src/onboarding.service.js';
+import {
+  OnboardingService,
+  type OnboardingProfileInput,
+} from '../../apps/api/src/onboarding.service.js';
 
 const tenantA = 'aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa';
 const tenantB = 'bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb';
@@ -47,17 +50,17 @@ async function main(): Promise<void> {
     assert.equal(initialB.progress.businessProfile, 'PENDING');
     assert.equal(initialB.progress.team, 'PENDING');
 
-    const profileBInput = {
+    const profileBInput: OnboardingProfileInput = {
       countryCode: 'SA',
       currencyCode: 'SAR',
       timezone: 'Asia/Riyadh',
       locale: 'ar',
       industryCode: 'ECOMMERCE',
-      customerModel: 'B2C' as const,
-      commerceModel: 'ECOMMERCE' as const,
-      monthlyOrderVolumeBand: '101_1000' as const,
-      monthlyConversationVolumeBand: '1001_5000' as const,
-      goals: ['SUPPORT_AUTOMATION', 'ORDER_OPERATIONS', 'ANALYTICS'] as const,
+      customerModel: 'B2C',
+      commerceModel: 'ECOMMERCE',
+      monthlyOrderVolumeBand: '101_1000',
+      monthlyConversationVolumeBand: '1001_5000',
+      goals: ['SUPPORT_AUTOMATION', 'ORDER_OPERATIONS', 'ANALYTICS'],
     };
     const profileB = await onboarding.updateProfile(
       contextB,
