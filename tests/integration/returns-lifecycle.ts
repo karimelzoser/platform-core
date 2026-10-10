@@ -492,12 +492,12 @@ async function main(): Promise<void> {
       exchangeRequest.result.requestId,
     );
     const resolvedExchange = await returns.get(contextA, exchangeRequest.result.requestId);
-    assert.equal(resolvedExchange?.status, 'RESOLVED');
-    assert.equal(resolvedExchange?.exchanges[0]?.status, 'FULFILLED');
-    assert.equal(
-      resolvedExchange?.exchanges[0]?.replacementOrderId,
-      replacementOrder.result.orderId,
-    );
+    assert.ok(resolvedExchange);
+    const resolvedExchangeRecord = resolvedExchange.exchanges[0];
+    assert.ok(resolvedExchangeRecord);
+    assert.equal(resolvedExchange.status, 'RESOLVED');
+    assert.equal(resolvedExchangeRecord.status, 'FULFILLED');
+    assert.equal(resolvedExchangeRecord.replacementOrderId, replacementOrder.result.orderId);
 
     assert.equal(
       (await returns.list(contextB)).some((item) => item.id === requested.result.requestId),
