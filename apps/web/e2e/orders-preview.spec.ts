@@ -21,7 +21,8 @@ test.describe('Orders disposable development preview', () => {
     await page.goto('/orders');
     await expect(page.getByRole('heading', { name: 'Orders', exact: true })).toBeVisible();
     await expect(page.getByText('Preview Commerce Store', { exact: true }).first()).toBeVisible();
-    const orderRow = page.getByRole('link').filter({ hasText: 'PREVIEW-1001' });
+    const orderRow = previewOrderRow(page);
+    await expect(orderRow).toContainText('PREVIEW-1001');
     await expect(orderRow).toContainText('PENDING');
     await orderRow.click();
     await expect(page).toHaveURL(new RegExp(`/orders/${previewOrderId}$`));
@@ -120,6 +121,10 @@ async function login(page: Page) {
   ]);
 }
 
+function previewOrderRow(page: Page) {
+  return page.locator(`a.order-table-link[href="/orders/${previewOrderId}"]`);
+}
+
 function operationStatus(page: Page) {
   return page.locator('p.merge-success[role="status"]');
 }
@@ -138,7 +143,7 @@ async function assertResponsiveAndRtl(page: Page, testInfo: TestInfo) {
   await page.setViewportSize({ width: 768, height: 1024 });
   await expect(page.getByRole('heading', { name: 'Orders', exact: true })).toBeVisible();
   await page.setViewportSize({ width: 390, height: 844 });
-  await expect(page.getByRole('link').filter({ hasText: 'PREVIEW-1001' })).toBeVisible();
+  await expect(previewOrderRow(page)).toBeVisible();
   await page.getByRole('button', { name: 'العربية · RTL' }).click();
   await expect(page.locator('html')).toHaveAttribute('dir', 'rtl');
   await expect(page.locator('html')).toHaveAttribute('lang', 'ar');
