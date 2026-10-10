@@ -22,6 +22,7 @@ const permissions = [
   'commerce.orders.read',
   'commerce.orders.create',
   'commerce.orders.update',
+  'commerce.payments.read',
   'commerce.payments.manage',
   'commerce.refunds.issue',
   'integrations.sync.execute',
@@ -78,6 +79,26 @@ async function approvedEvidence(
   return approvalId;
 }
 
+async function approveHighRisk(
+  database: PlatformDatabase,
+  input: {
+    action: string;
+    permission: string;
+    risk: 'HIGH' | 'CRITICAL';
+    resourceType: string;
+    resourceId: string;
+    input: Record<string, unknown>;
+  },
+): Promise<string> {
+  return approvedEvidence(database, contextA, {
+    action: input.action,
+    permission: input.permission,
+    risk: input.risk,
+    resource: { type: input.resourceType, id: input.resourceId, tenantId: tenantA },
+    input: input.input,
+  });
+}
+
 async function main(): Promise<void> {
   const databaseService = new ApiDatabaseService();
   const database = databaseService.database;
@@ -114,11 +135,12 @@ async function main(): Promise<void> {
       allowExchange: true,
       allowStoreCredit: true,
     };
-    const policyApproval = await approvedEvidence(database, contextA, {
+    const policyApproval = await approveHighRisk(database, {
       action: 'returns.policy.upsert',
       permission: 'returns.manage',
       risk: 'HIGH',
-      resource: { type: 'returns.policy', id: storeA, tenantId: tenantA },
+      resourceType: 'returns.policy',
+      resourceId: storeA,
       input: policyInput,
     });
     await returns.upsertPolicy(contextA, 'returns-policy-lifecycle', policyInput, policyApproval);
@@ -146,7 +168,8 @@ async function main(): Promise<void> {
     const orderLineId = createdOrder.result.lineIds[0];
     assert.ok(orderLineId);
     await withTenantTransaction(database, contextA, async (transaction) => {
-      await sql`update commerce.orders set status = 'CONFIRMED', financial_status = 'PAID', updated_at = now()
+      await sql`update commerce.orders
+        set status = 'CONFIRMED', financial_status = 'PAID', updated_at = now()
         where id = ${orderId}::uuid`.execute(transaction);
     });
     const payment = await commerce.recordPayment(contextA, 'returns-payment', {
@@ -188,7 +211,6 @@ async function main(): Promise<void> {
     const replay = await returns.createRequest(contextA, 'returns-request', requestInput);
     assert.equal(replay.replayed, true);
     assert.equal(replay.result.requestId, requested.result.requestId);
-
     await assert.rejects(
       returns.createRequest(contextA, 'returns-over-allocation', {
         ...requestInput,
@@ -198,19 +220,20 @@ async function main(): Promise<void> {
     );
 
     const reviewInput = { requestId: requested.result.requestId, decision: 'APPROVE' as const };
-    const reviewApproval = await approvedEvidence(database, contextA, {
+    const reviewApproval = await approveHighRisk(database, {
       action: 'returns.request.review',
       permission: 'returns.approve',
       risk: 'HIGH',
-      resource: { type: 'returns.request', id: requested.result.requestId, tenantId: tenantA },
+      resourceType: 'returns.request',
+      resourceId: requested.result.requestId,
       input: reviewInput,
     });
     await returns.reviewRequest(contextA, 'returns-review', reviewInput, reviewApproval);
+
     let detail = await returns.get(contextA, requested.result.requestId);
     assert.ok(detail);
     const returnLineId = detail.lines[0]?.id;
     assert.ok(returnLineId);
-
     const inspectionInput = {
       requestId: requested.result.requestId,
       lines: [
@@ -224,11 +247,12 @@ async function main(): Promise<void> {
         },
       ],
     };
-    const inspectionApproval = await approvedEvidence(database, contextA, {
+    const inspectionApproval = await approveHighRisk(database, {
       action: 'returns.request.inspect',
       permission: 'returns.manage',
       risk: 'HIGH',
-      resource: { type: 'returns.request', id: requested.result.requestId, tenantId: tenantA },
+      resourceType: 'returns.request',
+      resourceId: requested.result.requestId,
       input: inspectionInput,
     });
     await returns.receiveAndInspect(
@@ -246,59 +270,44 @@ async function main(): Promise<void> {
       currency: 'EGP',
       reason: 'Accepted damaged return',
     };
-    const refundApproval = await approvedEvidence(database, contextA, {
+    await assert.rejects(
+      returns.issueRefund(contextA, 'returns-refund-no-approval', refundInput),
+      /approval/i,
+    );
+    const refundApproval = await approveHighRisk(database, {
       action: 'commerce.refund.issue',
       permission: 'commerce.refunds.issue',
       risk: 'CRITICAL',
-      resource: { type: 'returns.refund', id: '00000000-0000-0000-0000-000000000000', tenantId: tenantA },
+      resourceType: 'returns.request',
+      resourceId: requested.result.requestId,
       input: refundInput,
     });
-
-    // Refund resource IDs are generated by the command. Create matching approval evidence by
-    // first allowing the command layer to expose its digest contract is impossible without
-    // weakening approval binding; instead the integration fixture inserts the approval after
-    // reading the generated refund ID from a deterministic rejected attempt below.
-    await withTenantTransaction(database, contextA, async (transaction) => {
-      await sql`delete from policy.approval_requests where id = ${refundApproval}::uuid`.execute(transaction);
-    });
-
-    // For the financial boundary, use a deterministic command id by overriding random UUID is
-    // intentionally not supported. Prove the CRITICAL command rejects without evidence here;
-    // approval-bound execution is covered by the shared CommandExecutor/order workflow suite.
-    await assert.rejects(
-      returns.issueRefund(contextA, 'returns-refund-requires-approval', refundInput),
-      /approval/i,
+    const queuedRefund = await returns.issueRefund(
+      contextA,
+      'returns-refund-approved',
+      refundInput,
+      refundApproval,
     );
-
-    // Seed a canonical queued refund/provider action to exercise the post-commit reconciliation
-    // contract without bypassing the production command in application code.
-    const refundId = randomUUID();
-    const providerActionId = randomUUID();
+    assert.equal(queuedRefund.result.status, 'QUEUED');
+    await assert.rejects(
+      returns.issueRefund(
+        contextA,
+        'returns-refund-over-allocation',
+        { ...refundInput, amountMinor: 1_001 },
+        refundApproval,
+      ),
+      /approval|refund/i,
+    );
     await withTenantTransaction(database, contextA, async (transaction) => {
-      await sql`insert into integrations.provider_actions (
-          id, tenant_id, connection_id, action_type, input, state, provider_action_id,
-          result, idempotency_key, finished_at
-        ) values (
-          ${providerActionId}::uuid, ${tenantA}::uuid, ${connectionA}::uuid,
-          'commerce.refund.issue', ${JSON.stringify(refundInput)}::jsonb, 'SUCCEEDED',
-          'provider-refund-lifecycle', '{"ok":true}'::jsonb,
-          'returns-provider-success-fixture', now()
-        )`.execute(transaction);
-      await sql`insert into returns.refunds (
-          id, tenant_id, store_id, order_id, return_request_id, source_payment_id,
-          amount_minor, currency, status, reason, approved_by_user_id,
-          provider_action_id, approved_at, queued_at
-        ) values (
-          ${refundId}::uuid, ${tenantA}::uuid, ${storeA}::uuid, ${orderId}::uuid,
-          ${requested.result.requestId}::uuid, ${payment.result.paymentId}::uuid,
-          1000, 'EGP', 'QUEUED', 'Accepted damaged return', ${actorA}::uuid,
-          ${providerActionId}::uuid, now(), now()
-        )`.execute(transaction);
+      await sql`update integrations.provider_actions
+        set state = 'SUCCEEDED', provider_action_id = 'provider-refund-lifecycle',
+            result = '{"ok":true}'::jsonb, finished_at = now(), updated_at = now()
+        where id = ${queuedRefund.result.providerActionId}::uuid`.execute(transaction);
     });
     const reconciled = await returns.reconcileRefund(
       contextA,
       'returns-refund-reconcile',
-      refundId,
+      queuedRefund.result.refundId,
     );
     assert.equal(reconciled.result.status, 'SUCCEEDED');
     detail = await returns.get(contextA, requested.result.requestId);
@@ -308,8 +317,10 @@ async function main(): Promise<void> {
     const orderAfterRefund = await commerce.getOrder(contextA, orderId);
     assert.equal(orderAfterRefund?.financialStatus, 'PARTIALLY_REFUNDED');
     await withTenantTransaction(database, contextA, async (transaction) => {
-      const refundPayment = await sql<{ kind: string; amount_minor: string }>`select kind, amount_minor::text
-        from commerce.payments where id = ${refundId}::uuid`.execute(transaction);
+      const refundPayment = await sql<{ kind: string; amount_minor: string }>`
+        select kind, amount_minor::text from commerce.payments
+        where id = ${queuedRefund.result.refundId}::uuid
+      `.execute(transaction);
       assert.equal(refundPayment.rows[0]?.kind, 'REFUND');
       assert.equal(refundPayment.rows[0]?.amount_minor, '1000');
     });
@@ -321,20 +332,23 @@ async function main(): Promise<void> {
       source: 'integration-test',
       placedAt: new Date().toISOString(),
       metadata: { returnsLifecycle: true },
-      lines: [{
-        productId: productA,
-        variantId: variantA,
-        sku: 'RLS-A-SKU',
-        title: 'Exchange lifecycle product',
-        quantity: 1,
-        unitPriceMinor: 1_000,
-        metadata: {},
-      }],
+      lines: [
+        {
+          productId: productA,
+          variantId: variantA,
+          sku: 'RLS-A-SKU',
+          title: 'Exchange lifecycle product',
+          quantity: 1,
+          unitPriceMinor: 1_000,
+          metadata: {},
+        },
+      ],
     });
     const exchangeLineId = exchangeOrder.result.lineIds[0];
     assert.ok(exchangeLineId);
     await withTenantTransaction(database, contextA, async (transaction) => {
-      await sql`update commerce.orders set status = 'CONFIRMED' where id = ${exchangeOrder.result.orderId}::uuid`.execute(transaction);
+      await sql`update commerce.orders set status = 'CONFIRMED', updated_at = now()
+        where id = ${exchangeOrder.result.orderId}::uuid`.execute(transaction);
     });
     const exchangeRequest = await returns.createRequest(contextA, 'returns-exchange-request', {
       storeId: storeA,
@@ -343,30 +357,46 @@ async function main(): Promise<void> {
       reasonCode: 'SIZE_CHANGE',
       lines: [{ orderLineId: exchangeLineId, quantity: 1, exchangeVariantId: variantA }],
     });
-    const exchangeReviewInput = { requestId: exchangeRequest.result.requestId, decision: 'APPROVE' as const };
-    const exchangeReviewApproval = await approvedEvidence(database, contextA, {
-      action: 'returns.request.review', permission: 'returns.approve', risk: 'HIGH',
-      resource: { type: 'returns.request', id: exchangeRequest.result.requestId, tenantId: tenantA },
+    const exchangeReviewInput = {
+      requestId: exchangeRequest.result.requestId,
+      decision: 'APPROVE' as const,
+    };
+    const exchangeReviewApproval = await approveHighRisk(database, {
+      action: 'returns.request.review',
+      permission: 'returns.approve',
+      risk: 'HIGH',
+      resourceType: 'returns.request',
+      resourceId: exchangeRequest.result.requestId,
       input: exchangeReviewInput,
     });
-    await returns.reviewRequest(contextA, 'returns-exchange-review', exchangeReviewInput, exchangeReviewApproval);
+    await returns.reviewRequest(
+      contextA,
+      'returns-exchange-review',
+      exchangeReviewInput,
+      exchangeReviewApproval,
+    );
     const exchangeDetail = await returns.get(contextA, exchangeRequest.result.requestId);
     const exchangeRequestLineId = exchangeDetail?.lines[0]?.id;
     assert.ok(exchangeRequestLineId);
     const exchangeInspectionInput = {
       requestId: exchangeRequest.result.requestId,
-      lines: [{
-        lineId: exchangeRequestLineId,
-        receivedQuantity: 1,
-        acceptedQuantity: 1,
-        inspectionStatus: 'ACCEPTED' as const,
-        conditionCode: 'GOOD',
-        restockDisposition: 'RESTOCK' as const,
-      }],
+      lines: [
+        {
+          lineId: exchangeRequestLineId,
+          receivedQuantity: 1,
+          acceptedQuantity: 1,
+          inspectionStatus: 'ACCEPTED' as const,
+          conditionCode: 'GOOD',
+          restockDisposition: 'RESTOCK' as const,
+        },
+      ],
     };
-    const exchangeInspectionApproval = await approvedEvidence(database, contextA, {
-      action: 'returns.request.inspect', permission: 'returns.manage', risk: 'HIGH',
-      resource: { type: 'returns.request', id: exchangeRequest.result.requestId, tenantId: tenantA },
+    const exchangeInspectionApproval = await approveHighRisk(database, {
+      action: 'returns.request.inspect',
+      permission: 'returns.manage',
+      risk: 'HIGH',
+      resourceType: 'returns.request',
+      resourceId: exchangeRequest.result.requestId,
       input: exchangeInspectionInput,
     });
     await returns.receiveAndInspect(
@@ -380,26 +410,69 @@ async function main(): Promise<void> {
       priceAdjustmentMinor: 0,
       currency: 'EGP',
     };
-    const createExchangeApproval = await approvedEvidence(database, contextA, {
-      action: 'returns.exchange.create', permission: 'returns.approve', risk: 'HIGH',
-      resource: { type: 'returns.exchange', id: '00000000-0000-0000-0000-000000000001', tenantId: tenantA },
+    const createExchangeApproval = await approveHighRisk(database, {
+      action: 'returns.exchange.create',
+      permission: 'returns.approve',
+      risk: 'HIGH',
+      resourceType: 'returns.request',
+      resourceId: exchangeRequest.result.requestId,
       input: createExchangeInput,
     });
-    await withTenantTransaction(database, contextA, async (transaction) => {
-      await sql`delete from policy.approval_requests where id = ${createExchangeApproval}::uuid`.execute(transaction);
+    const exchange = await returns.createExchange(
+      contextA,
+      'returns-exchange-create',
+      createExchangeInput,
+      createExchangeApproval,
+    );
+    assert.equal(exchange.result.status, 'APPROVED');
+
+    const replacementOrder = await commerce.createOrder(contextA, 'returns-replacement-order', {
+      storeId: storeA,
+      orderNumber: `REPLACEMENT-${Date.now().toString(36)}`,
+      currency: 'EGP',
+      source: 'returns-exchange',
+      metadata: { returnRequestId: exchangeRequest.result.requestId },
+      lines: [
+        {
+          productId: productA,
+          variantId: variantA,
+          sku: 'RLS-A-SKU',
+          title: 'Replacement lifecycle product',
+          quantity: 1,
+          unitPriceMinor: 1_000,
+          metadata: {},
+        },
+      ],
     });
-    await assert.rejects(
-      returns.createExchange(contextA, 'returns-exchange-approval-required', createExchangeInput),
-      /approval/i,
+    await returns.fulfillExchange(contextA, 'returns-exchange-fulfill', {
+      exchangeId: exchange.result.exchangeId,
+      replacementOrderId: replacementOrder.result.orderId,
+    });
+    await returns.resolveRequest(
+      contextA,
+      'returns-exchange-resolve',
+      exchangeRequest.result.requestId,
+    );
+    const resolvedExchange = await returns.get(contextA, exchangeRequest.result.requestId);
+    assert.equal(resolvedExchange?.status, 'RESOLVED');
+    assert.equal(resolvedExchange?.exchanges[0]?.status, 'FULFILLED');
+    assert.equal(
+      resolvedExchange?.exchanges[0]?.replacementOrderId,
+      replacementOrder.result.orderId,
     );
 
-    assert.equal((await returns.list(contextB)).some((item) => item.id === requested.result.requestId), false);
+    assert.equal(
+      (await returns.list(contextB)).some((item) => item.id === requested.result.requestId),
+      false,
+    );
     await withTenantTransaction(database, contextA, async (transaction) => {
       const [audit, outbox] = await Promise.all([
         sql<{ count: string }>`select count(*)::text as count from platform.audit_log
-          where action = 'returns.request.create' and resource_id = ${requested.result.requestId}`.execute(transaction),
+          where action = 'returns.request.create'
+            and resource_id = ${requested.result.requestId}`.execute(transaction),
         sql<{ count: string }>`select count(*)::text as count from platform.outbox_events
-          where event_type = 'returns.request.created' and resource_id = ${requested.result.requestId}`.execute(transaction),
+          where event_type = 'returns.request.created'
+            and resource_id = ${requested.result.requestId}`.execute(transaction),
       ]);
       assert.equal(audit.rows[0]?.count, '1');
       assert.equal(outbox.rows[0]?.count, '1');
