@@ -225,7 +225,6 @@ function EligibilityWorkspace({
                           >
                             <option value="REFUND">Refund</option>
                             {data.policy.allowExchanges ? <option value="EXCHANGE">Exchange</option> : null}
-                            <option value="STORE_CREDIT">Store credit</option>
                             <option value="NO_REFUND">No refund</option>
                           </select>
                         </div>
