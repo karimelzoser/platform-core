@@ -3,8 +3,6 @@
   "version": "0.1.0",
   "private": true,
   "type": "module",
-  "main": "dist/index.js",
-  "types": "dist/index.d.ts",
   "exports": {
     ".": {
       "types": "./dist/index.d.ts",
@@ -21,16 +19,13 @@
   },
   "scripts": {
     "build": "tsc -p tsconfig.json",
-    "typecheck": "tsc -p tsconfig.json --noEmit",
+    "typecheck": "tsc --noEmit -p tsconfig.json",
     "test": "tsx --test src/**/*.test.ts"
   },
   "dependencies": {
     "@platform/command-execution": "workspace:*",
     "@platform/database": "workspace:*",
-    "zod": "^3.25.76"
-  },
-  "devDependencies": {
-    "tsx": "^4.20.5",
-    "typescript": "^5.9.2"
+    "kysely": "0.27.5",
+    "zod": "3.24.1"
   }
 }
