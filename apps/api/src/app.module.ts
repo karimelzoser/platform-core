@@ -29,6 +29,7 @@ import { IdentityService } from './identity.service.js';
 import { OnboardingController } from './onboarding.controller.js';
 import { OnboardingService } from './onboarding.service.js';
 import { ReturnsApprovalService } from './returns-approval.service.js';
+import { ReturnsApprovalsController } from './returns-approvals.controller.js';
 import { ReturnsController } from './returns.controller.js';
 import { ReturnsService } from './returns.service.js';
 import { SessionController } from './session.controller.js';
@@ -79,6 +80,7 @@ function createRuntimeConnectorRegistry(): ConnectorRegistry {
     IdentityController,
     OnboardingController,
     ReturnsController,
+    ReturnsApprovalsController,
     WebhookController,
     CustomersController,
     ApprovalsController,
