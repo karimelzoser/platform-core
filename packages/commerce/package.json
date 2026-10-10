@@ -11,6 +11,10 @@
     "./order-workflows": {
       "types": "./dist/order-workflows.d.ts",
       "default": "./dist/order-workflows.js"
+    },
+    "./returns": {
+      "types": "./dist/returns.d.ts",
+      "default": "./dist/returns.js"
     }
   },
   "scripts": {

@@ -3,6 +3,7 @@ import { CommandAuthorizer, OpaClient } from '@platform/authorization';
 import { CommandExecutor } from '@platform/command-execution';
 import { CommerceService } from '@platform/commerce';
 import { OrderWorkflowService } from '@platform/commerce/order-workflows';
+import { ReturnWorkflowService } from '@platform/commerce/returns';
 import {
   ConnectorRegistry,
   developmentApiConnector,
@@ -39,6 +40,7 @@ import { TicketsController } from './tickets.controller.js';
 import { TicketsService } from './tickets.service.js';
 import { IntegrationsController } from './integrations.controller.js';
 import { IntegrationService } from './integration.service.js';
+import { ReturnsController } from './returns.controller.js';
 import { ShippingController } from './shipping.controller.js';
 import { ShippingService } from './shipping.service.js';
 import { ShippingRoutingController } from './shipping-routing.controller.js';
@@ -83,6 +85,7 @@ function createRuntimeConnectorRegistry(): ConnectorRegistry {
     MediaController,
     IntegrationsController,
     CommerceController,
+    ReturnsController,
     ShippingController,
     ShippingRoutingController,
   ],
@@ -113,6 +116,12 @@ function createRuntimeConnectorRegistry(): ConnectorRegistry {
       provide: OrderWorkflowService,
       useFactory: (database: ApiDatabaseService, commands: CommandExecutor) =>
         new OrderWorkflowService(database.database, commands),
+      inject: [ApiDatabaseService, CommandExecutor],
+    },
+    {
+      provide: ReturnWorkflowService,
+      useFactory: (database: ApiDatabaseService, commands: CommandExecutor) =>
+        new ReturnWorkflowService(database.database, commands),
       inject: [ApiDatabaseService, CommandExecutor],
     },
     {
