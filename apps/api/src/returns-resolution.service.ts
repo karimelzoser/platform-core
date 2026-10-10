@@ -1,15 +1,12 @@
 import { Injectable } from '@nestjs/common';
 import { CommandExecutor, type TenantRequestContext } from '@platform/command-execution';
-import { sql, type PlatformDatabase } from '@platform/database';
+import { sql } from '@platform/database';
 
 export class ReturnsResolutionError extends Error {}
 
 @Injectable()
 export class ReturnsResolutionService {
-  public constructor(
-    private readonly database: PlatformDatabase,
-    private readonly commands: CommandExecutor,
-  ) {}
+  public constructor(private readonly commands: CommandExecutor) {}
 
   public async resolve(
     context: TenantRequestContext,
