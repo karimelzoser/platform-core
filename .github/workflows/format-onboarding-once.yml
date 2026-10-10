@@ -10,7 +10,6 @@ permissions:
 
 jobs:
   format:
-    if: github.event.head_commit.message != 'style: format onboarding branch'
     runs-on: ubuntu-24.04
     steps:
       - uses: actions/checkout@v4
@@ -30,10 +29,21 @@ jobs:
           const fs = require('node:fs');
           const path = 'apps/web/app/onboarding/page.tsx';
           let source = fs.readFileSync(path, 'utf8');
-          const before = "defaultValue={profile?.currencyCode ?? 'EGP'}";
-          const after = "defaultValue={profile ? profile.currencyCode : 'EGP'}";
-          if (!source.includes(before)) throw new Error('Expected onboarding currency expression was not found');
-          source = source.replace(before, after);
+          const replacements = [
+            ["profile?.countryCode ?? 'EG'", "profile ? profile.countryCode : 'EG'"],
+            ["profile?.currencyCode ?? 'EGP'", "profile ? profile.currencyCode : 'EGP'"],
+            ["profile?.locale ?? state.organization.locale", "profile ? profile.locale : state.organization.locale"],
+            ["profile?.timezone ?? state.organization.timezone", "profile ? profile.timezone : state.organization.timezone"],
+            ["profile?.industryCode ?? 'ECOMMERCE'", "profile ? profile.industryCode : 'ECOMMERCE'"],
+            ["profile?.customerModel ?? 'B2C'", "profile ? profile.customerModel : 'B2C'"],
+            ["profile?.commerceModel ?? 'ECOMMERCE'", "profile ? profile.commerceModel : 'ECOMMERCE'"],
+            ["profile?.monthlyOrderVolumeBand ?? '101_1000'", "profile ? profile.monthlyOrderVolumeBand : '101_1000'"],
+            ["profile?.monthlyConversationVolumeBand ?? '101_1000'", "profile ? profile.monthlyConversationVolumeBand : '101_1000'"],
+          ];
+          for (const [before, after] of replacements) {
+            if (!source.includes(before)) throw new Error(`Expected onboarding expression was not found: ${before}`);
+            source = source.replace(before, after);
+          }
           fs.writeFileSync(path, source);
           NODE
           pnpm exec prettier --write \
