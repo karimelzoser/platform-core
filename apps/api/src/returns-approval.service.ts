@@ -15,6 +15,37 @@ export class ReturnsApprovalError extends Error {}
 export class ReturnsApprovalService {
   public constructor(private readonly database: ApiDatabaseService) {}
 
+  public async list(context: TenantRequestContext, returnId: string) {
+    if (!context.permissions.includes('policy.approvals.read')) {
+      throw new ReturnsApprovalError('policy.approvals.read permission is required');
+    }
+    return withTenantTransaction(this.database.database, context, async (transaction) => {
+      const result = await sql<{
+        id: string;
+        action: string;
+        status: string;
+        expires_at: Date;
+        request_snapshot: unknown;
+      }>`select id, action, status, expires_at, request_snapshot
+          from policy.approval_requests
+          where resource_type = 'returns.request' and resource_id = ${returnId}
+            and action like 'returns.%'
+          order by created_at desc, id desc`.execute(transaction);
+      return {
+        items: result.rows.map((row) => {
+          const snapshot = row.request_snapshot as { input?: unknown } | null;
+          return {
+            id: row.id,
+            action: row.action,
+            status: row.status,
+            expiresAt: row.expires_at.toISOString(),
+            input: snapshot?.input ?? null,
+          };
+        }),
+      };
+    });
+  }
+
   public async request(
     context: TenantRequestContext,
     returnId: string,
