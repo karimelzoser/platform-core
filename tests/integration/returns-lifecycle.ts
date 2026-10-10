@@ -410,6 +410,24 @@ async function main(): Promise<void> {
       priceAdjustmentMinor: 0,
       currency: 'EGP',
     };
+    const wrongCurrencyExchangeInput = { ...createExchangeInput, currency: 'USD' };
+    const wrongCurrencyExchangeApproval = await approveHighRisk(database, {
+      action: 'returns.exchange.create',
+      permission: 'returns.approve',
+      risk: 'HIGH',
+      resourceType: 'returns.request',
+      resourceId: exchangeRequest.result.requestId,
+      input: wrongCurrencyExchangeInput,
+    });
+    await assert.rejects(
+      returns.createExchange(
+        contextA,
+        'returns-exchange-wrong-currency',
+        wrongCurrencyExchangeInput,
+        wrongCurrencyExchangeApproval,
+      ),
+      /currency/i,
+    );
     const createExchangeApproval = await approveHighRisk(database, {
       action: 'returns.exchange.create',
       permission: 'returns.approve',

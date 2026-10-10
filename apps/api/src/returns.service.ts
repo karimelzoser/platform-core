@@ -611,12 +611,12 @@ export class ReturnsService {
           }>`select amount_minor::text, kind, status from commerce.payments
             where tenant_id = ${context.tenantId}::uuid
               and store_id = ${request.store_id}::uuid and order_id = ${request.order_id}::uuid
-              and id = ${validated.sourcePaymentId}::uuid for share`.execute(transaction);
+              and id = ${validated.sourcePaymentId}::uuid for update`.execute(transaction);
           const source = sourcePayment.rows[0];
           if (
             !source ||
             !['CAPTURE', 'SALE'].includes(source.kind) ||
-            !['CAPTURED', 'PARTIALLY_REFUNDED', 'REFUNDED'].includes(source.status)
+            !['CAPTURED', 'PARTIALLY_REFUNDED'].includes(source.status)
           )
             throw new ReturnsInvariantError(
               'Refund source must be a captured sale or capture payment',
@@ -868,6 +868,17 @@ export class ReturnsService {
               and accepted_quantity > 0 and exchange_variant_id is not null`.execute(transaction);
           if (Number(accepted.rows[0]?.count ?? '0') === 0)
             throw new ReturnsInvariantError('At least one accepted exchange line is required');
+          const originalOrder = await sql<{ currency: string }>`select currency from commerce.orders
+            where tenant_id = ${context.tenantId}::uuid
+              and store_id = ${request.store_id}::uuid and id = ${request.order_id}::uuid
+            for share`.execute(transaction);
+          const originalOrderRow = originalOrder.rows[0];
+          if (!originalOrderRow)
+            throw new ReturnsInvariantError('Original exchange order is missing');
+          if (validated.currency !== originalOrderRow.currency)
+            throw new ReturnsInvariantError(
+              'Exchange currency must match the original order currency',
+            );
           await sql`insert into returns.exchanges (
               id, tenant_id, store_id, return_request_id, original_order_id,
               status, price_adjustment_minor, currency, approved_by_user_id, approved_at
