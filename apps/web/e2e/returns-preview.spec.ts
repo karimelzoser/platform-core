@@ -1,4 +1,4 @@
-import { expect, test, type Page, type TestInfo } from '@playwright/test';
+import { expect, test, type Browser, type Page, type TestInfo } from '@playwright/test';
 
 const owner = requiredEnvironment('PREVIEW_E2E_OWNER_USERNAME');
 const ownerPassword = requiredEnvironment('PREVIEW_E2E_OWNER_PASSWORD');
@@ -39,11 +39,10 @@ test.describe('Returns disposable development preview', () => {
     if (!returnId) throw new Error('Return creation did not redirect to a return case URL.');
     await expect(ownerPage.getByText('REQUESTED', { exact: true }).first()).toBeVisible();
 
-    const approveDecisionForm = ownerPage
-      .getByRole('button', { name: 'Request approve approval' })
-      .locator('form');
+    const approveButton = ownerPage.getByRole('button', { name: 'Request approve approval' });
+    const approveDecisionForm = approveButton.locator('xpath=ancestor::form');
     await approveDecisionForm.getByLabel('Reason').fill('Browser acceptance eligible return');
-    await approveDecisionForm.getByRole('button', { name: 'Request approve approval' }).click();
+    await approveButton.click();
     await expect(ownerPage.getByRole('status')).toContainText('Approval requested:');
 
     await approveLatest(browser, returnId, 'returns.request.decide', consoleErrors);
@@ -70,7 +69,9 @@ test.describe('Returns disposable development preview', () => {
     await approveLatest(browser, returnId, 'returns.refund.issue', consoleErrors);
     await ownerPage.reload();
     await ownerPage.getByRole('button', { name: 'Execute approved refund' }).click();
-    await expect(ownerPage.getByText('Refund recorded and provider action queued when available.')).toBeVisible();
+    await expect(
+      ownerPage.getByText('Refund recorded and provider action queued when available.'),
+    ).toBeVisible();
 
     await ownerPage.getByRole('button', { name: 'Validate and resolve case' }).click();
     await expect(ownerPage.getByText('RESOLVED', { exact: true }).first()).toBeVisible();
@@ -83,7 +84,7 @@ test.describe('Returns disposable development preview', () => {
 });
 
 async function approveLatest(
-  browser: Parameters<Parameters<typeof test>[1]>[0]['browser'],
+  browser: Browser,
   returnId: string,
   action: string,
   consoleErrors: string[],
@@ -113,7 +114,9 @@ function requiredEnvironment(name: string): string {
 
 function requireDisposablePreview() {
   if (process.env.PREVIEW_E2E !== '1') {
-    throw new Error('PREVIEW_E2E=1 is required; this suite must run only against the disposable preview.');
+    throw new Error(
+      'PREVIEW_E2E=1 is required; this suite must run only against the disposable preview.',
+    );
   }
   const url = new URL(process.env.E2E_BASE_URL ?? 'http://127.0.0.1:3000');
   if ((url.protocol !== 'http:' && url.protocol !== 'https:') || !isLoopbackHost(url.hostname)) {
