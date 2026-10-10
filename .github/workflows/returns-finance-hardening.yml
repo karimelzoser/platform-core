@@ -1,0 +1,63 @@
+name: Returns finance hardening
+
+on:
+  push:
+    branches:
+      - codex/returns-exchanges-refunds-closure-20261010
+
+permissions:
+  contents: write
+
+jobs:
+  harden:
+    if: github.actor != 'github-actions[bot]'
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: codex/returns-exchanges-refunds-closure-20261010
+          fetch-depth: 0
+      - uses: pnpm/action-setup@v4
+        with: { version: 9.15.5 }
+      - uses: actions/setup-node@v4
+        with: { node-version: 22, cache: pnpm }
+      - run: pnpm install --frozen-lockfile
+      - name: Harden refund reservation and exchange currency
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+
+          service = Path('apps/api/src/returns.service.ts')
+          text = service.read_text()
+          old = "and id = ${validated.sourcePaymentId}::uuid for share`.execute(transaction);"
+          new = "and id = ${validated.sourcePaymentId}::uuid for update`.execute(transaction);"
+          if old not in text:
+              raise SystemExit('Expected source-payment shared lock was not found')
+          text = text.replace(old, new, 1)
+          old = "!['CAPTURED', 'PARTIALLY_REFUNDED', 'REFUNDED'].includes(source.status)"
+          new = "!['CAPTURED', 'PARTIALLY_REFUNDED'].includes(source.status)"
+          if old not in text:
+              raise SystemExit('Expected refundable source status list was not found')
+          text = text.replace(old, new, 1)
+          marker = """          if (Number(accepted.rows[0]?.count ?? '0') === 0)\n            throw new ReturnsInvariantError('At least one accepted exchange line is required');\n          await sql`insert into returns.exchanges (\n"""
+          replacement = """          if (Number(accepted.rows[0]?.count ?? '0') === 0)\n            throw new ReturnsInvariantError('At least one accepted exchange line is required');\n          const originalOrder = await sql<{ currency: string }>`select currency from commerce.orders\n            where tenant_id = ${context.tenantId}::uuid\n              and store_id = ${request.store_id}::uuid and id = ${request.order_id}::uuid\n            for share`.execute(transaction);\n          const originalOrderRow = originalOrder.rows[0];\n          if (!originalOrderRow) throw new ReturnsInvariantError('Original exchange order is missing');\n          if (validated.currency !== originalOrderRow.currency)\n            throw new ReturnsInvariantError('Exchange currency must match the original order currency');\n          await sql`insert into returns.exchanges (\n"""
+          if marker not in text:
+              raise SystemExit('Expected exchange insert marker was not found')
+          service.write_text(text.replace(marker, replacement, 1))
+
+          lifecycle = Path('tests/integration/returns-lifecycle.ts')
+          test_text = lifecycle.read_text()
+          marker = """    const createExchangeApproval = await approveHighRisk(database, {\n      action: 'returns.exchange.create',\n"""
+          insertion = """    const wrongCurrencyExchangeInput = { ...createExchangeInput, currency: 'USD' };\n    const wrongCurrencyExchangeApproval = await approveHighRisk(database, {\n      action: 'returns.exchange.create',\n      permission: 'returns.approve',\n      risk: 'HIGH',\n      resourceType: 'returns.request',\n      resourceId: exchangeRequest.result.requestId,\n      input: wrongCurrencyExchangeInput,\n    });\n    await assert.rejects(\n      returns.createExchange(\n        contextA,\n        'returns-exchange-wrong-currency',\n        wrongCurrencyExchangeInput,\n        wrongCurrencyExchangeApproval,\n      ),\n      /currency/i,\n    );\n    const createExchangeApproval = await approveHighRisk(database, {\n      action: 'returns.exchange.create',\n"""
+          if marker not in test_text:
+              raise SystemExit('Expected exchange approval marker was not found')
+          lifecycle.write_text(test_text.replace(marker, insertion, 1))
+          PY
+          pnpm exec prettier --write apps/api/src/returns.service.ts tests/integration/returns-lifecycle.ts
+      - name: Commit exact hardening changes
+        run: |
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add apps/api/src/returns.service.ts tests/integration/returns-lifecycle.ts
+          git commit -m 'fix: harden returns financial invariants'
+          git push origin HEAD:codex/returns-exchanges-refunds-closure-20261010
