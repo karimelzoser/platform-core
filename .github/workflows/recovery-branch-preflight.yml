@@ -1,0 +1,85 @@
+name: Recovery branch preflight
+
+on:
+  push:
+    branches:
+      - codex/recovery-production-closure-20261011
+
+permissions:
+  contents: write
+
+jobs:
+  prepare:
+    if: github.actor != 'github-actions[bot]'
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: codex/recovery-production-closure-20261011
+          fetch-depth: 0
+      - uses: pnpm/action-setup@v4
+        with: { version: 9.15.5 }
+      - uses: actions/setup-node@v4
+        with: { node-version: 22, cache: pnpm }
+      - run: pnpm install --frozen-lockfile
+      - name: Wire recovery RLS and migration presence checks
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+          path = Path('scripts/integration/test-migrations.sh')
+          text = path.read_text()
+          returns_rls = "PGPASSWORD=platform-test-app-password $compose exec -T --env PGPASSWORD postgres psql -U platform_app -d platform -v ON_ERROR_STOP=1 -f - < tests/integration/returns-rls.sql\n"
+          recovery_rls = returns_rls + "PGPASSWORD=platform-test-app-password $compose exec -T --env PGPASSWORD postgres psql -U platform_app -d platform -v ON_ERROR_STOP=1 -f - < tests/integration/recovery-rls.sql\n"
+          if 'tests/integration/recovery-rls.sql' not in text:
+              if returns_rls not in text:
+                  raise SystemExit('Returns RLS anchor was not found')
+              text = text.replace(returns_rls, recovery_rls, 1)
+          select_anchor = "to_regclass('returns.timeline'), to_regclass('platform.meter_definitions')"
+          select_replacement = "to_regclass('returns.timeline'), to_regclass('recovery.policies'), to_regclass('recovery.opportunities'), to_regclass('recovery.offers'), to_regclass('recovery.attempts'), to_regclass('recovery.timeline'), to_regclass('platform.meter_definitions')"
+          if "to_regclass('recovery.opportunities')" not in text:
+              if select_anchor not in text:
+                  raise SystemExit('Migration SELECT anchor was not found')
+              text = text.replace(select_anchor, select_replacement, 1)
+          expected_anchor = "returns.refunds|returns.exchanges|returns.timeline|platform.meter_definitions"
+          expected_replacement = "returns.refunds|returns.exchanges|returns.timeline|recovery.policies|recovery.opportunities|recovery.offers|recovery.attempts|recovery.timeline|platform.meter_definitions"
+          if '|recovery.opportunities|' not in text:
+              if expected_anchor not in text:
+                  raise SystemExit('Migration expected-output anchor was not found')
+              text = text.replace(expected_anchor, expected_replacement, 1)
+          path.write_text(text)
+          PY
+      - name: Format recovery workstream files
+        run: |
+          pnpm exec prettier --write \
+            apps/api/src/app.module.ts \
+            apps/api/src/recovery.controller.ts \
+            apps/api/src/recovery.service.ts \
+            apps/web/app/recovery/platform-api.ts \
+            apps/web/app/recovery/actions.ts \
+            apps/web/app/recovery/page.tsx \
+            'apps/web/app/recovery/[opportunityId]/page.tsx' \
+            apps/web/e2e/recovery-preview.spec.ts \
+            tests/integration/recovery-lifecycle.ts \
+            tests/package.json
+      - name: Commit preflight changes
+        run: |
+          if git diff --quiet; then
+            echo 'No preflight changes required.'
+            exit 0
+          fi
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add \
+            scripts/integration/test-migrations.sh \
+            apps/api/src/app.module.ts \
+            apps/api/src/recovery.controller.ts \
+            apps/api/src/recovery.service.ts \
+            apps/web/app/recovery/platform-api.ts \
+            apps/web/app/recovery/actions.ts \
+            apps/web/app/recovery/page.tsx \
+            'apps/web/app/recovery/[opportunityId]/page.tsx' \
+            apps/web/e2e/recovery-preview.spec.ts \
+            tests/integration/recovery-lifecycle.ts \
+            tests/package.json
+          git commit -m 'style: prepare recovery workstream for CI'
+          git push origin HEAD:codex/recovery-production-closure-20261011
