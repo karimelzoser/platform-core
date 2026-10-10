@@ -28,6 +28,7 @@ import { IdentityController } from './identity.controller.js';
 import { IdentityService } from './identity.service.js';
 import { OnboardingController } from './onboarding.controller.js';
 import { OnboardingService } from './onboarding.service.js';
+import { ReturnsApprovalService } from './returns-approval.service.js';
 import { ReturnsController } from './returns.controller.js';
 import { ReturnsService } from './returns.service.js';
 import { SessionController } from './session.controller.js';
@@ -93,6 +94,7 @@ function createRuntimeConnectorRegistry(): ConnectorRegistry {
     ApiDatabaseService,
     AuthenticatedContextService,
     ApprovalService,
+    ReturnsApprovalService,
     WebhookIngressService,
     MessagingService,
     MediaService,
