@@ -107,7 +107,9 @@ export class OnboardingController {
       return await operation();
     } catch (error) {
       if (error instanceof ZodError) {
-        throw new BadRequestException(error.issues[0]?.message ?? 'Invalid onboarding input');
+        const issue = error.issues[0];
+        const field = issue?.path.length ? `${issue.path.join('.')}: ` : '';
+        throw new BadRequestException(`${field}${issue?.message ?? 'Invalid onboarding input'}`);
       }
       if (error instanceof OnboardingInputError) throw new BadRequestException(error.message);
       if (error instanceof CommandExecutionError) {
@@ -123,6 +125,17 @@ export class OnboardingController {
 }
 
 function parsedObject(body: unknown): Record<string, unknown> {
+  if (Buffer.isBuffer(body)) {
+    try {
+      const parsed: unknown = JSON.parse(body.toString('utf8'));
+      if (!parsed || typeof parsed !== 'object' || Array.isArray(parsed)) {
+        throw new Error('JSON object required');
+      }
+      return parsed as Record<string, unknown>;
+    } catch {
+      throw new BadRequestException('JSON object body is required');
+    }
+  }
   if (!body || typeof body !== 'object' || Array.isArray(body)) {
     throw new BadRequestException('JSON object body is required');
   }
