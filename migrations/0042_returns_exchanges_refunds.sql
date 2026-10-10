@@ -105,7 +105,10 @@ CREATE TABLE returns.request_lines (
   FOREIGN KEY (tenant_id, store_id, exchange_variant_id) REFERENCES commerce.variants(tenant_id, store_id, id),
   CHECK (received_quantity <= requested_quantity),
   CHECK (accepted_quantity <= received_quantity),
-  CHECK (exchange_variant_id IS NULL OR accepted_quantity > 0)
+  CHECK (inspection_status <> 'PENDING' OR accepted_quantity = 0),
+  CHECK (inspection_status <> 'ACCEPTED' OR accepted_quantity = received_quantity),
+  CHECK (inspection_status <> 'PARTIAL' OR (accepted_quantity > 0 AND accepted_quantity < received_quantity)),
+  CHECK (inspection_status <> 'REJECTED' OR accepted_quantity = 0)
 );
 CREATE INDEX returns_request_lines_request_idx
   ON returns.request_lines (tenant_id, request_id, created_at, id);
