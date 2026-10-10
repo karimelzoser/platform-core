@@ -88,8 +88,7 @@ CREATE TABLE recovery.opportunities (
   CHECK (status <> 'RECOVERED' OR (
     recovered_order_id IS NOT NULL AND recovered_at IS NOT NULL AND recovered_value_minor IS NOT NULL
   )),
-  CHECK (status <> 'CANCELLED' OR cancelled_at IS NOT NULL),
-  CHECK (recovered_order_id IS NULL OR recovered_order_id <> source_order_id)
+  CHECK (status <> 'CANCELLED' OR cancelled_at IS NOT NULL)
 );
 CREATE INDEX recovery_opportunities_state_idx
   ON recovery.opportunities (tenant_id, store_id, status, eligible_at, expires_at);
