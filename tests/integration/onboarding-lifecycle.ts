@@ -61,6 +61,18 @@ async function main(): Promise<void> {
     );
     const onboarding = new OnboardingService(database, commands);
 
+    // Earlier integration lifecycles intentionally exercise canonical connector records.
+    // Onboarding is last in the chain and needs a deterministic tenant-B baseline so it
+    // can prove every integration state transition without depending on prior fixtures.
+    await withTenantTransaction(database, contextB, async (transaction) => {
+      await sql`
+        update integrations.connections
+        set status = 'REVOKED', updated_at = now()
+        where tenant_id = ${tenantB}::uuid
+          and status <> 'REVOKED'
+      `.execute(transaction);
+    });
+
     const initialB = await onboarding.getState(contextB);
     assert.equal(initialB.organization.id, tenantB);
     assert.equal(initialB.profile, null);
