@@ -15,6 +15,10 @@ import {
 import { CommandExecutionError } from '@platform/command-execution';
 import { AuthenticatedContextService } from './authenticated-context.service.js';
 import {
+  ReturnsApprovalError,
+  ReturnsApprovalService,
+} from './returns-approval.service.js';
+import {
   ReturnsInvariantError,
   ReturnsService,
   type CreateReturnInput,
@@ -24,6 +28,7 @@ import {
   type ReturnDecisionInput,
   type ReturnInspectionInput,
   type ReturnShipmentInput,
+  type ReturnsApprovalKind,
 } from './returns.service.js';
 
 @Controller('v1/returns')
@@ -31,6 +36,7 @@ export class ReturnsController {
   public constructor(
     private readonly authentication: AuthenticatedContextService,
     private readonly returns: ReturnsService,
+    private readonly approvals: ReturnsApprovalService,
   ) {}
 
   @Get()
@@ -86,6 +92,27 @@ export class ReturnsController {
         context,
         requireIdempotency(idempotencyKey),
         parseJsonObject(body, 'Return request') as CreateReturnInput,
+      ),
+    );
+  }
+
+  @Post(':returnId/approval/:kind')
+  public async requestApproval(
+    @Param('returnId') returnId: string,
+    @Param('kind') kind: string,
+    @Body() body: unknown,
+    @Headers('authorization') authorization: string | undefined,
+    @Headers('x-tenant-id') tenantId: string | undefined,
+    @Headers('x-correlation-id') correlationId: string | undefined,
+  ) {
+    const context = await this.context(authorization, tenantId, correlationId);
+    const parsedKind = parseApprovalKind(kind);
+    return this.execute(() =>
+      this.approvals.request(
+        context,
+        returnId,
+        parsedKind,
+        parseJsonObject(body, 'Returns approval'),
       ),
     );
   }
@@ -265,15 +292,14 @@ export class ReturnsController {
         if (error.code === 'authorization_denied') throw new ForbiddenException(error.message);
         throw new ConflictException(error.message);
       }
-      if (error instanceof ReturnsInvariantError) throw new ConflictException(error.message);
-      if (error instanceof zodLikeError) throw new BadRequestException(error.message);
+      if (error instanceof ReturnsApprovalError || error instanceof ReturnsInvariantError) {
+        throw new ConflictException(error.message);
+      }
       if (error instanceof Error) throw new BadRequestException(error.message);
       throw error;
     }
   }
 }
-
-class zodLikeError extends Error {}
 
 function parseJsonObject(body: unknown, label: string): Record<string, unknown> {
   if (!Buffer.isBuffer(body)) throw new BadRequestException(`${label} body must be JSON`);
@@ -296,7 +322,22 @@ function requireIdempotency(value: string | undefined): string {
 function boundedInteger(value: string, name: string, min: number, max: number): number {
   const parsed = Number(value);
   if (!Number.isInteger(parsed) || parsed < min || parsed > max) {
-    throw new BadRequestException(`${name} must be an integer between ${String(min)} and ${String(max)}`);
+    throw new BadRequestException(
+      `${name} must be an integer between ${String(min)} and ${String(max)}`,
+    );
   }
   return parsed;
+}
+
+function parseApprovalKind(value: string): ReturnsApprovalKind {
+  const normalized = value.toUpperCase();
+  if (
+    normalized !== 'DECISION' &&
+    normalized !== 'EXCHANGE' &&
+    normalized !== 'REFUND' &&
+    normalized !== 'RESTOCK'
+  ) {
+    throw new BadRequestException('Approval kind must be DECISION, EXCHANGE, REFUND, or RESTOCK');
+  }
+  return normalized;
 }
