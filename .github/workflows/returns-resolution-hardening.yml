@@ -1,0 +1,53 @@
+name: Returns resolution hardening
+
+on:
+  push:
+    branches:
+      - codex/returns-exchanges-refunds-closure-20261010
+
+permissions:
+  contents: write
+
+jobs:
+  harden:
+    if: github.actor != 'github-actions[bot]'
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: codex/returns-exchanges-refunds-closure-20261010
+          fetch-depth: 0
+      - uses: pnpm/action-setup@v4
+        with: { version: 9.15.5 }
+      - uses: actions/setup-node@v4
+        with: { node-version: 22, cache: pnpm }
+      - run: pnpm install --frozen-lockfile
+      - name: Block resolution while refunds are failed
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+
+          service = Path('apps/api/src/returns.service.ts')
+          text = service.read_text()
+          old = "and status not in ('SUCCEEDED', 'CANCELLED', 'FAILED')`.execute(transaction);"
+          new = "and status not in ('SUCCEEDED', 'CANCELLED')`.execute(transaction);"
+          if old not in text:
+              raise SystemExit('Expected refund resolution terminal-state check was not found')
+          service.write_text(text.replace(old, new, 1))
+
+          lifecycle = Path('tests/integration/returns-lifecycle.ts')
+          test_text = lifecycle.read_text()
+          old = """    await withTenantTransaction(database, contextA, async (transaction) => {\n      await sql`update integrations.provider_actions\n        set state = 'SUCCEEDED', provider_action_id = 'provider-refund-lifecycle',\n            result = '{\"ok\":true}'::jsonb, finished_at = now(), updated_at = now()\n        where id = ${queuedRefund.result.providerActionId}::uuid`.execute(transaction);\n    });\n    const reconciled = await returns.reconcileRefund(\n      contextA,\n      'returns-refund-reconcile',\n      queuedRefund.result.refundId,\n    );\n    assert.equal(reconciled.result.status, 'SUCCEEDED');\n"""
+          new = """    await withTenantTransaction(database, contextA, async (transaction) => {\n      await sql`update integrations.provider_actions\n        set state = 'FAILED', last_error = 'provider lifecycle failure',\n            finished_at = now(), updated_at = now()\n        where id = ${queuedRefund.result.providerActionId}::uuid`.execute(transaction);\n    });\n    const failedReconciliation = await returns.reconcileRefund(\n      contextA,\n      'returns-refund-reconcile-failed',\n      queuedRefund.result.refundId,\n    );\n    assert.equal(failedReconciliation.result.status, 'FAILED');\n    await assert.rejects(\n      returns.resolveRequest(\n        contextA,\n        'returns-resolve-with-failed-refund',\n        requested.result.requestId,\n      ),\n      /refund processing/i,\n    );\n    await withTenantTransaction(database, contextA, async (transaction) => {\n      await sql`update integrations.provider_actions\n        set state = 'SUCCEEDED', provider_action_id = 'provider-refund-lifecycle',\n            result = '{\"ok\":true}'::jsonb, last_error = null, finished_at = now(), updated_at = now()\n        where id = ${queuedRefund.result.providerActionId}::uuid`.execute(transaction);\n    });\n    const reconciled = await returns.reconcileRefund(\n      contextA,\n      'returns-refund-reconcile-succeeded',\n      queuedRefund.result.refundId,\n    );\n    assert.equal(reconciled.result.status, 'SUCCEEDED');\n"""
+          if old not in test_text:
+              raise SystemExit('Expected refund reconciliation lifecycle block was not found')
+          lifecycle.write_text(test_text.replace(old, new, 1))
+          PY
+          pnpm exec prettier --write apps/api/src/returns.service.ts tests/integration/returns-lifecycle.ts
+      - name: Commit exact hardening changes
+        run: |
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add apps/api/src/returns.service.ts tests/integration/returns-lifecycle.ts
+          git commit -m 'fix: block resolution on failed refunds'
+          git push origin HEAD:codex/returns-exchanges-refunds-closure-20261010
