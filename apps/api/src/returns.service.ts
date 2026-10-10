@@ -4,6 +4,7 @@ import {
   type CommandResult,
   type TenantRequestContext,
 } from '@platform/command-execution';
+import type { ApprovalAction } from '@platform/contracts';
 import { sql, withTenantTransaction, type PlatformDatabase } from '@platform/database';
 import { z } from 'zod';
 
@@ -42,14 +43,12 @@ const createReturnSchema = z
       .max(200),
   })
   .strict();
-
 const decisionSchema = z
   .object({
     decision: z.enum(['APPROVE', 'REJECT']),
     reason: z.string().trim().min(1).max(4000).optional(),
   })
   .strict();
-
 const inspectionSchema = z
   .object({
     note: z.string().trim().max(4000).optional(),
@@ -69,7 +68,6 @@ const inspectionSchema = z
       .max(200),
   })
   .strict();
-
 const exchangeSchema = z
   .object({
     lines: z
@@ -87,7 +85,6 @@ const exchangeSchema = z
       .max(200),
   })
   .strict();
-
 const refundSchema = z
   .object({
     amountMinor: z.number().int().positive(),
@@ -96,7 +93,6 @@ const refundSchema = z
     paymentId: uuidSchema.optional(),
   })
   .strict();
-
 const restockSchema = z
   .object({
     returnLineId: uuidSchema,
@@ -105,7 +101,6 @@ const restockSchema = z
     note: z.string().trim().max(4000).optional(),
   })
   .strict();
-
 const shipmentSchema = z.object({ shipmentId: uuidSchema }).strict();
 
 export type CreateReturnInput = z.input<typeof createReturnSchema>;
@@ -115,12 +110,63 @@ export type ExchangeInput = z.input<typeof exchangeSchema>;
 export type RefundInput = z.input<typeof refundSchema>;
 export type RestockInput = z.input<typeof restockSchema>;
 export type ReturnShipmentInput = z.input<typeof shipmentSchema>;
+export type ReturnsApprovalKind = 'DECISION' | 'EXCHANGE' | 'REFUND' | 'RESTOCK';
+
+type DatabaseTransaction = Parameters<Parameters<CommandExecutor['execute']>[0]['execute']>[0];
 
 export class ReturnsInvariantError extends Error {
   public constructor(message: string) {
     super(message);
     this.name = 'ReturnsInvariantError';
   }
+}
+
+export function buildReturnsApprovalAction(
+  tenantId: string,
+  returnId: string,
+  kind: ReturnsApprovalKind,
+  input: unknown,
+): ApprovalAction {
+  const id = uuidSchema.parse(returnId);
+  const base = { resource: { type: 'returns.request', id, tenantId } } as const;
+  if (kind === 'DECISION') {
+    const parsed = decisionSchema.parse(input);
+    return {
+      ...base,
+      action: 'returns.request.decide',
+      permission: 'returns.approve',
+      risk: 'HIGH',
+      input: parsed,
+    };
+  }
+  if (kind === 'EXCHANGE') {
+    const parsed = exchangeSchema.parse(input);
+    return {
+      ...base,
+      action: 'returns.exchange.create',
+      permission: 'returns.approve',
+      risk: 'HIGH',
+      input: parsed,
+    };
+  }
+  if (kind === 'REFUND') {
+    const parsed = refundSchema.parse(input);
+    return {
+      ...base,
+      action: 'returns.refund.issue',
+      permission: 'commerce.refunds.issue',
+      risk: 'CRITICAL',
+      input: parsed,
+    };
+  }
+  const parsed = restockSchema.parse(input);
+  return {
+    ...base,
+    action: 'returns.restock.record',
+    permission: 'commerce.inventory.manage',
+    risk: 'HIGH',
+    input: parsed,
+  };
 }
 
 interface ReturnListRow {
@@ -132,30 +178,6 @@ interface ReturnListRow {
   currency: string;
   created_at: Date;
   updated_at: Date;
-}
-
-interface ReturnLineRow {
-  id: string;
-  order_line_id: string;
-  title: string;
-  sku: string | null;
-  quantity: number;
-  reason_code: string;
-  requested_resolution: string;
-  proposed_refund_minor: string;
-  currency: string;
-}
-
-interface ReturnDetailRow extends ReturnListRow {
-  store_id: string;
-  customer_id: string | null;
-  customer_note: string | null;
-  return_shipment_id: string | null;
-  approved_at: Date | null;
-  rejected_at: Date | null;
-  received_at: Date | null;
-  resolved_at: Date | null;
-  cancelled_at: Date | null;
 }
 
 export class ReturnsService {
@@ -191,7 +213,7 @@ export class ReturnsService {
   }
 
   public async eligibility(context: TenantRequestContext, orderId: string) {
-    const parsedOrderId = uuidSchema.parse(orderId);
+    const id = uuidSchema.parse(orderId);
     return withTenantTransaction(this.database, context, async (transaction) => {
       const order = await sql<{
         id: string;
@@ -202,13 +224,10 @@ export class ReturnsService {
         currency: string;
         placed_at: Date | null;
         created_at: Date;
-      }>`
-        select id, store_id, order_number, status, fulfillment_status, currency, placed_at, created_at
-        from commerce.orders where id = ${parsedOrderId}::uuid
-      `.execute(transaction);
+      }>`select id, store_id, order_number, status, fulfillment_status, currency, placed_at, created_at
+          from commerce.orders where id = ${id}::uuid`.execute(transaction);
       const row = order.rows[0];
       if (!row) throw new ReturnsInvariantError('Order was not found');
-
       const policy = await sql<{
         id: string;
         return_window_days: number;
@@ -216,29 +235,18 @@ export class ReturnsService {
         allow_exchanges: boolean;
         require_inspection: boolean;
         allow_restock: boolean;
-      }>`
-        select id, return_window_days, require_fulfilled, allow_exchanges,
-               require_inspection, allow_restock
-        from returns.policies
-        where store_id = ${row.store_id}::uuid and status = 'ACTIVE'
-        order by updated_at desc, id
-        limit 1
-      `.execute(transaction);
-      const selectedPolicy = policy.rows[0] ?? {
-        id: null,
-        return_window_days: 14,
-        require_fulfilled: true,
-        allow_exchanges: true,
-        require_inspection: true,
-        allow_restock: true,
-      };
+      }>`select id, return_window_days, require_fulfilled, allow_exchanges, require_inspection, allow_restock
+          from returns.policies where store_id = ${row.store_id}::uuid and status = 'ACTIVE'
+          order by updated_at desc, id limit 1`.execute(transaction);
+      const selected = policy.rows[0];
+      const windowDays = selected?.return_window_days ?? 14;
+      const requireFulfilled = selected?.require_fulfilled ?? true;
       const anchor = row.placed_at ?? row.created_at;
-      const deadline = new Date(anchor.getTime() + selectedPolicy.return_window_days * 86_400_000);
+      const deadline = new Date(anchor.getTime() + windowDays * 86_400_000);
       const withinWindow = Date.now() <= deadline.getTime();
       const fulfillmentEligible =
-        !selectedPolicy.require_fulfilled || ['PARTIAL', 'FULFILLED'].includes(row.fulfillment_status);
-      const orderEligible = !['CANCELLED'].includes(row.status);
-
+        !requireFulfilled || ['PARTIAL', 'FULFILLED'].includes(row.fulfillment_status);
+      const orderEligible = row.status !== 'CANCELLED';
       const lines = await sql<{
         id: string;
         title: string;
@@ -246,22 +254,16 @@ export class ReturnsService {
         quantity: number;
         total_minor: string;
         already_returned: string;
-      }>`
-        select line.id, line.title, line.sku, line.quantity, line.total_minor::text,
-          coalesce((
-            select sum(return_line.quantity)
-            from returns.return_lines return_line
-            join returns.return_requests request
-              on request.tenant_id = return_line.tenant_id and request.id = return_line.return_id
-            where return_line.tenant_id = line.tenant_id
-              and return_line.order_line_id = line.id
-              and request.status not in ('REJECTED','CANCELLED')
-          ), 0)::text as already_returned
-        from commerce.order_lines line
-        where line.order_id = ${parsedOrderId}::uuid
-        order by line.created_at, line.id
-      `.execute(transaction);
-
+      }>`select line.id, line.title, line.sku, line.quantity, line.total_minor::text,
+            coalesce((select sum(return_line.quantity)
+              from returns.return_lines return_line
+              join returns.return_requests request
+                on request.tenant_id = return_line.tenant_id and request.id = return_line.return_id
+              where return_line.tenant_id = line.tenant_id
+                and return_line.order_line_id = line.id
+                and request.status not in ('REJECTED','CANCELLED')), 0)::text as already_returned
+          from commerce.order_lines line where line.order_id = ${id}::uuid
+          order by line.created_at, line.id`.execute(transaction);
       return {
         orderId: row.id,
         orderNumber: row.order_number,
@@ -274,12 +276,12 @@ export class ReturnsService {
         ],
         deadline: deadline.toISOString(),
         policy: {
-          id: selectedPolicy.id,
-          returnWindowDays: selectedPolicy.return_window_days,
-          requireFulfilled: selectedPolicy.require_fulfilled,
-          allowExchanges: selectedPolicy.allow_exchanges,
-          requireInspection: selectedPolicy.require_inspection,
-          allowRestock: selectedPolicy.allow_restock,
+          id: selected?.id ?? null,
+          returnWindowDays: windowDays,
+          requireFulfilled,
+          allowExchanges: selected?.allow_exchanges ?? true,
+          requireInspection: selected?.require_inspection ?? true,
+          allowRestock: selected?.allow_restock ?? true,
         },
         lines: lines.rows.map((line) => ({
           orderLineId: line.id,
@@ -297,33 +299,58 @@ export class ReturnsService {
   public async detail(context: TenantRequestContext, returnId: string) {
     const id = uuidSchema.parse(returnId);
     return withTenantTransaction(this.database, context, async (transaction) => {
-      const request = await sql<ReturnDetailRow>`
-        select request.id, request.store_id, request.order_id, orders.order_number,
-               request.customer_id, request.status, request.reason_code, request.customer_note,
-               request.return_shipment_id, orders.currency, request.approved_at, request.rejected_at,
-               request.received_at, request.resolved_at, request.cancelled_at,
-               request.created_at, request.updated_at
-        from returns.return_requests request
-        join commerce.orders orders on orders.tenant_id = request.tenant_id and orders.id = request.order_id
-        where request.id = ${id}::uuid
-      `.execute(transaction);
+      const request = await sql<{
+        id: string;
+        store_id: string;
+        order_id: string;
+        order_number: string;
+        customer_id: string | null;
+        status: string;
+        reason_code: string;
+        customer_note: string | null;
+        return_shipment_id: string | null;
+        currency: string;
+        created_at: Date;
+        updated_at: Date;
+      }>`select request.id, request.store_id, request.order_id, orders.order_number,
+                 request.customer_id, request.status, request.reason_code, request.customer_note,
+                 request.return_shipment_id, orders.currency, request.created_at, request.updated_at
+          from returns.return_requests request
+          join commerce.orders orders on orders.tenant_id = request.tenant_id and orders.id = request.order_id
+          where request.id = ${id}::uuid`.execute(transaction);
       const row = request.rows[0];
       if (!row) return undefined;
       const [lines, inspections, exchanges, refunds, restocks, timeline] = await Promise.all([
-        sql<ReturnLineRow>`
-          select line.id, line.order_line_id, order_line.title, order_line.sku,
-                 line.quantity, line.reason_code, line.requested_resolution,
-                 line.proposed_refund_minor::text, line.currency
-          from returns.return_lines line
-          join commerce.order_lines order_line
-            on order_line.tenant_id = line.tenant_id and order_line.id = line.order_line_id
-          where line.return_id = ${id}::uuid order by line.created_at, line.id
-        `.execute(transaction),
-        sql<Record<string, unknown>>`select * from returns.inspections where return_id = ${id}::uuid order by created_at`.execute(transaction),
-        sql<Record<string, unknown>>`select * from returns.exchange_requests where return_id = ${id}::uuid order by created_at`.execute(transaction),
-        sql<Record<string, unknown>>`select * from returns.refunds where return_id = ${id}::uuid order by created_at`.execute(transaction),
-        sql<Record<string, unknown>>`select * from returns.restock_movements where return_id = ${id}::uuid order by created_at`.execute(transaction),
-        sql<{ event_type: string; data: unknown; occurred_at: Date }>`select event_type, data, occurred_at from returns.timeline where return_id = ${id}::uuid order by occurred_at, id`.execute(transaction),
+        sql<{
+          id: string;
+          order_line_id: string;
+          title: string;
+          sku: string | null;
+          quantity: number;
+          reason_code: string;
+          requested_resolution: string;
+          proposed_refund_minor: string;
+          currency: string;
+        }>`select line.id, line.order_line_id, order_line.title, order_line.sku, line.quantity,
+                   line.reason_code, line.requested_resolution, line.proposed_refund_minor::text,
+                   line.currency
+            from returns.return_lines line
+            join commerce.order_lines order_line
+              on order_line.tenant_id = line.tenant_id and order_line.id = line.order_line_id
+            where line.return_id = ${id}::uuid order by line.created_at, line.id`.execute(transaction),
+        sql<Record<string, unknown>>`select id, status, inspected_by_user_id, inspected_at, note, created_at
+          from returns.inspections where return_id = ${id}::uuid order by created_at`.execute(transaction),
+        sql<Record<string, unknown>>`select id, status, replacement_order_id, price_delta_minor, currency,
+          approved_at, fulfilled_at, failure_reason, created_at from returns.exchange_requests
+          where return_id = ${id}::uuid order by created_at`.execute(transaction),
+        sql<Record<string, unknown>>`select id, payment_id, connection_id, provider_action_id, status,
+          amount_minor, currency, reason, approved_at, completed_at, last_error, created_at
+          from returns.refunds where return_id = ${id}::uuid order by created_at`.execute(transaction),
+        sql<Record<string, unknown>>`select id, return_line_id, variant_id, location_id, quantity,
+          actor_user_id, note, created_at from returns.restock_movements
+          where return_id = ${id}::uuid order by created_at`.execute(transaction),
+        sql<{ event_type: string; data: unknown; occurred_at: Date }>`select event_type, data, occurred_at
+          from returns.timeline where return_id = ${id}::uuid order by occurred_at, id`.execute(transaction),
       ]);
       return {
         id: row.id,
@@ -397,16 +424,12 @@ export class ReturnsService {
           const order = orderResult.rows[0];
           if (!order) throw new ReturnsInvariantError('Order was not found');
           if (order.status === 'CANCELLED') throw new ReturnsInvariantError('Cancelled orders cannot be returned');
-
           const policyResult = await sql<{
             id: string;
             return_window_days: number;
             require_fulfilled: boolean;
             allow_exchanges: boolean;
-            require_inspection: boolean;
-            allow_restock: boolean;
-          }>`select id, return_window_days, require_fulfilled, allow_exchanges,
-                     require_inspection, allow_restock
+          }>`select id, return_window_days, require_fulfilled, allow_exchanges
               from returns.policies where store_id = ${order.store_id}::uuid and status = 'ACTIVE'
               order by updated_at desc, id limit 1`.execute(transaction);
           const policy = policyResult.rows[0];
@@ -421,7 +444,6 @@ export class ReturnsService {
           if (validated.lines.some((line) => line.requestedResolution === 'EXCHANGE') && policy?.allow_exchanges === false) {
             throw new ReturnsInvariantError('Exchange resolution is disabled by the active return policy');
           }
-
           await sql`insert into returns.return_requests (
               id, tenant_id, store_id, order_id, customer_id, policy_id, reason_code,
               customer_note, eligibility_snapshot, requested_by_user_id
@@ -432,7 +454,6 @@ export class ReturnsService {
               ${JSON.stringify({ windowDays, requireFulfilled: policy?.require_fulfilled ?? true })}::jsonb,
               ${context.actorId}::uuid
             )`.execute(transaction);
-
           for (const line of validated.lines) {
             await sql`insert into returns.return_lines (
                 tenant_id, store_id, return_id, order_id, order_line_id, quantity,
@@ -451,8 +472,9 @@ export class ReturnsService {
               tenant_id, meter_key, meter_version, quantity, unit, occurred_at, source_type,
               source_id, resource_type, resource_id, correlation_id, idempotency_key, bounded_metadata
             ) values (
-              ${context.tenantId}::uuid, 'returns.request.created', 1, 1, 'case', now(), 'RETURN_REQUEST',
-              ${returnId}, 'returns.request', ${returnId}, ${context.correlationId}, ${idempotencyKey},
+              ${context.tenantId}::uuid, 'returns.request.created', 1, 1, 'case', now(),
+              'RETURN_REQUEST', ${returnId}, 'returns.request', ${returnId},
+              ${context.correlationId}, ${idempotencyKey},
               ${JSON.stringify({ resolution: validated.lines[0]?.requestedResolution ?? 'MIXED' })}::jsonb
             )`.execute(transaction);
           return { returnId, status: 'REQUESTED' as const };
@@ -471,12 +493,13 @@ export class ReturnsService {
   ) {
     const id = uuidSchema.parse(returnId);
     const validated = decisionSchema.parse(input);
+    const action = buildReturnsApprovalAction(context.tenantId, id, 'DECISION', validated);
     return this.commands.execute(
       {
-        action: 'returns.request.decide',
-        permission: 'returns.approve',
-        risk: 'HIGH',
-        resource: () => ({ type: 'returns.request', id }),
+        action: action.action,
+        permission: action.permission,
+        risk: action.risk,
+        resource: () => ({ type: action.resource.type, id }),
         event: {
           type: validated.decision === 'APPROVE' ? 'returns.request.approved' : 'returns.request.rejected',
           data: () => ({ returnId: id, decision: validated.decision }),
@@ -489,8 +512,7 @@ export class ReturnsService {
                 approved_at = case when ${targetStatus} = 'APPROVED' then now() else null end,
                 rejected_at = case when ${targetStatus} = 'REJECTED' then now() else null end,
                 updated_at = now()
-            where id = ${id}::uuid and status = 'REQUESTED'
-            returning id`.execute(transaction);
+            where id = ${id}::uuid and status = 'REQUESTED' returning id`.execute(transaction);
           if (!result.rows[0]) throw new ReturnsInvariantError('Only requested returns can be decided');
           await this.timeline(transaction, context, id, `returns.request.${targetStatus.toLowerCase()}`, {
             reason: validated.reason ?? null,
@@ -549,12 +571,13 @@ export class ReturnsService {
           dedupeKey: () => `returns:inspection:${id}:${idempotencyKey}`,
         },
         execute: async (transaction) => {
-          const request = await sql<{ id: string }>`select id from returns.return_requests where id = ${id}::uuid and status = 'RECEIVED'`.execute(transaction);
+          const request = await sql<{ id: string }>`select id from returns.return_requests
+            where id = ${id}::uuid and status = 'RECEIVED'`.execute(transaction);
           if (!request.rows[0]) throw new ReturnsInvariantError('Return must be received before inspection');
           await sql`insert into returns.inspections (
               id, tenant_id, return_id, status, inspected_by_user_id, inspected_at, note
-            ) values (${inspectionId}::uuid, ${context.tenantId}::uuid, ${id}::uuid, 'COMPLETED',
-              ${context.actorId}::uuid, now(), ${validated.note ?? null})`.execute(transaction);
+            ) values (${inspectionId}::uuid, ${context.tenantId}::uuid, ${id}::uuid,
+              'COMPLETED', ${context.actorId}::uuid, now(), ${validated.note ?? null})`.execute(transaction);
           for (const line of validated.lines) {
             await sql`insert into returns.inspection_lines (
                 tenant_id, return_id, inspection_id, return_line_id, accepted_quantity,
@@ -563,7 +586,8 @@ export class ReturnsService {
                 ${line.returnLineId}::uuid, ${line.acceptedQuantity}, ${line.rejectedQuantity},
                 ${line.condition}, ${line.note ?? null})`.execute(transaction);
           }
-          await sql`update returns.return_requests set status = 'INSPECTED', updated_at = now() where id = ${id}::uuid`.execute(transaction);
+          await sql`update returns.return_requests set status = 'INSPECTED', updated_at = now()
+            where id = ${id}::uuid`.execute(transaction);
           await this.timeline(transaction, context, id, 'returns.inspection.completed', { inspectionId });
           return { returnId: id, inspectionId, status: 'INSPECTED' as const };
         },
@@ -582,21 +606,21 @@ export class ReturnsService {
     const id = uuidSchema.parse(returnId);
     const validated = exchangeSchema.parse(input);
     const exchangeId = randomUUID();
+    const action = buildReturnsApprovalAction(context.tenantId, id, 'EXCHANGE', validated);
     return this.commands.execute(
       {
-        action: 'returns.exchange.create',
-        permission: 'returns.approve',
-        risk: 'HIGH',
-        resource: () => ({ type: 'returns.exchange', id: exchangeId }),
+        action: action.action,
+        permission: action.permission,
+        risk: action.risk,
+        resource: () => ({ type: action.resource.type, id }),
         event: {
           type: 'returns.exchange.created',
           data: () => ({ returnId: id, exchangeId }),
-          dedupeKey: () => `returns:exchange:${exchangeId}`,
+          dedupeKey: () => `returns:exchange:${id}:${idempotencyKey}`,
         },
         execute: async (transaction) => {
           const request = await sql<{ currency: string; allowed: boolean }>`
-            select orders.currency,
-              coalesce(policy.allow_exchanges, true) as allowed
+            select orders.currency, coalesce(policy.allow_exchanges, true) as allowed
             from returns.return_requests request
             join commerce.orders orders on orders.tenant_id = request.tenant_id and orders.id = request.order_id
             left join returns.policies policy on policy.tenant_id = request.tenant_id and policy.id = request.policy_id
@@ -611,8 +635,8 @@ export class ReturnsService {
               'APPROVED', ${row.currency}, now())`.execute(transaction);
           for (const line of validated.lines) {
             await sql`insert into returns.exchange_lines (
-                tenant_id, return_id, exchange_id, return_line_id,
-                replacement_variant_id, quantity, unit_price_delta_minor, currency
+                tenant_id, return_id, exchange_id, return_line_id, replacement_variant_id,
+                quantity, unit_price_delta_minor, currency
               ) values (${context.tenantId}::uuid, ${id}::uuid, ${exchangeId}::uuid,
                 ${line.returnLineId}::uuid, ${line.replacementVariantId}::uuid,
                 ${line.quantity}, ${line.unitPriceDeltaMinor}, ${row.currency})`.execute(transaction);
@@ -635,25 +659,24 @@ export class ReturnsService {
     const id = uuidSchema.parse(returnId);
     const validated = refundSchema.parse(input);
     const refundId = randomUUID();
+    const action = buildReturnsApprovalAction(context.tenantId, id, 'REFUND', validated);
     return this.commands.execute(
       {
-        action: 'returns.refund.issue',
-        permission: 'commerce.refunds.issue',
-        risk: 'CRITICAL',
-        resource: () => ({ type: 'returns.refund', id: refundId }),
+        action: action.action,
+        permission: action.permission,
+        risk: action.risk,
+        resource: () => ({ type: action.resource.type, id }),
         event: {
           type: 'returns.refund.requested',
           data: () => ({ returnId: id, refundId, amountMinor: validated.amountMinor, currency: validated.currency }),
-          dedupeKey: () => `returns:refund:${refundId}`,
+          dedupeKey: () => `returns:refund:${id}:${idempotencyKey}`,
         },
         execute: async (transaction) => {
           const request = await sql<{ order_id: string; store_id: string; max_refund: string }>`
             select request.order_id, request.store_id,
-              coalesce(sum(
-                case when inspected.accepted_quantity > 0 then
-                  floor(line.proposed_refund_minor::numeric * inspected.accepted_quantity / line.quantity)
-                else 0 end
-              ),0)::bigint::text as max_refund
+              coalesce(sum(case when inspected.accepted_quantity > 0 then
+                floor(line.proposed_refund_minor::numeric * inspected.accepted_quantity / line.quantity)
+                else 0 end),0)::bigint::text as max_refund
             from returns.return_requests request
             join returns.return_lines line on line.tenant_id = request.tenant_id and line.return_id = request.id
             left join returns.inspection_lines inspected
@@ -669,15 +692,14 @@ export class ReturnsService {
           }
           if (validated.paymentId) {
             const payment = await sql<{ id: string }>`select id from commerce.payments
-              where id = ${validated.paymentId}::uuid and order_id = ${row.order_id}::uuid and currency = ${validated.currency}`.execute(transaction);
+              where id = ${validated.paymentId}::uuid and order_id = ${row.order_id}::uuid
+                and currency = ${validated.currency}`.execute(transaction);
             if (!payment.rows[0]) throw new ReturnsInvariantError('Payment does not belong to the return order/currency');
           }
-          const mapping = await sql<{ connection_id: string }>`
-            select connection_id from commerce.provider_mappings
-            where store_id = ${row.store_id}::uuid and entity_type = 'ORDER'
-              and canonical_id = ${row.order_id}::uuid and state = 'ACTIVE'
-            order by updated_at desc limit 1
-          `.execute(transaction);
+          const mapping = await sql<{ connection_id: string }>`select connection_id
+            from commerce.provider_mappings where store_id = ${row.store_id}::uuid
+              and entity_type = 'ORDER' and canonical_id = ${row.order_id}::uuid and state = 'ACTIVE'
+            order by updated_at desc limit 1`.execute(transaction);
           const connectionId = mapping.rows[0]?.connection_id ?? null;
           const providerActionId = connectionId ? randomUUID() : null;
           if (providerActionId && connectionId) {
@@ -701,7 +723,7 @@ export class ReturnsService {
             amountMinor: validated.amountMinor,
             providerActionId,
           });
-          if (providerActionId) {
+          if (providerActionId && connectionId) {
             await sql`insert into platform.usage_records (
                 tenant_id, meter_key, meter_version, quantity, unit, occurred_at, source_type,
                 source_id, resource_type, resource_id, provider_key, connection_id,
@@ -728,39 +750,40 @@ export class ReturnsService {
     const id = uuidSchema.parse(returnId);
     const validated = restockSchema.parse(input);
     const movementId = randomUUID();
+    const action = buildReturnsApprovalAction(context.tenantId, id, 'RESTOCK', validated);
     return this.commands.execute(
       {
-        action: 'returns.restock.record',
-        permission: 'commerce.inventory.manage',
-        risk: 'HIGH',
-        resource: () => ({ type: 'returns.restock', id: movementId }),
+        action: action.action,
+        permission: action.permission,
+        risk: action.risk,
+        resource: () => ({ type: action.resource.type, id }),
         event: {
           type: 'returns.restock.recorded',
           data: () => ({ returnId: id, movementId, quantity: validated.quantity }),
-          dedupeKey: () => `returns:restock:${movementId}`,
+          dedupeKey: () => `returns:restock:${id}:${idempotencyKey}`,
         },
         execute: async (transaction) => {
-          const line = await sql<{ variant_id: string | null }>`
-            select order_line.variant_id
+          const line = await sql<{ variant_id: string | null }>`select order_line.variant_id
             from returns.return_lines return_line
             join commerce.order_lines order_line
               on order_line.tenant_id = return_line.tenant_id and order_line.id = return_line.order_line_id
             join returns.return_requests request
               on request.tenant_id = return_line.tenant_id and request.id = return_line.return_id
             where return_line.return_id = ${id}::uuid and return_line.id = ${validated.returnLineId}::uuid
-              and request.status in ('INSPECTED','RESOLVED')
-          `.execute(transaction);
+              and request.status in ('INSPECTED','RESOLVED')`.execute(transaction);
           const variantId = line.rows[0]?.variant_id;
           if (!variantId) throw new ReturnsInvariantError('Return line has no canonical inventory variant');
           const inventory = await sql<{ store_id: string }>`select store_id from commerce.inventory_levels
             where location_id = ${validated.locationId}::uuid and variant_id = ${variantId}::uuid`.execute(transaction);
           if (!inventory.rows[0]) throw new ReturnsInvariantError('Inventory level was not found for restock target');
           await sql`insert into returns.restock_movements (
-              id, tenant_id, return_id, return_line_id, variant_id, location_id, quantity, actor_user_id, note
+              id, tenant_id, return_id, return_line_id, variant_id, location_id, quantity,
+              actor_user_id, note
             ) values (${movementId}::uuid, ${context.tenantId}::uuid, ${id}::uuid,
               ${validated.returnLineId}::uuid, ${variantId}::uuid, ${validated.locationId}::uuid,
               ${validated.quantity}, ${context.actorId}::uuid, ${validated.note ?? null})`.execute(transaction);
-          await sql`update commerce.inventory_levels set on_hand = on_hand + ${validated.quantity}, updated_at = now()
+          await sql`update commerce.inventory_levels
+            set on_hand = on_hand + ${validated.quantity}, updated_at = now()
             where location_id = ${validated.locationId}::uuid and variant_id = ${variantId}::uuid`.execute(transaction);
           await this.timeline(transaction, context, id, 'returns.restock.recorded', {
             movementId,
@@ -815,7 +838,7 @@ export class ReturnsService {
   }
 
   private async timeline(
-    transaction: Parameters<Parameters<CommandExecutor['execute']>[0]['execute']>[0],
+    transaction: DatabaseTransaction,
     context: TenantRequestContext,
     returnId: string,
     eventType: string,
