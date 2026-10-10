@@ -98,7 +98,8 @@ export class OnboardingController {
   }
 
   private require(context: AuthenticatedTenantContext, permission: string): void {
-    if (!context.permissions.includes(permission)) throw new ForbiddenException('Permission denied');
+    if (!context.permissions.includes(permission))
+      throw new ForbiddenException('Permission denied');
   }
 
   private async guard<T>(operation: () => Promise<T>): Promise<T> {
