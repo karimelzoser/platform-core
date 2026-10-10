@@ -5,6 +5,7 @@ import { sql, withTenantTransaction } from '@platform/database';
 import { ApiDatabaseService } from '../../apps/api/src/api-database.service.js';
 import { ApprovalService } from '../../apps/api/src/approval.service.js';
 import { ReturnsApprovalService } from '../../apps/api/src/returns-approval.service.js';
+import { ReturnsResolutionService } from '../../apps/api/src/returns-resolution.service.js';
 import { ReturnsService } from '../../apps/api/src/returns.service.js';
 
 const tenantA = 'aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa';
@@ -141,9 +142,9 @@ async function main(): Promise<void> {
         ) values (${fulfillmentA}::uuid, ${tenantA}::uuid, ${storeA}::uuid, ${orderA}::uuid,
           'FULFILLED', now()) on conflict (id) do nothing`.execute(transaction);
       await sql`insert into commerce.fulfillment_lines (
-          tenant_id, store_id, fulfillment_id, order_id, order_line_id, quantity
+          tenant_id, store_id, fulfillment_id, order_line_id, quantity
         ) values (${tenantA}::uuid, ${storeA}::uuid, ${fulfillmentA}::uuid,
-          ${orderA}::uuid, ${orderLineA}::uuid, 2)
+          ${orderLineA}::uuid, 2)
         on conflict (tenant_id, fulfillment_id, order_line_id) do nothing`.execute(transaction);
       await sql`insert into commerce.provider_mappings (
           id, tenant_id, store_id, connection_id, entity_type, canonical_id, external_id
@@ -167,6 +168,7 @@ async function main(): Promise<void> {
       ),
     );
     const returns = new ReturnsService(database, commands);
+    const resolution = new ReturnsResolutionService(commands);
     const returnsApprovals = new ReturnsApprovalService(databaseService);
     const approvals = new ApprovalService(databaseService);
 
@@ -248,6 +250,11 @@ async function main(): Promise<void> {
     });
     assert.equal(inspected.result.status, 'INSPECTED');
 
+    await assert.rejects(
+      resolution.resolve(contextA, returnId, 'returns-lifecycle-resolve-too-early'),
+      /Accepted refund value has not been fully resolved/,
+    );
+
     const refundInput = {
       amountMinor: 2000,
       currency: 'EGP',
@@ -321,6 +328,11 @@ async function main(): Promise<void> {
       restockApproval,
     );
 
+    const resolved = await resolution.resolve(contextA, returnId, 'returns-lifecycle-resolve');
+    assert.equal(resolved.result.status, 'RESOLVED');
+    const resolvedReplay = await resolution.resolve(contextA, returnId, 'returns-lifecycle-resolve');
+    assert.equal(resolvedReplay.replayed, true);
+
     await withTenantTransaction(database, contextA, async (transaction) => {
       const [inventory, providerAction, usage, audit, outbox, timeline] = await Promise.all([
         sql<{ on_hand: number }>`select on_hand from commerce.inventory_levels
@@ -341,11 +353,12 @@ async function main(): Promise<void> {
       assert.equal(usage.rows[0]?.count, '1');
       assert.equal(audit.rows[0]?.count, '1');
       assert.equal(outbox.rows[0]?.count, '1');
-      assert.ok(Number(timeline.rows[0]?.count ?? '0') >= 6);
+      assert.ok(Number(timeline.rows[0]?.count ?? '0') >= 7);
     });
 
     const detail = await returns.detail(contextA, returnId);
     assert.ok(detail);
+    assert.equal(detail.status, 'RESOLVED');
     assert.equal(detail.refunds.length, 1);
     assert.equal(detail.exchanges.length, 1);
     assert.equal(detail.restocks.length, 1);
