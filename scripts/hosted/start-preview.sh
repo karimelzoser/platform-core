@@ -46,10 +46,13 @@ wait_for_postgres() {
 
 wait_for_keycloak() {
   local attempt=0
-  until curl --fail --silent --show-error "http://${KEYCLOAK_HOST}:8080/health/ready" >/dev/null 2>&1; do
+  # Hosted Keycloak exposes its management health endpoint separately from the
+  # application listener. Probe the application listener directly because the
+  # next step uses its admin/realm HTTP API on port 8080.
+  until curl --fail --silent --show-error "http://${KEYCLOAK_HOST}:8080/realms/master" >/dev/null 2>&1; do
     attempt=$((attempt + 1))
     if (( attempt >= 180 )); then
-      echo 'Keycloak did not become ready.' >&2
+      echo 'Keycloak application endpoint did not become ready.' >&2
       return 1
     fi
     sleep 1
