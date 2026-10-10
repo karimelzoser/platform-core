@@ -216,11 +216,10 @@ export class ReturnsController {
     this.require(context.permissions, 'returns.manage');
     const input = parseJsonObject(body, 'Exchange fulfillment body');
     return this.execute(() =>
-      this.returns.fulfillExchange(
-        context,
-        requireIdempotency(idempotencyKey),
-        { ...input, exchangeId } as FulfillExchangeInput,
-      ),
+      this.returns.fulfillExchange(context, requireIdempotency(idempotencyKey), {
+        ...input,
+        exchangeId,
+      } as FulfillExchangeInput),
     );
   }
 

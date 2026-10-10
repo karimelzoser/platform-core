@@ -55,8 +55,12 @@ export default async function ReturnsPage({ searchParams }: PageProps) {
   }
   if (returns.kind !== 'success' || stores.kind !== 'success') return null;
 
-  const open = returns.data.filter((item) => !['RESOLVED', 'REJECTED', 'CANCELLED'].includes(item.status));
-  const awaitingInspection = returns.data.filter((item) => ['APPROVED', 'IN_TRANSIT', 'RECEIVED', 'INSPECTING'].includes(item.status));
+  const open = returns.data.filter(
+    (item) => !['RESOLVED', 'REJECTED', 'CANCELLED'].includes(item.status),
+  );
+  const awaitingInspection = returns.data.filter((item) =>
+    ['APPROVED', 'IN_TRANSIT', 'RECEIVED', 'INSPECTING'].includes(item.status),
+  );
   const exchanges = returns.data.filter((item) => item.kind === 'EXCHANGE');
 
   return (
@@ -72,7 +76,11 @@ export default async function ReturnsPage({ searchParams }: PageProps) {
             </a>
           }
         />
-        {message ? <div className="identity-notice" role="status">{message}</div> : null}
+        {message ? (
+          <div className="identity-notice" role="status">
+            {message}
+          </div>
+        ) : null}
 
         <div className="ds-metric-grid">
           <MetricCard label="Open requests" value={open.length} />
@@ -96,34 +104,68 @@ export default async function ReturnsPage({ searchParams }: PageProps) {
                   <div className="identity-field">
                     <label htmlFor="return-policy-store">Store</label>
                     <select id="return-policy-store" name="storeId" required defaultValue="">
-                      <option value="" disabled>Select store</option>
+                      <option value="" disabled>
+                        Select store
+                      </option>
                       {stores.data.items.map((store) => (
-                        <option key={store.id} value={store.id}>{store.name}</option>
+                        <option key={store.id} value={store.id}>
+                          {store.name}
+                        </option>
                       ))}
                     </select>
                   </div>
                   <div className="identity-field">
                     <label htmlFor="return-policy-name">Policy name</label>
-                    <input id="return-policy-name" name="name" required defaultValue="Standard returns" />
+                    <input
+                      id="return-policy-name"
+                      name="name"
+                      required
+                      defaultValue="Standard returns"
+                    />
                   </div>
                   <div className="identity-field">
                     <label htmlFor="return-window">Return window (days)</label>
-                    <input id="return-window" name="returnWindowDays" type="number" min="0" max="365" defaultValue="14" required />
+                    <input
+                      id="return-window"
+                      name="returnWindowDays"
+                      type="number"
+                      min="0"
+                      max="365"
+                      defaultValue="14"
+                      required
+                    />
                   </div>
                   <div className="identity-field">
                     <label htmlFor="return-policy-approval">Approval ID</label>
-                    <input id="return-policy-approval" name="approvalId" placeholder="When required by policy" />
+                    <input
+                      id="return-policy-approval"
+                      name="approvalId"
+                      placeholder="When required by policy"
+                    />
                   </div>
                 </div>
                 <div className="identity-role-list">
-                  <label><input name="requireInspection" type="checkbox" defaultChecked /> Require inspection</label>
-                  <label><input name="allowExchange" type="checkbox" defaultChecked /> Allow exchanges</label>
-                  <label><input name="allowStoreCredit" type="checkbox" defaultChecked /> Allow store credit</label>
+                  <label>
+                    <input name="requireInspection" type="checkbox" defaultChecked /> Require
+                    inspection
+                  </label>
+                  <label>
+                    <input name="allowExchange" type="checkbox" defaultChecked /> Allow exchanges
+                  </label>
+                  <label>
+                    <input name="allowStoreCredit" type="checkbox" defaultChecked /> Allow store
+                    credit
+                  </label>
                 </div>
-                <button className="ds-button ds-button--secondary" type="submit">Save return policy</button>
+                <button className="ds-button ds-button--secondary" type="submit">
+                  Save return policy
+                </button>
               </form>
             ) : (
-              <EmptyState title="No stores available" description="Create or synchronize a commerce store before configuring returns." />
+              <EmptyState
+                title="No stores available"
+                description="Create or synchronize a commerce store before configuring returns."
+              />
             )}
           </Stack>
         </SurfaceCard>
@@ -154,11 +196,22 @@ export default async function ReturnsPage({ searchParams }: PageProps) {
                     {returns.data.map((item) => (
                       <tr key={item.id}>
                         <td data-label="Type">{item.kind}</td>
-                        <td data-label="Status"><StatusBadge tone={statusTone(item.status)}>{item.status}</StatusBadge></td>
+                        <td data-label="Status">
+                          <StatusBadge tone={statusTone(item.status)}>{item.status}</StatusBadge>
+                        </td>
                         <td data-label="Reason">{item.reasonCode}</td>
-                        <td data-label="Order"><code>{shortId(item.orderId)}</code></td>
+                        <td data-label="Order">
+                          <code>{shortId(item.orderId)}</code>
+                        </td>
                         <td data-label="Requested">{formatDate(item.requestedAt)}</td>
-                        <td data-label="Action"><a className="ds-button ds-button--secondary" href={`/returns/${encodeURIComponent(item.id)}`}>Open</a></td>
+                        <td data-label="Action">
+                          <a
+                            className="ds-button ds-button--secondary"
+                            href={`/returns/${encodeURIComponent(item.id)}`}
+                          >
+                            Open
+                          </a>
+                        </td>
                       </tr>
                     ))}
                   </tbody>
@@ -168,7 +221,11 @@ export default async function ReturnsPage({ searchParams }: PageProps) {
               <EmptyState
                 title="No return requests"
                 description="Start from a confirmed or closed canonical order when a customer needs a return or exchange."
-                action={<a className="ds-button ds-button--primary" href="/returns/new">Create first return</a>}
+                action={
+                  <a className="ds-button ds-button--primary" href="/returns/new">
+                    Create first return
+                  </a>
+                }
               />
             )}
           </Stack>
@@ -189,7 +246,8 @@ function firstFailure(...results: Array<{ kind: string; detail?: string }>): str
 function statusTone(status: string): 'neutral' | 'info' | 'success' | 'warning' | 'danger' {
   if (status === 'RESOLVED') return 'success';
   if (['REJECTED', 'CANCELLED', 'FAILED'].includes(status)) return 'danger';
-  if (['REQUESTED', 'APPROVED', 'IN_TRANSIT', 'RECEIVED', 'INSPECTING'].includes(status)) return 'warning';
+  if (['REQUESTED', 'APPROVED', 'IN_TRANSIT', 'RECEIVED', 'INSPECTING'].includes(status))
+    return 'warning';
   return 'neutral';
 }
 

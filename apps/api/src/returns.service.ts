@@ -77,11 +77,7 @@ const refundInputSchema = z.object({
 });
 const exchangeInputSchema = z.object({
   requestId: uuidSchema,
-  priceAdjustmentMinor: z
-    .number()
-    .int()
-    .min(-Number.MAX_SAFE_INTEGER)
-    .max(Number.MAX_SAFE_INTEGER),
+  priceAdjustmentMinor: z.number().int().min(-Number.MAX_SAFE_INTEGER).max(Number.MAX_SAFE_INTEGER),
   currency: currencySchema,
 });
 const fulfillExchangeSchema = z.object({
@@ -274,7 +270,9 @@ export class ReturnsService {
                 require_inspection = ${validated.requireInspection},
                 allow_exchange = ${validated.allowExchange},
                 allow_store_credit = ${validated.allowStoreCredit}, updated_at = now()
-              where tenant_id = ${context.tenantId}::uuid and id = ${id}::uuid`.execute(transaction);
+              where tenant_id = ${context.tenantId}::uuid and id = ${id}::uuid`.execute(
+              transaction,
+            );
           } else {
             await sql`insert into returns.policies (
                 id, tenant_id, store_id, name, status, return_window_days,
@@ -327,7 +325,9 @@ export class ReturnsService {
           if (!orderRow) throw new ReturnsInvariantError('Order was not found in this store');
           if (!['CONFIRMED', 'CLOSED'].includes(orderRow.status))
             throw new ReturnsInvariantError('Only confirmed or closed orders are return-eligible');
-          const delivered = await sql<{ delivered_at: Date | null }>`select max(delivered_at) as delivered_at
+          const delivered = await sql<{
+            delivered_at: Date | null;
+          }>`select max(delivered_at) as delivered_at
             from shipping.shipments where tenant_id = ${context.tenantId}::uuid
               and store_id = ${validated.storeId}::uuid and order_id = ${validated.orderId}::uuid
               and delivered_at is not null`.execute(transaction);
@@ -380,7 +380,8 @@ export class ReturnsService {
                 and line.id = ${requestedLine.orderLineId}::uuid
               for share`.execute(transaction);
             const lineRow = line.rows[0];
-            if (!lineRow) throw new ReturnsInvariantError('Return line does not belong to this order');
+            if (!lineRow)
+              throw new ReturnsInvariantError('Return line does not belong to this order');
             if (Number(lineRow.already_requested) + requestedLine.quantity > lineRow.quantity)
               throw new ReturnsInvariantError(
                 'Return quantity exceeds the remaining order-line quantity',
@@ -625,7 +626,9 @@ export class ReturnsService {
             ), 0)::text as amount from returns.request_lines
             where tenant_id = ${context.tenantId}::uuid
               and request_id = ${validated.requestId}::uuid`.execute(transaction);
-          const reserved = await sql<{ amount: string }>`select coalesce(sum(amount_minor), 0)::text as amount
+          const reserved = await sql<{
+            amount: string;
+          }>`select coalesce(sum(amount_minor), 0)::text as amount
             from returns.refunds where tenant_id = ${context.tenantId}::uuid
               and return_request_id = ${validated.requestId}::uuid
               and status in ('APPROVED', 'QUEUED', 'PROCESSING', 'SUCCEEDED')`.execute(transaction);
@@ -634,12 +637,12 @@ export class ReturnsService {
             Number(eligible.rows[0]?.amount ?? '0') - Number(reserved.rows[0]?.amount ?? '0')
           )
             throw new ReturnsInvariantError('Refund exceeds accepted return value remaining');
-          const sourceReserved = await sql<{ amount: string }>`select coalesce(sum(amount_minor), 0)::text as amount
+          const sourceReserved = await sql<{
+            amount: string;
+          }>`select coalesce(sum(amount_minor), 0)::text as amount
             from returns.refunds where tenant_id = ${context.tenantId}::uuid
               and source_payment_id = ${validated.sourcePaymentId}::uuid
-              and status in ('APPROVED', 'QUEUED', 'PROCESSING', 'SUCCEEDED')`.execute(
-            transaction,
-          );
+              and status in ('APPROVED', 'QUEUED', 'PROCESSING', 'SUCCEEDED')`.execute(transaction);
           if (
             validated.amountMinor >
             Number(source.amount_minor) - Number(sourceReserved.rows[0]?.amount ?? '0')
@@ -669,7 +672,8 @@ export class ReturnsService {
               and order_mapping.state = 'ACTIVE'
               and connection.status in ('CONNECTED', 'DEGRADED') limit 1`.execute(transaction);
           const route = mapping.rows[0];
-          if (!route) throw new ReturnsInvariantError('Active provider order mapping was not found');
+          if (!route)
+            throw new ReturnsInvariantError('Active provider order mapping was not found');
           const providerInput = {
             canonicalRefundId: refundId,
             returnRequestId: validated.requestId,
@@ -1003,11 +1007,7 @@ export class ReturnsService {
     );
   }
 
-  private async requireStore(
-    transaction: PlatformTransaction,
-    tenantId: string,
-    storeId: string,
-  ) {
+  private async requireStore(transaction: PlatformTransaction, tenantId: string, storeId: string) {
     const result = await sql<{ id: string }>`select id from commerce.stores
       where tenant_id = ${tenantId}::uuid and id = ${storeId}::uuid`.execute(transaction);
     if (!result.rows[0]) throw new ReturnsInvariantError('Store was not found');
@@ -1020,7 +1020,9 @@ export class ReturnsService {
   ): Promise<RequestRow> {
     const result = await sql<RequestRow>`select id, store_id, order_id, customer_id, policy_id,
         kind, status, reason_code, requested_at, updated_at from returns.requests
-      where tenant_id = ${tenantId}::uuid and id = ${requestId}::uuid for update`.execute(transaction);
+      where tenant_id = ${tenantId}::uuid and id = ${requestId}::uuid for update`.execute(
+      transaction,
+    );
     const row = result.rows[0];
     if (!row) throw new ReturnsInvariantError('Return request was not found');
     return row;

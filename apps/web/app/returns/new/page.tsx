@@ -1,5 +1,12 @@
 import type { Metadata } from 'next';
-import { EmptyState, PageHeader, PageShell, Stack, StatusBadge, SurfaceCard } from '../../ui-primitives';
+import {
+  EmptyState,
+  PageHeader,
+  PageShell,
+  Stack,
+  StatusBadge,
+  SurfaceCard,
+} from '../../ui-primitives';
 import { createReturnRequest } from '../actions';
 import { platformRequest } from '../platform-api';
 
@@ -49,11 +56,19 @@ export default async function NewReturnPage({ searchParams }: PageProps) {
   const { orderId, message } = await searchParams;
   const orders = await platformRequest<OrderList>('/v1/commerce/orders?limit=100');
   if (orders.kind !== 'success') {
-    return <PageShell><EmptyState title="Orders are unavailable" description={failure(orders)} /></PageShell>;
+    return (
+      <PageShell>
+        <EmptyState title="Orders are unavailable" description={failure(orders)} />
+      </PageShell>
+    );
   }
-  const eligibleOrders = orders.data.items.filter((order) => ['CONFIRMED', 'CLOSED'].includes(order.status));
+  const eligibleOrders = orders.data.items.filter((order) =>
+    ['CONFIRMED', 'CLOSED'].includes(order.status),
+  );
   const selected = orderId
-    ? await platformRequest<OrderDetailResponse>(`/v1/commerce/orders/${encodeURIComponent(orderId)}`)
+    ? await platformRequest<OrderDetailResponse>(
+        `/v1/commerce/orders/${encodeURIComponent(orderId)}`,
+      )
     : undefined;
 
   return (
@@ -63,36 +78,68 @@ export default async function NewReturnPage({ searchParams }: PageProps) {
           eyebrow="RETURNS"
           title={<span id="new-return-title">Create return or exchange</span>}
           description="Select a canonical order, then choose the exact order line and quantity. Eligibility is revalidated by the API at submission time."
-          actions={<a className="ds-button ds-button--secondary" href="/returns">Back to returns</a>}
+          actions={
+            <a className="ds-button ds-button--secondary" href="/returns">
+              Back to returns
+            </a>
+          }
         />
-        {message ? <div className="identity-notice" role="status">{message}</div> : null}
+        {message ? (
+          <div className="identity-notice" role="status">
+            {message}
+          </div>
+        ) : null}
 
         <SurfaceCard>
           <Stack>
             <div className="identity-section-heading">
-              <div><p className="ds-eyebrow">STEP 1</p><h2>Select order</h2></div>
+              <div>
+                <p className="ds-eyebrow">STEP 1</p>
+                <h2>Select order</h2>
+              </div>
               <StatusBadge tone="info">Confirmed / closed only</StatusBadge>
             </div>
             {eligibleOrders.length ? (
               <div className="identity-table-wrap">
                 <table className="identity-table">
-                  <thead><tr><th>Order</th><th>Status</th><th>Financial</th><th>Fulfillment</th><th>Total</th><th>Action</th></tr></thead>
+                  <thead>
+                    <tr>
+                      <th>Order</th>
+                      <th>Status</th>
+                      <th>Financial</th>
+                      <th>Fulfillment</th>
+                      <th>Total</th>
+                      <th>Action</th>
+                    </tr>
+                  </thead>
                   <tbody>
                     {eligibleOrders.map((order) => (
                       <tr key={order.id}>
                         <td data-label="Order">{order.orderNumber}</td>
-                        <td data-label="Status"><StatusBadge tone="success">{order.status}</StatusBadge></td>
+                        <td data-label="Status">
+                          <StatusBadge tone="success">{order.status}</StatusBadge>
+                        </td>
                         <td data-label="Financial">{order.financialStatus}</td>
                         <td data-label="Fulfillment">{order.fulfillmentStatus}</td>
                         <td data-label="Total">{money(order.totalMinor, order.currency)}</td>
-                        <td data-label="Action"><a className="ds-button ds-button--secondary" href={`/returns/new?orderId=${encodeURIComponent(order.id)}`}>Select</a></td>
+                        <td data-label="Action">
+                          <a
+                            className="ds-button ds-button--secondary"
+                            href={`/returns/new?orderId=${encodeURIComponent(order.id)}`}
+                          >
+                            Select
+                          </a>
+                        </td>
                       </tr>
                     ))}
                   </tbody>
                 </table>
               </div>
             ) : (
-              <EmptyState title="No eligible orders" description="A return request can be opened only for a confirmed or closed order." />
+              <EmptyState
+                title="No eligible orders"
+                description="A return request can be opened only for a confirmed or closed order."
+              />
             )}
           </Stack>
         </SurfaceCard>
@@ -103,16 +150,27 @@ export default async function NewReturnPage({ searchParams }: PageProps) {
   );
 }
 
-function SelectedOrder({ result }: { result: Awaited<ReturnType<typeof platformRequest<OrderDetailResponse>>> }) {
+function SelectedOrder({
+  result,
+}: {
+  result: Awaited<ReturnType<typeof platformRequest<OrderDetailResponse>>>;
+}) {
   if (result.kind !== 'success') {
-    return <SurfaceCard><EmptyState title="Order could not be loaded" description={failure(result)} /></SurfaceCard>;
+    return (
+      <SurfaceCard>
+        <EmptyState title="Order could not be loaded" description={failure(result)} />
+      </SurfaceCard>
+    );
   }
   const order = result.data.order;
   return (
     <SurfaceCard>
       <Stack>
         <div className="identity-section-heading">
-          <div><p className="ds-eyebrow">STEP 2</p><h2>{order.orderNumber}</h2></div>
+          <div>
+            <p className="ds-eyebrow">STEP 2</p>
+            <h2>{order.orderNumber}</h2>
+          </div>
           <StatusBadge tone="success">{order.status}</StatusBadge>
         </div>
         <form action={createReturnRequest} className="identity-form">
@@ -129,7 +187,9 @@ function SelectedOrder({ result }: { result: Awaited<ReturnType<typeof platformR
             <div className="identity-field">
               <label htmlFor="return-line">Order line</label>
               <select id="return-line" name="orderLineId" required defaultValue="">
-                <option value="" disabled>Select item</option>
+                <option value="" disabled>
+                  Select item
+                </option>
                 {order.lines.map((line) => (
                   <option key={line.id} value={line.id}>
                     {line.title} · qty {line.quantity} · {money(line.totalMinor, order.currency)}
@@ -139,15 +199,32 @@ function SelectedOrder({ result }: { result: Awaited<ReturnType<typeof platformR
             </div>
             <div className="identity-field">
               <label htmlFor="return-quantity">Quantity</label>
-              <input id="return-quantity" name="quantity" type="number" min="1" defaultValue="1" required />
+              <input
+                id="return-quantity"
+                name="quantity"
+                type="number"
+                min="1"
+                defaultValue="1"
+                required
+              />
             </div>
             <div className="identity-field">
               <label htmlFor="return-reason">Reason code</label>
-              <input id="return-reason" name="reasonCode" required defaultValue="CUSTOMER_REQUEST" pattern="[A-Za-z][A-Za-z0-9_]{1,63}" />
+              <input
+                id="return-reason"
+                name="reasonCode"
+                required
+                defaultValue="CUSTOMER_REQUEST"
+                pattern="[A-Za-z][A-Za-z0-9_]{1,63}"
+              />
             </div>
             <div className="identity-field">
               <label htmlFor="exchange-variant">Replacement variant ID</label>
-              <input id="exchange-variant" name="exchangeVariantId" placeholder="Required only for exchange" />
+              <input
+                id="exchange-variant"
+                name="exchangeVariantId"
+                placeholder="Required only for exchange"
+              />
             </div>
           </div>
           <div className="identity-field">
@@ -155,9 +232,12 @@ function SelectedOrder({ result }: { result: Awaited<ReturnType<typeof platformR
             <textarea id="return-note" name="customerNote" rows={3} maxLength={4000} />
           </div>
           <div className="identity-callout">
-            For exchanges, the replacement variant must belong to this store and be active. The API also prevents cumulative return quantities from exceeding the original order line.
+            For exchanges, the replacement variant must belong to this store and be active. The API
+            also prevents cumulative return quantities from exceeding the original order line.
           </div>
-          <button className="ds-button ds-button--primary" type="submit">Create request</button>
+          <button className="ds-button ds-button--primary" type="submit">
+            Create request
+          </button>
         </form>
       </Stack>
     </SurfaceCard>

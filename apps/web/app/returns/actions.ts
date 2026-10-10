@@ -18,7 +18,9 @@ export async function saveReturnPolicy(formData: FormData): Promise<void> {
     idempotent: true,
     approvalId: optional(formData, 'approvalId'),
   });
-  redirect(`/returns?message=${encodeURIComponent(result.kind === 'success' ? 'Return policy saved.' : apiMessage(result))}`);
+  redirect(
+    `/returns?message=${encodeURIComponent(result.kind === 'success' ? 'Return policy saved.' : apiMessage(result))}`,
+  );
 }
 
 export async function createReturnRequest(formData: FormData): Promise<void> {
@@ -58,16 +60,21 @@ export async function createReturnRequest(formData: FormData): Promise<void> {
 
 export async function reviewReturnRequest(formData: FormData): Promise<void> {
   const requestId = required(formData, 'requestId');
-  const result = await platformRequest(`/v1/returns/requests/${encodeURIComponent(requestId)}/review`, {
-    method: 'POST',
-    idempotent: true,
-    approvalId: optional(formData, 'approvalId'),
-    body: {
-      decision: required(formData, 'decision'),
-      internalNote: optional(formData, 'internalNote'),
+  const result = await platformRequest(
+    `/v1/returns/requests/${encodeURIComponent(requestId)}/review`,
+    {
+      method: 'POST',
+      idempotent: true,
+      approvalId: optional(formData, 'approvalId'),
+      body: {
+        decision: required(formData, 'decision'),
+        internalNote: optional(formData, 'internalNote'),
+      },
     },
-  });
-  redirect(back(requestId, result.kind === 'success' ? 'Return review recorded.' : apiMessage(result)));
+  );
+  redirect(
+    back(requestId, result.kind === 'success' ? 'Return review recorded.' : apiMessage(result)),
+  );
 }
 
 export async function inspectReturnLine(formData: FormData): Promise<void> {
@@ -92,68 +99,99 @@ export async function inspectReturnLine(formData: FormData): Promise<void> {
       },
     },
   );
-  redirect(back(requestId, result.kind === 'success' ? 'Inspection recorded.' : apiMessage(result)));
+  redirect(
+    back(requestId, result.kind === 'success' ? 'Inspection recorded.' : apiMessage(result)),
+  );
 }
 
 export async function issueRefund(formData: FormData): Promise<void> {
   const requestId = required(formData, 'requestId');
-  const result = await platformRequest(`/v1/returns/requests/${encodeURIComponent(requestId)}/refunds`, {
-    method: 'POST',
-    idempotent: true,
-    approvalId: optional(formData, 'approvalId'),
-    body: {
-      sourcePaymentId: required(formData, 'sourcePaymentId'),
-      connectionId: required(formData, 'connectionId'),
-      amountMinor: integer(formData, 'amountMinor'),
-      currency: required(formData, 'currency').toUpperCase(),
-      reason: required(formData, 'reason'),
+  const result = await platformRequest(
+    `/v1/returns/requests/${encodeURIComponent(requestId)}/refunds`,
+    {
+      method: 'POST',
+      idempotent: true,
+      approvalId: optional(formData, 'approvalId'),
+      body: {
+        sourcePaymentId: required(formData, 'sourcePaymentId'),
+        connectionId: required(formData, 'connectionId'),
+        amountMinor: integer(formData, 'amountMinor'),
+        currency: required(formData, 'currency').toUpperCase(),
+        reason: required(formData, 'reason'),
+      },
     },
-  });
-  redirect(back(requestId, result.kind === 'success' ? 'Refund queued for provider execution.' : apiMessage(result)));
+  );
+  redirect(
+    back(
+      requestId,
+      result.kind === 'success' ? 'Refund queued for provider execution.' : apiMessage(result),
+    ),
+  );
 }
 
 export async function reconcileRefund(formData: FormData): Promise<void> {
   const requestId = required(formData, 'requestId');
   const refundId = required(formData, 'refundId');
-  const result = await platformRequest(`/v1/returns/refunds/${encodeURIComponent(refundId)}/reconcile`, {
-    method: 'POST',
-    idempotent: true,
-  });
-  redirect(back(requestId, result.kind === 'success' ? 'Refund status reconciled.' : apiMessage(result)));
+  const result = await platformRequest(
+    `/v1/returns/refunds/${encodeURIComponent(refundId)}/reconcile`,
+    {
+      method: 'POST',
+      idempotent: true,
+    },
+  );
+  redirect(
+    back(requestId, result.kind === 'success' ? 'Refund status reconciled.' : apiMessage(result)),
+  );
 }
 
 export async function createExchange(formData: FormData): Promise<void> {
   const requestId = required(formData, 'requestId');
-  const result = await platformRequest(`/v1/returns/requests/${encodeURIComponent(requestId)}/exchanges`, {
-    method: 'POST',
-    idempotent: true,
-    approvalId: optional(formData, 'approvalId'),
-    body: {
-      priceAdjustmentMinor: signedInteger(formData, 'priceAdjustmentMinor'),
-      currency: required(formData, 'currency').toUpperCase(),
+  const result = await platformRequest(
+    `/v1/returns/requests/${encodeURIComponent(requestId)}/exchanges`,
+    {
+      method: 'POST',
+      idempotent: true,
+      approvalId: optional(formData, 'approvalId'),
+      body: {
+        priceAdjustmentMinor: signedInteger(formData, 'priceAdjustmentMinor'),
+        currency: required(formData, 'currency').toUpperCase(),
+      },
     },
-  });
+  );
   redirect(back(requestId, result.kind === 'success' ? 'Exchange approved.' : apiMessage(result)));
 }
 
 export async function fulfillExchange(formData: FormData): Promise<void> {
   const requestId = required(formData, 'requestId');
   const exchangeId = required(formData, 'exchangeId');
-  const result = await platformRequest(`/v1/returns/exchanges/${encodeURIComponent(exchangeId)}/fulfill`, {
-    method: 'POST',
-    idempotent: true,
-    body: { replacementOrderId: required(formData, 'replacementOrderId') },
-  });
-  redirect(back(requestId, result.kind === 'success' ? 'Exchange fulfillment linked.' : apiMessage(result)));
+  const result = await platformRequest(
+    `/v1/returns/exchanges/${encodeURIComponent(exchangeId)}/fulfill`,
+    {
+      method: 'POST',
+      idempotent: true,
+      body: { replacementOrderId: required(formData, 'replacementOrderId') },
+    },
+  );
+  redirect(
+    back(
+      requestId,
+      result.kind === 'success' ? 'Exchange fulfillment linked.' : apiMessage(result),
+    ),
+  );
 }
 
 export async function resolveReturnRequest(formData: FormData): Promise<void> {
   const requestId = required(formData, 'requestId');
-  const result = await platformRequest(`/v1/returns/requests/${encodeURIComponent(requestId)}/resolve`, {
-    method: 'POST',
-    idempotent: true,
-  });
-  redirect(back(requestId, result.kind === 'success' ? 'Return request resolved.' : apiMessage(result)));
+  const result = await platformRequest(
+    `/v1/returns/requests/${encodeURIComponent(requestId)}/resolve`,
+    {
+      method: 'POST',
+      idempotent: true,
+    },
+  );
+  redirect(
+    back(requestId, result.kind === 'success' ? 'Return request resolved.' : apiMessage(result)),
+  );
 }
 
 function back(requestId: string, message: string) {
@@ -173,7 +211,8 @@ function optional(formData: FormData, key: string): string | undefined {
 
 function integer(formData: FormData, key: string): number {
   const value = Number(required(formData, key));
-  if (!Number.isInteger(value) || value < 0) throw new Error(`${key} must be a non-negative integer`);
+  if (!Number.isInteger(value) || value < 0)
+    throw new Error(`${key} must be a non-negative integer`);
   return value;
 }
 

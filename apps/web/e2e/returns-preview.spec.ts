@@ -7,7 +7,9 @@ const returnOrderId = 'dddddddd-0000-0000-0000-000000000021';
 test.describe.configure({ mode: 'serial' });
 
 test.describe('Returns disposable development preview', () => {
-  test('creates a protected return request and proves responsive RTL access', async ({ browser }, testInfo) => {
+  test('creates a protected return request and proves responsive RTL access', async ({
+    browser,
+  }, testInfo) => {
     testInfo.setTimeout(180_000);
     requireDisposablePreview();
     const consoleErrors: string[] = [];
@@ -52,7 +54,9 @@ function requiredEnvironment(name: string): string {
 
 function requireDisposablePreview() {
   if (process.env.PREVIEW_E2E !== '1')
-    throw new Error('PREVIEW_E2E=1 is required; this suite must run only against the disposable preview.');
+    throw new Error(
+      'PREVIEW_E2E=1 is required; this suite must run only against the disposable preview.',
+    );
   const url = new URL(process.env.E2E_BASE_URL ?? 'http://127.0.0.1:3000');
   if ((url.protocol !== 'http:' && url.protocol !== 'https:') || !isLoopbackHost(url.hostname))
     throw new Error('The disposable preview E2E suite accepts only a loopback base URL.');
