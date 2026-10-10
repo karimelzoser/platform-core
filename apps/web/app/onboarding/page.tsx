@@ -15,12 +15,7 @@ export const metadata: Metadata = { title: 'Onboarding | Platform' };
 
 type VolumeBand = 'NONE' | '1_100' | '101_1000' | '1001_5000' | '5001_20000' | '20000_PLUS';
 type TeamStatus = 'PENDING' | 'INVITED' | 'SKIPPED' | 'COMPLETE';
-type IntegrationStatus =
-  | 'PENDING'
-  | 'ACTION_REQUIRED'
-  | 'SKIPPED'
-  | 'CONNECTED'
-  | 'DEGRADED';
+type IntegrationStatus = 'PENDING' | 'ACTION_REQUIRED' | 'SKIPPED' | 'CONNECTED' | 'DEGRADED';
 
 interface OnboardingState {
   organization: {
@@ -434,7 +429,9 @@ export default async function OnboardingPage({ searchParams }: PageProps) {
             <div className="identity-section-heading">
               <div>
                 <p className="ds-eyebrow">STEP 4 · READY</p>
-                <h2>{state.progress.ready ? 'Workspace setup is ready' : 'Finish the required setup'}</h2>
+                <h2>
+                  {state.progress.ready ? 'Workspace setup is ready' : 'Finish the required setup'}
+                </h2>
               </div>
               <StatusBadge tone={state.progress.ready ? 'success' : 'warning'}>
                 {state.progress.ready ? 'READY' : 'IN PROGRESS'}
