@@ -132,7 +132,7 @@ jobs:
           bash -n scripts/hosted/bootstrap-keycloak.sh
           bash -n scripts/hosted/seed-preview.sh
           bash -n scripts/hosted/start-preview.sh
-      - name: Build combined Railway preview image
+      - name: Build combined hosted preview image
         run: docker build --file docker/Dockerfile.preview --tag platform-preview:ci .
   ai-gateway:
     runs-on: ubuntu-24.04
