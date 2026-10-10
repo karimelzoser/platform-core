@@ -88,10 +88,11 @@ async function main(): Promise<void> {
     assert.equal(skippedIntegration.result.status, 'SKIPPED');
 
     const completedB = await onboarding.getState(contextB);
-    assert.equal(completedB.profile?.countryCode, 'SA');
-    assert.equal(completedB.profile?.currencyCode, 'SAR');
-    assert.equal(completedB.profile?.timezone, 'Asia/Riyadh');
-    assert.equal(completedB.profile?.locale, 'ar');
+    assert.ok(completedB.profile, 'Tenant B onboarding profile was not persisted');
+    assert.equal(completedB.profile.countryCode, 'SA');
+    assert.equal(completedB.profile.currencyCode, 'SAR');
+    assert.equal(completedB.profile.timezone, 'Asia/Riyadh');
+    assert.equal(completedB.profile.locale, 'ar');
     assert.equal(completedB.progress.team, 'SKIPPED');
     assert.ok(
       completedB.progress.integration === 'SKIPPED' ||
@@ -117,9 +118,10 @@ async function main(): Promise<void> {
     assert.equal(profileA.result.profileComplete, true);
 
     const stateA = await onboarding.getState(contextA);
-    assert.equal(stateA.profile?.countryCode, 'EG');
-    assert.equal(stateA.profile?.currencyCode, 'EGP');
-    assert.notEqual(stateA.profile?.countryCode, completedB.profile?.countryCode);
+    assert.ok(stateA.profile, 'Tenant A onboarding profile was not persisted');
+    assert.equal(stateA.profile.countryCode, 'EG');
+    assert.equal(stateA.profile.currencyCode, 'EGP');
+    assert.notEqual(stateA.profile.countryCode, completedB.profile.countryCode);
 
     await withTenantTransaction(database, contextA, async (transaction) => {
       const [profiles, audit, outbox] = await Promise.all([
