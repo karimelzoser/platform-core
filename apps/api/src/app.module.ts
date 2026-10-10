@@ -28,6 +28,8 @@ import { IdentityController } from './identity.controller.js';
 import { IdentityService } from './identity.service.js';
 import { OnboardingController } from './onboarding.controller.js';
 import { OnboardingService } from './onboarding.service.js';
+import { ReturnsController } from './returns.controller.js';
+import { ReturnsService } from './returns.service.js';
 import { SessionController } from './session.controller.js';
 import { WebhookController } from './webhook.controller.js';
 import { WebhookIngressService } from './webhook-ingress.service.js';
@@ -75,6 +77,7 @@ function createRuntimeConnectorRegistry(): ConnectorRegistry {
     SessionController,
     IdentityController,
     OnboardingController,
+    ReturnsController,
     WebhookController,
     CustomersController,
     ApprovalsController,
@@ -137,6 +140,12 @@ function createRuntimeConnectorRegistry(): ConnectorRegistry {
       provide: OnboardingService,
       useFactory: (database: ApiDatabaseService, commands: CommandExecutor) =>
         new OnboardingService(database.database, commands),
+      inject: [ApiDatabaseService, CommandExecutor],
+    },
+    {
+      provide: ReturnsService,
+      useFactory: (database: ApiDatabaseService, commands: CommandExecutor) =>
+        new ReturnsService(database.database, commands),
       inject: [ApiDatabaseService, CommandExecutor],
     },
     {
