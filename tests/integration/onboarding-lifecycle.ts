@@ -84,7 +84,11 @@ async function main(): Promise<void> {
 
     await assertInvalidInputRollback(onboarding);
 
-    const profileB = await onboarding.updateProfile(contextB, 'onboarding-profile-b', profileBInput);
+    const profileB = await onboarding.updateProfile(
+      contextB,
+      'onboarding-profile-b',
+      profileBInput,
+    );
     const profileBReplay = await onboarding.updateProfile(
       contextB,
       'onboarding-profile-b',
@@ -231,7 +235,11 @@ async function assertInvalidInputRollback(onboarding: OnboardingService): Promis
   );
   const state = await onboarding.getState(contextB);
   assert.equal(state.profile, null, 'Invalid timezone created a partial profile');
-  assert.equal(state.organization.timezone, 'UTC', 'Invalid timezone partially mutated organization');
+  assert.equal(
+    state.organization.timezone,
+    'UTC',
+    'Invalid timezone partially mutated organization',
+  );
 
   await assert.rejects(
     onboarding.updateProfile(contextB, 'onboarding-invalid-locale-b', {
