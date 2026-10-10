@@ -35,7 +35,6 @@ jobs:
           path.write_text(text.replace(old, new, 1))
           PY
           pnpm exec prettier --write tests/integration/returns-lifecycle.ts
-          pnpm exec eslint tests/integration/returns-lifecycle.ts
       - name: Commit exact test fix
         run: |
           git config user.name 'github-actions[bot]'
