@@ -13,13 +13,7 @@ import { saveBusinessProfile, setOnboardingStep } from './actions';
 
 export const metadata: Metadata = { title: 'Onboarding | Platform' };
 
-type VolumeBand =
-  | 'NONE'
-  | '1_100'
-  | '101_1000'
-  | '1001_5000'
-  | '5001_20000'
-  | '20000_PLUS';
+type VolumeBand = 'NONE' | '1_100' | '101_1000' | '1001_5000' | '5001_20000' | '20000_PLUS';
 
 interface OnboardingState {
   organization: {
@@ -194,7 +188,7 @@ export default async function OnboardingPage({ searchParams }: PageProps) {
                     required
                     pattern="[A-Za-z]{2}"
                     maxLength={2}
-                    defaultValue={profile?.countryCode ?? 'EG'}
+                    defaultValue={profile ? profile.countryCode : 'EG'}
                     autoCapitalize="characters"
                     aria-describedby="onboarding-country-help"
                   />
@@ -209,7 +203,7 @@ export default async function OnboardingPage({ searchParams }: PageProps) {
                     required
                     pattern="[A-Za-z]{3}"
                     maxLength={3}
-                    defaultValue={profile?.currencyCode ?? 'EGP'}
+                    defaultValue={profile ? profile.currencyCode : 'EGP'}
                     autoCapitalize="characters"
                     aria-describedby="onboarding-currency-help"
                   />
@@ -221,7 +215,7 @@ export default async function OnboardingPage({ searchParams }: PageProps) {
                   <select
                     id="onboarding-locale"
                     name="locale"
-                    defaultValue={profile?.locale ?? state.organization.locale}
+                    defaultValue={profile ? profile.locale : state.organization.locale}
                   >
                     <option value="en">English</option>
                     <option value="ar">العربية</option>
@@ -236,7 +230,7 @@ export default async function OnboardingPage({ searchParams }: PageProps) {
                     required
                     maxLength={100}
                     list="timezone-suggestions"
-                    defaultValue={profile?.timezone ?? state.organization.timezone}
+                    defaultValue={profile ? profile.timezone : state.organization.timezone}
                   />
                   <datalist id="timezone-suggestions">
                     <option value="Africa/Cairo" />
@@ -255,7 +249,7 @@ export default async function OnboardingPage({ searchParams }: PageProps) {
                   <select
                     id="onboarding-industry"
                     name="industryCode"
-                    defaultValue={profile?.industryCode ?? 'ECOMMERCE'}
+                    defaultValue={profile ? profile.industryCode : 'ECOMMERCE'}
                   >
                     <option value="ECOMMERCE">E-commerce</option>
                     <option value="RETAIL">Retail</option>
@@ -276,7 +270,7 @@ export default async function OnboardingPage({ searchParams }: PageProps) {
                   <select
                     id="onboarding-customer-model"
                     name="customerModel"
-                    defaultValue={profile?.customerModel ?? 'B2C'}
+                    defaultValue={profile ? profile.customerModel : 'B2C'}
                   >
                     <option value="B2C">B2C</option>
                     <option value="B2B">B2B</option>
@@ -289,7 +283,7 @@ export default async function OnboardingPage({ searchParams }: PageProps) {
                   <select
                     id="onboarding-commerce-model"
                     name="commerceModel"
-                    defaultValue={profile?.commerceModel ?? 'ECOMMERCE'}
+                    defaultValue={profile ? profile.commerceModel : 'ECOMMERCE'}
                   >
                     <option value="ECOMMERCE">E-commerce</option>
                     <option value="OMNICHANNEL">Omnichannel</option>
@@ -306,7 +300,7 @@ export default async function OnboardingPage({ searchParams }: PageProps) {
                   <select
                     id="onboarding-order-volume"
                     name="monthlyOrderVolumeBand"
-                    defaultValue={profile?.monthlyOrderVolumeBand ?? '101_1000'}
+                    defaultValue={profile ? profile.monthlyOrderVolumeBand : '101_1000'}
                   >
                     {volumeBands.map(([value, label]) => (
                       <option key={value} value={value}>
@@ -323,7 +317,7 @@ export default async function OnboardingPage({ searchParams }: PageProps) {
                   <select
                     id="onboarding-conversation-volume"
                     name="monthlyConversationVolumeBand"
-                    defaultValue={profile?.monthlyConversationVolumeBand ?? '101_1000'}
+                    defaultValue={profile ? profile.monthlyConversationVolumeBand : '101_1000'}
                   >
                     {volumeBands.map(([value, label]) => (
                       <option key={value} value={value}>

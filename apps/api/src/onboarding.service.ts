@@ -131,25 +131,26 @@ export class OnboardingService {
 
   public async getState(context: TenantRequestContext): Promise<OnboardingState> {
     return withTenantTransaction(this.database, context, async (transaction) => {
-      const [organizationResult, profileResult, progressResult, evidenceResult] = await Promise.all([
-        sql<OrganizationRow>`
+      const [organizationResult, profileResult, progressResult, evidenceResult] = await Promise.all(
+        [
+          sql<OrganizationRow>`
           select id, name, slug, timezone, locale
           from identity.organizations
           where id = ${context.tenantId}::uuid
         `.execute(transaction),
-        sql<ProfileRow>`
+          sql<ProfileRow>`
           select country_code, currency_code, industry_code, customer_model,
                  commerce_model, monthly_order_volume_band,
                  monthly_conversation_volume_band, goals, completed_at, updated_at
           from identity.organization_business_profiles
           where tenant_id = ${context.tenantId}::uuid
         `.execute(transaction),
-        sql<ProgressRow>`
+          sql<ProgressRow>`
           select team_step_status, integration_step_status
           from identity.organization_onboarding_progress
           where tenant_id = ${context.tenantId}::uuid
         `.execute(transaction),
-        sql<EvidenceRow>`
+          sql<EvidenceRow>`
           select
             (select count(*)::text
              from identity.memberships membership
@@ -169,7 +170,8 @@ export class OnboardingService {
              where connection.tenant_id = ${context.tenantId}::uuid
                and connection.status in ('CONNECTED', 'DEGRADED')) as connected_connection_count
         `.execute(transaction),
-      ]);
+        ],
+      );
 
       const organization = organizationResult.rows[0];
       const evidence = evidenceResult.rows[0];

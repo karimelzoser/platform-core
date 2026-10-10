@@ -35,47 +35,47 @@ Architecture invariants remain unchanged:
 
 ## Verified foundation status
 
-| Area | State | Objective evidence / remaining boundary |
-| --- | --- | --- |
-| Immutable migrations / disposable CI | COMPLETE foundation | Checksum verification, isolated PostgreSQL/Keycloak/OPA/NATS/Temporal test stack and exact-head CI. |
-| Tenant/RLS | COMPLETE foundation | Two-tenant SQL and application lifecycle evidence; every future domain must extend it. |
-| Auth/RBAC/OPA/approvals | COMPLETE foundation + Identity closure | PR #7 adds invitation/org/member/role/MFA-policy closure; future modules still add their own permissions and risk policy. |
-| Idempotency/audit/outbox | COMPLETE foundation | Canonical command execution and immutable evidence established. |
-| Connector SDK | COMPLETE repository foundation | Real provider network adapters remain mandatory under Production Connector Closure. |
-| Temporal | COMPLETE foundation / platform closure pending | Restart durability is proven; platform-wide retries/timeouts/signals/cancellation/replay/versioning remain later. |
-| Metering / usage source ledger | COMPLETE shared foundation | PR #6 established versioned meters and append-only tenant usage records; commercial billing remains later. |
-| Observability contracts | COMPLETE shared foundation | Correlation/trace/safe error/structured operational envelope exists; production telemetry backend/alerts remain later. |
-| Design system primitives | COMPLETE shared foundation | Direction-safe/a11y-aware primitives exist; full product UX closure remains later. |
-| Hosted preview | IN PROGRESS | Railway isolated preview infrastructure is being validated. It is not the production VPS and does not constitute release evidence. |
+| Area                                 | State                                          | Objective evidence / remaining boundary                                                                                            |
+| ------------------------------------ | ---------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------- |
+| Immutable migrations / disposable CI | COMPLETE foundation                            | Checksum verification, isolated PostgreSQL/Keycloak/OPA/NATS/Temporal test stack and exact-head CI.                                |
+| Tenant/RLS                           | COMPLETE foundation                            | Two-tenant SQL and application lifecycle evidence; every future domain must extend it.                                             |
+| Auth/RBAC/OPA/approvals              | COMPLETE foundation + Identity closure         | PR #7 adds invitation/org/member/role/MFA-policy closure; future modules still add their own permissions and risk policy.          |
+| Idempotency/audit/outbox             | COMPLETE foundation                            | Canonical command execution and immutable evidence established.                                                                    |
+| Connector SDK                        | COMPLETE repository foundation                 | Real provider network adapters remain mandatory under Production Connector Closure.                                                |
+| Temporal                             | COMPLETE foundation / platform closure pending | Restart durability is proven; platform-wide retries/timeouts/signals/cancellation/replay/versioning remain later.                  |
+| Metering / usage source ledger       | COMPLETE shared foundation                     | PR #6 established versioned meters and append-only tenant usage records; commercial billing remains later.                         |
+| Observability contracts              | COMPLETE shared foundation                     | Correlation/trace/safe error/structured operational envelope exists; production telemetry backend/alerts remain later.             |
+| Design system primitives             | COMPLETE shared foundation                     | Direction-safe/a11y-aware primitives exist; full product UX closure remains later.                                                 |
+| Hosted preview                       | IN PROGRESS                                    | Railway isolated preview infrastructure is being validated. It is not the production VPS and does not constitute release evidence. |
 
 ## Platform workstreams
 
-| Workstream | Repository state | Production boundary / next action |
-| --- | --- | --- |
-| CRM / Customer 360 | FOUNDATION COMPLETE | Product-wide UX/governance closure later. |
-| Messaging / Tickets / SLA | FOUNDATION COMPLETE | Real Meta/email adapters and full UX closure later. |
-| Commerce / Order operations | COMPLETE repository gate | Real Shopify/WooCommerce adapters pending. |
-| Shipping | COMPLETE repository gate | Real carrier network adapters pending. |
-| Cross-cutting usage/telemetry/design contracts | COMPLETE — PR #6 | Consumed by all later modules. |
-| Identity / Team / Organization | COMPLETE — PR #7 | Exact-head CI and security review complete; merged to `main`. |
-| Basic self-service onboarding | CURRENT | Persist canonical reusable business profile; guided resumable setup; team/integration progress; RLS/API/UI/E2E. |
-| Returns / Exchanges / Refunds | NOT STARTED | Next after onboarding. |
-| Recovery | NOT STARTED | After returns. |
-| Sales | NOT STARTED | After recovery. |
-| Campaigns | NOT STARTED | After sales. |
-| Temporal platform closure | FOUNDATION PRESENT | Standardize release workflow semantics after business workflows exist. |
-| Automation Studio | NOT STARTED | Typed declarative actions only; no untrusted code execution. |
-| Configuration Compiler / Simulation | NOT STARTED | Version/diff/approval/publish/rollback plus non-mutating simulation. |
-| Production Connector Closure | NOT STARTED | Real launch adapters, secrets/OAuth/webhook/sync/health/uninstall. |
-| AI typed tools / Gateway / Eval / RAG / Operators | EARLY FOUNDATION | Must use canonical commands and pass safety/evaluation thresholds. |
-| Custom Data | NOT STARTED | Typed tenant data, no arbitrary SQL/schema execution. |
-| Analytics / ROI | FOUNDATION STARTED | Consume canonical events/usage/provider cost. |
-| Billing / Metering commercial closure | FOUNDATION STARTED | Consume canonical usage ledger; plans/quotas/overages/subscription/invoice state later. |
-| Developer Platform | NOT STARTED | Scoped hashed API keys, rate limits, signed outbound webhooks. |
-| Admin + Data Governance | EARLY FOUNDATION | Operational controls, retention/export/delete/anonymization/secret lifecycle. |
-| Full product UX | PARTIAL | Final English/Arabic, responsive, keyboard/WCAG, error/empty/loading closure later. |
-| Security/performance/observability hardening | PARTIAL | Formal adversarial, dependency, load/SLO and alerting gate later. |
-| Release engineering / complete acceptance | FOUNDATION PRESENT | Immutable release candidate, upgrade/backup/restore/rollback/smoke/runbook still mandatory. |
+| Workstream                                        | Repository state         | Production boundary / next action                                                                               |
+| ------------------------------------------------- | ------------------------ | --------------------------------------------------------------------------------------------------------------- |
+| CRM / Customer 360                                | FOUNDATION COMPLETE      | Product-wide UX/governance closure later.                                                                       |
+| Messaging / Tickets / SLA                         | FOUNDATION COMPLETE      | Real Meta/email adapters and full UX closure later.                                                             |
+| Commerce / Order operations                       | COMPLETE repository gate | Real Shopify/WooCommerce adapters pending.                                                                      |
+| Shipping                                          | COMPLETE repository gate | Real carrier network adapters pending.                                                                          |
+| Cross-cutting usage/telemetry/design contracts    | COMPLETE — PR #6         | Consumed by all later modules.                                                                                  |
+| Identity / Team / Organization                    | COMPLETE — PR #7         | Exact-head CI and security review complete; merged to `main`.                                                   |
+| Basic self-service onboarding                     | CURRENT                  | Persist canonical reusable business profile; guided resumable setup; team/integration progress; RLS/API/UI/E2E. |
+| Returns / Exchanges / Refunds                     | NOT STARTED              | Next after onboarding.                                                                                          |
+| Recovery                                          | NOT STARTED              | After returns.                                                                                                  |
+| Sales                                             | NOT STARTED              | After recovery.                                                                                                 |
+| Campaigns                                         | NOT STARTED              | After sales.                                                                                                    |
+| Temporal platform closure                         | FOUNDATION PRESENT       | Standardize release workflow semantics after business workflows exist.                                          |
+| Automation Studio                                 | NOT STARTED              | Typed declarative actions only; no untrusted code execution.                                                    |
+| Configuration Compiler / Simulation               | NOT STARTED              | Version/diff/approval/publish/rollback plus non-mutating simulation.                                            |
+| Production Connector Closure                      | NOT STARTED              | Real launch adapters, secrets/OAuth/webhook/sync/health/uninstall.                                              |
+| AI typed tools / Gateway / Eval / RAG / Operators | EARLY FOUNDATION         | Must use canonical commands and pass safety/evaluation thresholds.                                              |
+| Custom Data                                       | NOT STARTED              | Typed tenant data, no arbitrary SQL/schema execution.                                                           |
+| Analytics / ROI                                   | FOUNDATION STARTED       | Consume canonical events/usage/provider cost.                                                                   |
+| Billing / Metering commercial closure             | FOUNDATION STARTED       | Consume canonical usage ledger; plans/quotas/overages/subscription/invoice state later.                         |
+| Developer Platform                                | NOT STARTED              | Scoped hashed API keys, rate limits, signed outbound webhooks.                                                  |
+| Admin + Data Governance                           | EARLY FOUNDATION         | Operational controls, retention/export/delete/anonymization/secret lifecycle.                                   |
+| Full product UX                                   | PARTIAL                  | Final English/Arabic, responsive, keyboard/WCAG, error/empty/loading closure later.                             |
+| Security/performance/observability hardening      | PARTIAL                  | Formal adversarial, dependency, load/SLO and alerting gate later.                                               |
+| Release engineering / complete acceptance         | FOUNDATION PRESENT       | Immutable release candidate, upgrade/backup/restore/rollback/smoke/runbook still mandatory.                     |
 
 ## Identity closure evidence
 

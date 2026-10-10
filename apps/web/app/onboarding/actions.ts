@@ -16,9 +16,7 @@ export async function createOrganization(formData: FormData): Promise<void> {
   const locale = required(formData, 'locale') ?? 'en';
   const timezone = required(formData, 'timezone') ?? 'UTC';
   if (!name || !slug) {
-    redirect(
-      '/organizations/new?message=Organization%20name%20and%20slug%20are%20required.',
-    );
+    redirect('/organizations/new?message=Organization%20name%20and%20slug%20are%20required.');
   }
 
   const result = await identityRequest<CreatedOrganization>('/v1/identity/organizations', {
@@ -117,8 +115,7 @@ export async function setOnboardingStep(formData: FormData): Promise<void> {
     redirect(`/onboarding?message=${encodeURIComponent(resultMessage(result))}`);
   }
 
-  const message =
-    status === 'SKIPPED' ? `${step} step skipped for now.` : `${step} step reopened.`;
+  const message = status === 'SKIPPED' ? `${step} step skipped for now.` : `${step} step reopened.`;
   redirect(`/onboarding?message=${encodeURIComponent(message)}`);
 }
 
