@@ -1,0 +1,49 @@
+name: Publish GitHub Pages preview
+
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - main
+      - codex/onboarding-production-closure-20261007
+    paths:
+      - 'pages-preview/**'
+      - '.github/workflows/pages-preview.yml'
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: github-pages-preview
+  cancel-in-progress: true
+
+jobs:
+  build:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/configure-pages@v5
+        with:
+          enablement: true
+      - name: Build static Pages artifact
+        run: |
+          rm -rf _site
+          mkdir -p _site
+          cp -R pages-preview/. _site/
+          touch _site/.nojekyll
+      - uses: actions/upload-pages-artifact@v3
+        with:
+          path: _site
+
+  deploy:
+    needs: build
+    runs-on: ubuntu-24.04
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - name: Deploy to GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@v4
