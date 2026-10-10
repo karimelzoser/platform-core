@@ -300,13 +300,33 @@ async function main(): Promise<void> {
     );
     await withTenantTransaction(database, contextA, async (transaction) => {
       await sql`update integrations.provider_actions
+        set state = 'FAILED', last_error = 'provider lifecycle failure',
+            finished_at = now(), updated_at = now()
+        where id = ${queuedRefund.result.providerActionId}::uuid`.execute(transaction);
+    });
+    const failedReconciliation = await returns.reconcileRefund(
+      contextA,
+      'returns-refund-reconcile-failed',
+      queuedRefund.result.refundId,
+    );
+    assert.equal(failedReconciliation.result.status, 'FAILED');
+    await assert.rejects(
+      returns.resolveRequest(
+        contextA,
+        'returns-resolve-with-failed-refund',
+        requested.result.requestId,
+      ),
+      /refund processing/i,
+    );
+    await withTenantTransaction(database, contextA, async (transaction) => {
+      await sql`update integrations.provider_actions
         set state = 'SUCCEEDED', provider_action_id = 'provider-refund-lifecycle',
-            result = '{"ok":true}'::jsonb, finished_at = now(), updated_at = now()
+            result = '{"ok":true}'::jsonb, last_error = null, finished_at = now(), updated_at = now()
         where id = ${queuedRefund.result.providerActionId}::uuid`.execute(transaction);
     });
     const reconciled = await returns.reconcileRefund(
       contextA,
-      'returns-refund-reconcile',
+      'returns-refund-reconcile-succeeded',
       queuedRefund.result.refundId,
     );
     assert.equal(reconciled.result.status, 'SUCCEEDED');

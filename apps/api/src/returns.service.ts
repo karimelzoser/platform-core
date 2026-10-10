@@ -991,7 +991,7 @@ export class ReturnsService {
           const unfinishedRefund = await sql<{ count: string }>`select count(*)::text as count
             from returns.refunds where tenant_id = ${context.tenantId}::uuid
               and return_request_id = ${id}::uuid
-              and status not in ('SUCCEEDED', 'CANCELLED', 'FAILED')`.execute(transaction);
+              and status not in ('SUCCEEDED', 'CANCELLED')`.execute(transaction);
           if (Number(unfinishedRefund.rows[0]?.count ?? '0') > 0)
             throw new ReturnsInvariantError('Refund processing must finish before resolution');
           if (request.kind === 'EXCHANGE') {
