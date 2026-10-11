@@ -13,6 +13,7 @@ sh scripts/preview/seed-shipping-fixtures.sh
 sh scripts/preview/seed-shipping-routing-fixtures.sh
 sh scripts/preview/seed-returns-fixtures.sh
 sh scripts/preview/seed-recovery-fixtures.sh
+sh scripts/preview/seed-sales-fixtures.sh
 mkdir -p .preview
 mkdir -p .preview/media
 # Local Next.js may reconstruct request URLs using its wildcard listener. Use
