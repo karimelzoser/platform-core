@@ -1,153 +1,116 @@
 # Production Readiness Matrix
 
-This document is the release-control companion to `CODEX_EXECUTION_QUEUE.md` and
-`IMPLEMENTATION_STATUS.md`. A capability is promoted only when objective evidence exists on the
-exact code being evaluated. Repository completion is not equivalent to public production
-readiness when provider, deployment, security, performance, governance, or full acceptance work
-remains outstanding.
+This matrix distinguishes repository implementation from deployment and final production acceptance. A green branch or preview is evidence for its own gate only.
 
 **Overall release state:** IN PROGRESS
 
-**Current workstream:** Self-service onboarding — IMPLEMENTED / VERIFICATION PENDING
+**Reviewed `main`:** `01b48010b749bc780bfbd21afb464e91553b26d5`
 
-**Current `main` baseline:** `63bdb1bf5127684f2d15fb2a4dc05157af724617`
+**Immediate bounded work:** dependency-security + development-preview stabilization
 
-## Readiness vocabulary
+**Next product workstream:** Recovery
 
-- **COMPLETE repository gate:** the workstream's defined repository acceptance evidence passed.
-- **FOUNDATION:** reusable substrate exists, but later production closure remains mandatory.
-- **IN PROGRESS:** active implementation or verification work remains.
-- **NOT STARTED:** no release-acceptable implementation yet.
-- **EXTERNAL:** depends on real provider credentials, certification, approval, or launch access
-  that must not be fabricated.
+## Status vocabulary
+
+- **COMPLETE repository gate** — defined repository scope passed exact-revision evidence.
+- **FOUNDATION** — reusable substrate exists; production closure remains.
+- **IN PROGRESS** — active implementation/verification remains.
+- **NOT STARTED** — no release-acceptable closure yet.
+- **EXTERNAL** — real credential/certification/commercial/legal/deployment input is required and cannot be fabricated.
 
 ## Core platform
 
-- **Migration / tenant foundation — FOUNDATION:** canonical migrations, tenant context, RLS test
-  patterns, and disposable integration infrastructure exist. Production upgrade/rollback drills
-  remain a final release gate.
-- **RBAC / OPA / approvals — FOUNDATION:** canonical permission and approval controls exist;
-  every new domain still adds its own permissions/risk policy and negative tests.
-- **Idempotency / audit / outbox — FOUNDATION:** canonical command path established. Later Admin
-  and observability work must operationalize stuck/dead-letter evidence.
-- **Temporal — FOUNDATION:** infrastructure and restart durability exist. Platform-wide retry,
-  timeout, heartbeat, signal/update, cancellation, replay, and versioning closure remains open.
-- **Usage / metering source ledger — FOUNDATION:** canonical source contracts exist. Commercial
-  billing remains open.
-- **Observability contracts — FOUNDATION:** correlation/trace/safe-error/log contracts exist.
-  Production backends, SLO dashboards, alerts, and runbooks remain open.
-- **Shared design system — FOUNDATION:** reusable direction-safe/a11y-aware primitives exist.
-  Complete product conversion remains open.
+| Capability | Repository state | Deployment/production boundary |
+| --- | --- | --- |
+| PostgreSQL / migrations / tenant RLS | FOUNDATION | Previous-release upgrade, backup/restore/PITR and production capacity evidence remain |
+| RBAC / OPA / approvals | FOUNDATION | Product-wide adversarial authorization and privileged admin closure remain |
+| Idempotency / audit / outbox | FOUNDATION | Operational remediation, concurrency and ambiguous-provider closure remain |
+| Temporal | FOUNDATION | Real business workflow/activity workers and complete retry/cancel/replay evidence remain |
+| Usage / metering source ledger | FOUNDATION | Commercial plans/quotas/invoicing/enforcement remain |
+| Observability contracts | FOUNDATION | Real dashboards/alerts/SLO ownership/runbooks remain |
+| Shared design system | FOUNDATION | Complete product adoption, translation and accessibility remain |
+| Dependency / image security | IN PROGRESS | Patched branch, dependency audit and image scans must pass before preview promotion |
 
 ## Business capabilities
 
-- **CRM / Customer 360 — FOUNDATION:** strong canonical repository foundation exists; final
-  product UX/governance closure remains open.
-- **Unified Inbox / Messaging / Tickets / SLA — FOUNDATION:** strong repository foundation exists;
-  real launch messaging/email adapters and final UX closure remain open.
-- **Commerce / Orders — COMPLETE repository gate:** real Shopify/WooCommerce network adapters
-  remain open under Production Connector Closure.
-- **Shipping — COMPLETE repository gate:** real carrier network adapters remain open under
-  Production Connector Closure.
-- **Identity / Team / Organization — COMPLETE repository gate:** merged exact-head evidence exists.
-- **Self-service onboarding — IN PROGRESS:** implementation is complete in the closure candidate;
-  exact-head CI verification is required before promotion to COMPLETE.
-- **Returns / Exchanges / Refunds — NOT STARTED:** separate branch after onboarding.
-- **Recovery — NOT STARTED:** separate branch after Returns.
-- **Sales — NOT STARTED:** separate branch after Recovery.
-- **Campaigns — NOT STARTED:** separate branch after Sales.
+| Capability | Repository state | Remaining boundary |
+| --- | --- | --- |
+| CRM / Customer 360 | FOUNDATION | Final maintenance/identity-resolution/search/bulk/UX/governance closure |
+| Inbox / Messaging / Tickets / SLA | FOUNDATION | Real provider channels, final support/SLA behavior and dedicated browser closure |
+| Commerce / Orders | COMPLETE repository gate | Real Shopify/WooCommerce/payment/provider execution and commercial edge cases |
+| Shipping | COMPLETE repository gate | Real carriers/labels/tracking/address data and durable production workflow closure |
+| Identity / Team / Organization | COMPLETE repository gate | Production browser session/MFA/invitation-delivery and product-wide identity UX |
+| Self-service onboarding | COMPLETE repository gate | Config compiler/simulation, final AR copy and production acquisition-to-activation journey |
+| Returns / Exchanges / Refunds | COMPLETE repository gate | Real payment/provider transports and actual durable Temporal orchestration |
+| Recovery | NOT STARTED — NEXT | Full domain closure required |
+| Sales | NOT STARTED | After Recovery |
+| Campaigns | NOT STARTED | After Sales |
 
 ## Orchestration and configuration
 
-- **Temporal platform closure — FOUNDATION:** dedicated platform closure remains open.
+- **Business Temporal closure — FOUNDATION / IN PROGRESS later:** infrastructure exists; real workflows do not yet satisfy release acceptance.
 - **Automation Studio — NOT STARTED.**
 - **Configuration compiler — NOT STARTED.**
 - **Configuration simulation — NOT STARTED.**
 
 ## Integrations
 
-- **Connector SDK / webhook / sync / provider-action infrastructure — FOUNDATION:** typed contracts
-  and deterministic fixtures exist.
-- **Production connectors — NOT STARTED as a complete launch gate:** real Shopify, WooCommerce,
-  Meta messaging, Email, Web Chat/API ingress, shipping, payments, and generic adapters must be
-  implemented and verified for every provider advertised at launch.
-- **Provider credentials/certification — EXTERNAL:** never fake these in repository tests.
+- **Connector/webhook/sync/provider-action infrastructure — FOUNDATION.**
+- **Development fixtures — IMPLEMENTED for deterministic CI only; never production evidence.**
+- **Protected secret resolver/storage/rotation — NOT COMPLETE.**
+- **Production Meta / WhatsApp / Instagram / Messenger / Email / Web Chat / API transports — NOT COMPLETE.**
+- **Production Shopify / WooCommerce — NOT COMPLETE.**
+- **Launch carriers / payment providers — EXTERNAL selection/credentials plus implementation/staging proof required.**
 
 ## AI
 
 - **AI typed tools — NOT STARTED as a production registry.**
-- **AI Gateway — FOUNDATION:** early routing substrate exists; production provider/model routing,
-  fallback, cost, privacy, and capability policy remain open.
+- **AI Gateway — FOUNDATION only.**
 - **Knowledge / RAG — NOT STARTED.**
-- **AI evaluation — NOT STARTED as a full release gate.**
+- **AI evaluation — NOT STARTED as release gate.**
 - **AI Operators — NOT STARTED as production operators.**
 
-## Data, analytics, and commercial platform
+## Commercial/data platform
 
 - **Custom Data — NOT STARTED.**
-- **Analytics / ROI — FOUNDATION:** canonical event/usage/provider-cost source contracts exist;
-  reporting products and performance closure remain open.
-- **Billing / Metering — FOUNDATION:** source usage ledger exists; plans, entitlements, quotas,
-  subscriptions, overages, invoice references, and suspension remain open.
+- **Analytics / ROI — FOUNDATION source contracts; reporting/attribution products open.**
+- **Billing / Metering — FOUNDATION source ledger; subscriptions/entitlements/quotas/overages/invoices open.**
 - **Developer Platform — NOT STARTED.**
-- **Admin Control Center — FOUNDATION:** limited skeleton exists; safe audited operational controls
-  remain open.
-- **Data Governance — NOT STARTED as a formal closure gate.**
+- **Admin Control Center — FOUNDATION skeleton; operational APIs/remediation/tests open.**
+- **Data Governance — NOT STARTED as a complete gate.**
 
-## Product and operations
+## Product / operations
 
-- **Complete English / Arabic UX — FOUNDATION:** partial direction-safe surfaces exist; complete
-  translations, RTL/LTR product behavior, responsive states, keyboard support, and practical
-  WCAG 2.2 AA remain open.
-- **Adversarial application security — FOUNDATION:** strong RLS/auth/approval substrate and
-  negative tests exist; formal BOLA/IDOR, tenant escape, approval replay/substitution, webhook
-  forgery/replay, SSRF/injection/upload/API-key abuse, AI-tool abuse, prompt injection, and
-  cross-tenant RAG gates remain open.
-- **Dependency / supply-chain security — FOUNDATION:** locking and secret scanning exist; final
-  advisory closure, SBOM, and image scanning remain open.
-- **Performance / SLO / capacity — NOT STARTED as a release benchmark.**
-- **Production observability operations — FOUNDATION:** instrumentation contracts exist; backend,
-  dashboards, alerts, and actionable operating thresholds remain open.
-- **Backup / restore / rollback — NOT STARTED as a release drill.**
-- **Immutable release engineering — FOUNDATION:** image/Compose substrate exists; previous-release
-  upgrade, smoke, rollback, production overlay validation, and runbooks remain open.
-- **Complete release acceptance — NOT STARTED:** must run on one immutable release candidate after
-  every implementation workstream closes.
+- **English / Arabic UX — FOUNDATION:** complete translation/localization/bidi/responsive/a11y/error-state closure remains.
+- **Production browser authentication — INCOMPLETE:** authorization-code/PKCE, refresh/expiry/logout, CSRF/origin, MFA enrollment/recovery and invitation delivery remain.
+- **Adversarial application security — FOUNDATION:** formal BOLA/IDOR, approval concurrency, webhook forgery/replay, SSRF/injection/upload/API-key, AI-tool/prompt/RAG/admin misuse closure remains.
+- **Development Railway preview — IN PROGRESS stabilization:** port mismatch repaired; stale deployed revision must be replaced by a tested patched SHA and externally verified.
+- **Production observability — FOUNDATION.**
+- **Performance / SLO / capacity — NOT STARTED as release benchmark.**
+- **Backup / restore / rollback — NOT STARTED as release drill.**
+- **Immutable production topology/images — FOUNDATION only.**
+- **Complete release acceptance — NOT STARTED on a final candidate.**
 
-## Current onboarding gate
+## Exact repository evidence
 
-Onboarding can be promoted to **COMPLETE repository gate** only after the exact published branch
-head proves:
+- Identity merged main baseline: `63bdb1bf5127684f2d15fb2a4dc05157af724617`.
+- Onboarding merged baseline: `9728098275ff42cf7397ea153a6b5a5026bf1a66`; main CI #505 green.
+- Returns PR #12 exact head: `17a05bf3fc9ceba8b8b6304202bfd922459d897b`; CI #527 green.
+- Current main after Returns: `01b48010b749bc780bfbd21afb464e91553b26d5`; CI #528 green.
 
-1. migration `0041` applies cleanly after `0001`–`0040`;
-2. business profile and onboarding progress RLS pass two-tenant negatives;
-3. authenticated application lifecycle tests pass;
-4. profile mutation is atomic for invalid timezone/input;
-5. idempotent replay and changed-payload conflict behavior pass;
-6. pending invitations produce `INVITED`, not false Team completion;
-7. Integration status correctly distinguishes action-required, degraded, and connected states;
-8. command audit and outbox evidence pass;
-9. protected browser E2E passes for desktop/tablet/mobile and LTR/RTL direction behavior;
-10. repository format, build, lint, typecheck, tests, images, Temporal regression, AI gateway
-    regression, and secret scan are all green on the same exact head.
+## Release blockers
 
-## Non-negotiable release blockers
+PRENEURA is not production-ready while any of these remain true:
 
-PRENEURA is not production-ready while any of the following is true:
+1. a mandatory product workstream is open;
+2. an advertised provider exists only as a fixture;
+3. actual long-running business paths lack executed Temporal workflow/activity evidence;
+4. production browser authentication/session/MFA flows are incomplete;
+5. AI tools/providers/operators lack typed authorization/evaluation gates;
+6. EN/AR responsive/a11y release journeys are incomplete;
+7. critical/high dependency/image/application-security blockers remain;
+8. realistic SLO/load/soak/failure evidence is absent;
+9. production observability/alerts/runbooks are incomplete;
+10. backup/restore/upgrade/rollback/UAT/immutable release evidence is incomplete.
 
-1. an execution-queue workstream remains open;
-2. an advertised provider is represented only by a development fixture;
-3. exact release-SHA CI or mandatory security tests are red;
-4. release-critical Temporal workflows lack retry/replay/cancellation/restart evidence;
-5. AI autonomy is enabled without typed-tool authorization and evaluation thresholds;
-6. release-critical EN LTR or AR RTL product UX is incomplete;
-7. realistic load/SLO evidence or production telemetry/alerting is absent;
-8. backup restore, migration upgrade, or rollback drills have not passed;
-9. unresolved critical/high security blockers remain;
-10. deployment/runbook/release-note/full-acceptance evidence is incomplete.
-
-## Evidence update rule
-
-Every workstream may update this matrix only for gates it objectively changes. Code existence is
-not completion. Exact PR/head/run/release evidence belongs in `IMPLEMENTATION_STATUS.md`; this
-matrix stays concise enough to audit at a glance.
+Every workstream closure must update this matrix and `CAPABILITY_EVIDENCE_MATRIX.md` with exact evidence without inflating production claims.
