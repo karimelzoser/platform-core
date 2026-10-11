@@ -4,17 +4,13 @@
 
 **Overall release state:** IN PROGRESS — engineering alpha, not a production release candidate.
 
-**Reviewed `main`:** `86facdbfe89b69d6859cabed9c670f9471bdf62a` — preview/tooling and approval-expiry security fixes merged.
+**Reviewed `main`:** `9c1dfd7d51d8e21f5ab5209c5a413b81105cdf4f` — Recovery production closure merged.
 
-**Main CI evidence:** Continuous integration run #546 (`38105976105`) passed
-all seven required jobs on that exact SHA, including dependency and image scans.
+**Recovery exact-head CI evidence:** PR #15 head `0a6ddaa8c216fa1b9bc6369af327f2d7acb7c1a5`, Continuous integration #550 (`38151157082`), all seven mandatory jobs green.
 
-**Current product workstream:** Recovery.
+**Current product workstream:** Sales — PR #18, branch `codex/sales-production-closure-20261011`.
 
-**Verified preview:** Railway deployment `451a935c-7ee7-4519-83ed-0907917801f2`
-reports this SHA and development environment. Real Keycloak login now redirects
-to the public `/customers` page; protected customer/order reads and the order
-page's LTR/RTL direction were inspected. Full Arabic translation remains open.
+**Preview boundary:** `preneura-platform-preview` is an isolated development preview. It is not the production VPS and does not represent customer/provider production state.
 
 ## Evidence hierarchy
 
@@ -28,15 +24,32 @@ Merged as `63bdb1bf5127684f2d15fb2a4dc05157af724617` after exact-head tenant/RLS
 
 ### Self-service onboarding — COMPLETE repository gate
 
-Merged as `9728098275ff42cf7397ea153a6b5a5026bf1a66`. Main CI #505 passed all seven mandatory jobs. The repository includes the reusable business profile, country/currency/timezone/locale/industry/customer/commerce/volume/goals setup, derived Team/Integration status, defer/reopen behavior, tenant/RLS lifecycle evidence and protected browser acceptance.
-
-Configuration compilation/simulation, final Arabic translation and acquisition-to-activation production journeys remain later gates.
+Merged as `9728098275ff42cf7397ea153a6b5a5026bf1a66`; main CI #505 passed all seven mandatory jobs. The repository includes reusable business profile setup, country/currency/timezone/locale/industry/customer/commerce/volume/goals, derived Team/Integration state, defer/reopen behavior, tenant/RLS lifecycle evidence and protected browser acceptance.
 
 ### Returns / Exchanges / Refunds — COMPLETE repository gate
 
-PR #12 exact head `17a05bf3fc9ceba8b8b6304202bfd922459d897b` passed CI #527. It merged as current main `01b48010b749bc780bfbd21afb464e91553b26d5`, followed by green main CI #528.
+PR #12 exact head `17a05bf3fc9ceba8b8b6304202bfd922459d897b` passed CI #527 and merged as `01b48010b749bc780bfbd21afb464e91553b26d5`; main CI #528 was green. Repository scope includes policies/requests/lines/refunds/exchanges/timeline, eligibility and cumulative guards, inspection/restock disposition, approval-sensitive resolution, post-commit provider intents and reconciliation, replacement-order linkage, API/UI, tenant/RLS lifecycle evidence and protected browser acceptance.
 
-Repository scope includes tenant-scoped policies/requests/lines/refunds/exchanges/timeline, eligibility and cumulative guards, inspection/restock disposition, approval-sensitive review/exchange/refund commands, post-commit provider intents and reconciliation, replacement-order linkage, API/UI, tenant/RLS lifecycle evidence and protected browser acceptance. Real payment/provider transports and durable Temporal business workflows remain production-program gates.
+### Recovery — COMPLETE repository gate
+
+PR #15 exact head `0a6ddaa8c216fa1b9bc6369af327f2d7acb7c1a5` passed CI #550 (`38151157082`) across quality, integration, protected preview browser acceptance, API image/security, hosted preview image/security, AI Gateway and secret scan. It merged to `main` as `9c1dfd7d51d8e21f5ab5209c5a413b81105cdf4f`.
+
+Recovery repository scope includes canonical abandoned-order opportunities, policy-bounded eligibility/attempts/offers/expiry, signed-webhook-derived consent guards, Messaging dispatch, recovered-order attribution/value, tenant-qualified schema/RLS, canonical commands/OPA/idempotency/audit/outbox, registered Temporal expiry workflow and protected operator/browser evidence. Real production messaging/payment/provider transports remain later connector/release gates.
+
+## CURRENT — Sales
+
+PR #18 is the active production workstream. The branch currently implements:
+
+- migration `0046_sales.sql` with tenant pipelines/stages, CRM-referenced leads, opportunities, activities/tasks and append-only timeline;
+- tenant-qualified CRM/customer, membership/assignee and Commerce won-order relationships;
+- active-assignee database guards and a partial unique lead-conversion index preventing concurrent double conversion;
+- Sales command service and API using the canonical RBAC/OPA/idempotency/audit/outbox path;
+- structured qualification, assignment, pipeline creation, stage progression, opportunity win/loss and task completion;
+- won-order validation against the same CRM customer, confirmed/closed Commerce order state and matching currency;
+- adversarial RLS/relationship evidence and a two-tenant application lifecycle;
+- protected responsive Sales board/detail UI, deterministic disposable/hosted preview fixtures and protected browser acceptance.
+
+Sales remains **IN PROGRESS** until the final exact PR head passes all mandatory CI/security gates and final security/design review. No completion claim should be made from the current code alone.
 
 ## Strong foundations already on main
 
@@ -49,127 +62,27 @@ Repository scope includes tenant-scoped policies/requests/lines/refunds/exchange
 - Commerce / Orders repository gate.
 - Shipping repository gate.
 - Usage/metering, telemetry/error and shared direction-safe UI contracts.
+- Dependency/image scanning and hosted preview provenance/health foundations.
 - Early AI Gateway routing substrate only; not a production AI execution platform.
 
-## Bounded stabilization — verified repository and preview baseline
+## Stabilization baseline
 
-The Railway project `preneura-platform-preview` is confirmed as the isolated development preview. It is not the production VPS and does not represent customer/provider production state.
+The isolated Railway preview has previously been repaired for listener/domain/health/provenance agreement, trusted public login redirects and patched runtime/tooling dependencies. Green hosted development preview evidence is a development checkpoint only; it does not count as production acceptance or production-provider proof.
 
-Fresh inspection on 2026-10-11 reconfirmed:
-
-- service `platform-preview` was deployed from stale onboarding-derived SHA `56a5c5210be56c4d1ad72115d10dbc65fbeb1d79`;
-- the public Railway domain targeted container port 3000 while runtime Next.js logged listening on 8080;
-- public HTTP proxy logs recorded 502 connection-refused responses;
-- the live service healthcheck path is `/health`;
-- Postgres/pgvector, Keycloak, Temporal and NATS dependencies are isolated Railway services in this preview project.
-
-The domain target was repaired in place from 3000 to 8080. Subsequent preview
-promotion used exact-SHA CI and public runtime provenance, not deployment-success alone.
-
-The latest verified deployment is `451a935c-7ee7-4519-83ed-0907917801f2`,
-running main SHA `86facdb`. Public `/health` returned HTTP 200 with matching
-full SHA and `development`. Main CI #546 passed all seven required gates.
-This closes the bounded stabilization checkpoint, not production acceptance.
-
-A fresh hosted browser check additionally found that the development login
-redirect used the container listener URL (`0.0.0.0:8080`) behind Railway's proxy.
-The merged follow-up resolves redirects from trusted deployment configuration,
-rejects off-origin browser credential posts, and sets HTTPS cookies from that
-public origin. Proxy/Codespaces/loopback and request-level regressions pass;
-PR #16 exact-head CI #545 and main #546 are green. Deployed protected login
-and real tenant API reads now pass without manual redirect correction.
-
-Merged stabilization upgrades Web/Admin to patched Next.js/React and carries
-Nest/Fastify/Kysely/transitive fixes, dependency/image vulnerability gates,
-pruned runtime images, `/health` provenance, application-readiness probes and
-external health monitoring. pnpm is pinned to 10.34.6 with explicit build-script
-allowlisting. OPA build-time policy/default-deny checks are mandatory.
-
-No production data, production provider account, VPS or n8n state is used for this repair.
-
-### Stabilization repair batch — exact-head remote evidence verified
-
-The repair batch removes development build tools and bundled unused package
-managers from runtime images, updates Debian runtime packages, preserves typed
-Returns redirects, and tests keyboard focus on actual application controls.
-Tooling updates close the available ESLint/esbuild/YAML advisories.
-
-Braces has no upstream patched release for CVE-2026-93687 at this review date.
-A checked-in pnpm source patch bounds parsing and every recursive AST entry
-point; the mandatory security command tests deep strings, caller-supplied ASTs
-and cycles before auditing. The narrowly scoped metadata exception is explained
-in `DEPENDENCY_SECURITY.md`; it is not a waiver for unpatched source.
-
-Local production Web/Admin/API/worker builds, workspace typechecks, unit tests,
-immutable migration checks and the installed-patch regressions have passed.
-Runtime container scans, PostgreSQL/RLS and protected browser evidence passed
-on the published repair head and merged main. PR #17 CI #543 additionally
-verified Date/ISO expiry binding in approvals and idempotency before merging;
-historically ambiguous Date-object approvals intentionally fail closed.
-
-## Recovery — IN PROGRESS, not a completed repository gate
-
-The Recovery branch contains migrations `0043`/`0044`, policies/opportunities/
-offers/attempts/timeline, consent guards, API/UI and tenant lifecycle/browser
-tests. Local continuation adds safe ambiguous-message retries, monotonic attempt
-sequences, canonical repeated-detection status/event dedupe, and expiry-substitution
-negative evidence.
-
-`@platform/recovery` shares protected per-opportunity expiry between API and
-Temporal. A registered worker and durable NATS consumer verify committed event
-origins, schedule expiry, refresh on conversion and reuse canonical commands.
-Workflow history contains IDs only, not contact bodies/credentials. Runtime
-retry/duplicate-start/signal/cancel/replay/restart tests and new DB negatives are
-added to CI; their exact-head result remains pending until this batch is pushed.
-The locally available suite passed: production workspace builds, all workspace
-typechecks, 61 unit/contract tests, lint (27 warnings, zero errors), formatting,
-immutable migration checks, dependency/installed-patch security checks and
-Temporal workflow bundle compilation. Local Docker/PostgreSQL runtime evidence
-is unavailable; the CI runtime tests must not be reported as passed yet.
-Batch CI #547 on `90b0408` passed quality, hosted image/security, AI and secret
-checks but failed the API image's missing Recovery manifest and duplicate
-unreleased migration DDL, also preventing preview startup. The local repair
-adds the manifest and static dependency-graph regression, reuses the existing
-`0018` constraint without touching released history, and replaces direct preview
-opt-in with signed development webhook bootstrap. New repair CI remains pending.
-Repair CI #548 (`2c288d8`) now passes quality, both image/security jobs, AI and
-secret scan. The real Recovery Temporal test passed retry, duplicate-start,
-signal, cancellation, replay and worker restart. Canonical lifecycles revealed
-a PL/pgSQL variable collision in the applied `0044` consent trigger; the forward
-correction is `0045`, with null-safe proof and active signed-delivery checks.
-Preview bootstrap also needs the same Keycloak issuer hostname as the API;
-`127.0.0.1` and `localhost` are not interchangeable JWT issuers. Full integration
-and protected browser gates remain pending the combined repair.
-CI #549 on `dc8efac` passes integration (full migration/RLS/application lifecycles
-and real Temporal tests), quality, both image/security jobs, AI and secret scan.
-Six protected browser journeys pass; Recovery's test skipped outreach because
-it incorrectly queried an EmptyState strong title as a heading. Captured DOM
-and screenshot prove zero attempts, not a failed provider send. The repair waits
-for the actual empty/history state, scopes status/table assertions, and restores
-the missing shared responsive metric grid and direction-safe detail layout.
-The full seven-job result for that UI/browser repair remains pending.
-
-Remaining closure includes dispatch-time consent/suppression rechecks and atomic
-message linkage, delivery reconciliation, bounded incentives with full approval
-UX, deterministic conversion attribution/deduplication/cost semantics, durable
-failure/DLQ operations, complete EN/AR UI and protected browser acceptance.
+No production data, production provider account, VPS or n8n state is used by repository/preview testing.
 
 ## Production boundaries still open
 
 ### Business domains
 
-- Recovery — CURRENT, partially implemented on its continuation branch.
-- Sales.
+- Sales — CURRENT, implementation and exact-head verification in PR #18.
 - Campaigns.
 - Final CRM / Inbox / Tickets / SLA closure.
 - Commerce/Shipping provider and complete operator gaps beyond existing repository gates.
 
 ### Durable processes
 
-Temporal infrastructure and restart persistence are verified. Recovery expiry
-workflow/activities are now implemented on the continuation branch; exact-head
-runtime evidence is pending. The remaining business workflow family and full
-retry/timeout/heartbeat/cancel/signal/update/replay/versioning closure remain open.
+Temporal infrastructure, restart persistence and Recovery expiry orchestration are verified repository foundations. The remaining business workflow family and full retry/timeout/heartbeat/cancel/signal/update/replay/versioning closure remain open.
 
 ### Automation and configuration
 
@@ -177,7 +90,7 @@ Automation Studio, Configuration Compiler and side-effect-free Configuration Sim
 
 ### Real providers and secrets
 
-Development connectors do not count as production adapters. Production secret resolution, OAuth/token lifecycle, signed webhook/account verification, transport rate limits/reconciliation and real launch provider staging proof remain mandatory.
+Development connectors do not count as production adapters. Production secret resolution, OAuth/token lifecycle, signed webhook/account verification, transport rate limits/reconciliation and real launch-provider staging proof remain mandatory.
 
 ### AI and knowledge
 
@@ -193,10 +106,6 @@ Complete EN/AR UX, production authentication/session journeys, adversarial secur
 
 ## Next promotion rule
 
-`Recovery` remains CURRENT after verified security/preview stabilization. A
-workstream is promoted only when its schema/domain/service/API/worker/UI
-responsibilities, tenant/authorization/approval/idempotency/audit/outbox evidence,
-required durable orchestration and applicable browser/security gates pass on the
-exact revision being merged.
+`Sales` remains CURRENT until its schema/domain/service/API/UI responsibilities, tenant/authorization/idempotency/audit/outbox evidence and applicable browser/security gates pass on the exact revision being merged. Only then may Campaigns become CURRENT.
 
 The platform must not be called production-ready until one immutable release candidate satisfies the complete acceptance specification.
