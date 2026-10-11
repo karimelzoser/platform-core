@@ -145,7 +145,7 @@ export default async function RecoveryDetailPage({ params, searchParams }: PageP
               </div>
               <StatusBadge tone={statusTone(detail.status)}>{detail.status}</StatusBadge>
             </div>
-            <dl className="order-detail-list">
+            <dl className="ds-detail-list">
               <div>
                 <dt>Source order</dt>
                 <dd>
@@ -419,18 +419,18 @@ export default async function RecoveryDetailPage({ params, searchParams }: PageP
           </Stack>
         </SurfaceCard>
 
-        <SurfaceCard>
+        <SurfaceCard aria-labelledby="recovery-outreach-history-title">
           <Stack>
             <div className="identity-section-heading">
               <div>
                 <p className="ds-eyebrow">ATTEMPTS</p>
-                <h2>Outreach history</h2>
+                <h2 id="recovery-outreach-history-title">Outreach history</h2>
               </div>
               <StatusBadge tone="neutral">{detail.attempts.length}</StatusBadge>
             </div>
             {detail.attempts.length ? (
               <div className="identity-table-wrap">
-                <table className="identity-table">
+                <table className="identity-table" aria-label="Recovery outreach history">
                   <thead>
                     <tr>
                       <th>#</th>

@@ -43,7 +43,7 @@ matching `/health` SHA, real Keycloak login/public redirects and protected reads
 | Identity / Team / Organization    | COMPLETE repository gate | Production browser session/MFA/invitation-delivery and product-wide identity UX                                        |
 | Self-service onboarding           | COMPLETE repository gate | Config compiler/simulation, final AR copy and production acquisition-to-activation journey                             |
 | Returns / Exchanges / Refunds     | COMPLETE repository gate | Real payment/provider transports and actual durable Temporal orchestration                                             |
-| Recovery                          | IN PROGRESS — CURRENT    | Branch API/UI/schema and expiry orchestration; exact-head runtime/tenant and remaining delivery/attribution gates open |
+| Recovery                          | IN PROGRESS — CURRENT    | CI #549 verifies branch migrations/RLS/lifecycles/expiry; browser repair and remaining delivery/attribution gates open |
 | Sales                             | NOT STARTED              | After Recovery                                                                                                         |
 | Campaigns                         | NOT STARTED              | After Sales                                                                                                            |
 

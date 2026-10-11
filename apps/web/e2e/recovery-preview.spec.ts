@@ -33,7 +33,11 @@ test.describe('Recovery disposable development preview', () => {
       page.getByText('1 dispatchable customer conversation(s) are available.'),
     ).toBeVisible();
 
-    const noAttempts = page.getByRole('heading', { name: 'No recovery attempts' });
+    // EmptyState renders its title as strong text inside a status region, not
+    // as a heading. Wait for the actual empty/history state before branching.
+    const noAttempts = page.getByText('No recovery attempts', { exact: true });
+    const history = page.getByRole('table', { name: 'Recovery outreach history' });
+    await expect(noAttempts.or(history)).toBeVisible();
     if (await noAttempts.isVisible()) {
       await page.getByLabel('Conversation').selectOption({ index: 1 });
       await page.getByLabel('Channel').selectOption('WHATSAPP');
@@ -41,12 +45,15 @@ test.describe('Recovery disposable development preview', () => {
         .getByLabel('Message body')
         .fill('Disposable preview recovery message through canonical Messaging.');
       await page.getByRole('button', { name: 'Queue recovery outreach' }).click();
-      await expect(page.getByRole('status')).toContainText(
-        'Recovery message queued through Messaging.',
-      );
+      await expect(
+        page.getByRole('status').filter({ hasText: 'Recovery message queued through Messaging.' }),
+      ).toContainText('Recovery message queued through Messaging.');
     }
     await expect(page.getByRole('heading', { name: 'Outreach history' })).toBeVisible();
-    await expect(page.getByRole('table')).toContainText('QUEUED');
+    await expect(history.getByRole('cell', { name: 'WHATSAPP', exact: true })).toBeVisible();
+    await expect(history.getByRole('cell', { name: /^(QUEUED|SENT|DELIVERED)$/u })).toBeVisible();
+
+    await assertMetricColumns(page, 4);
 
     await assertResponsiveAndRtl(page, testInfo);
     await context.close();
@@ -103,14 +110,27 @@ async function assertResponsiveAndRtl(page: Page, testInfo: TestInfo) {
   await expect(page.locator('html')).toHaveAttribute('dir', 'ltr');
   await page.setViewportSize({ width: 768, height: 1024 });
   await expect(page.getByRole('heading', { name: 'Abandoned-order recovery' })).toBeVisible();
+  await assertMetricColumns(page, 2);
   await page.setViewportSize({ width: 390, height: 844 });
   await expect(page.getByRole('heading', { name: 'Recovery opportunities' })).toBeVisible();
+  await assertMetricColumns(page, 1);
   await page.getByRole('button', { name: 'العربية · RTL' }).click();
   await expect(page.locator('html')).toHaveAttribute('dir', 'rtl');
   await expect(page.locator('html')).toHaveAttribute('lang', 'ar');
+  await assertMetricColumns(page, 1);
   const screenshot = testInfo.outputPath('recovery-mobile-rtl.png');
   await page.screenshot({ path: screenshot, fullPage: true });
   await testInfo.attach('recovery-mobile-rtl', { path: screenshot, contentType: 'image/png' });
   await page.getByRole('button', { name: 'English · LTR' }).click();
   await expect(page.locator('html')).toHaveAttribute('dir', 'ltr');
+}
+
+async function assertMetricColumns(page: Page, columns: number) {
+  const grid = page.locator('.ds-metric-grid');
+  await expect(grid).toHaveCSS('display', 'grid');
+  const tops = await grid
+    .locator(':scope > .ds-metric')
+    .evaluateAll((cards) => cards.map((card) => Math.round(card.getBoundingClientRect().top)));
+  expect(tops).toHaveLength(4);
+  expect(new Set(tops).size).toBe(Math.ceil(4 / columns));
 }

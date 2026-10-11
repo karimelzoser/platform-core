@@ -140,6 +140,14 @@ correction is `0045`, with null-safe proof and active signed-delivery checks.
 Preview bootstrap also needs the same Keycloak issuer hostname as the API;
 `127.0.0.1` and `localhost` are not interchangeable JWT issuers. Full integration
 and protected browser gates remain pending the combined repair.
+CI #549 on `dc8efac` passes integration (full migration/RLS/application lifecycles
+and real Temporal tests), quality, both image/security jobs, AI and secret scan.
+Six protected browser journeys pass; Recovery's test skipped outreach because
+it incorrectly queried an EmptyState strong title as a heading. Captured DOM
+and screenshot prove zero attempts, not a failed provider send. The repair waits
+for the actual empty/history state, scopes status/table assertions, and restores
+the missing shared responsive metric grid and direction-safe detail layout.
+The full seven-job result for that UI/browser repair remains pending.
 
 Remaining closure includes dispatch-time consent/suppression rechecks and atomic
 message linkage, delivery reconciliation, bounded incentives with full approval
