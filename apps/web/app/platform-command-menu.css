@@ -1,0 +1,205 @@
+.platform-command-trigger {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.45rem;
+  min-block-size: 2.25rem;
+  border: 1px solid var(--ds-border);
+  border-radius: 0.55rem;
+  background: var(--ds-surface);
+  color: var(--ds-text-muted);
+  padding-inline: 0.65rem;
+  font: inherit;
+  font-size: 0.76rem;
+  font-weight: 700;
+  cursor: pointer;
+  white-space: nowrap;
+}
+
+.platform-command-trigger:hover,
+.platform-command-trigger:focus-visible {
+  border-color: #9fb1ce;
+  color: var(--ds-text);
+  outline: none;
+}
+
+.platform-command-trigger:focus-visible {
+  outline: 3px solid color-mix(in srgb, var(--ds-focus) 35%, transparent);
+  outline-offset: 2px;
+}
+
+.platform-command-trigger kbd,
+.platform-command-dialog kbd {
+  border: 1px solid var(--ds-border);
+  border-radius: 0.35rem;
+  background: var(--ds-surface-subtle);
+  padding: 0.1rem 0.3rem;
+  color: var(--ds-text-muted);
+  font-family: inherit;
+  font-size: 0.68rem;
+  font-weight: 750;
+}
+
+.platform-command-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 90;
+  display: grid;
+  align-items: start;
+  justify-items: center;
+  overflow-y: auto;
+  background: rgb(16 24 40 / 48%);
+  padding: min(12vh, 7rem) 1rem 2rem;
+  backdrop-filter: blur(8px);
+}
+
+.platform-command-dialog {
+  inline-size: min(100%, 700px);
+  max-block-size: min(76vh, 760px);
+  overflow: hidden;
+  border: 1px solid var(--ds-border);
+  border-radius: var(--ds-radius-lg);
+  background: var(--ds-surface);
+  box-shadow: 0 32px 90px rgb(17 24 39 / 25%);
+}
+
+.platform-command-dialog__header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 1rem;
+  padding: 1.25rem 1.25rem 0.9rem;
+}
+
+.platform-command-dialog__header h2 {
+  margin: 0.25rem 0 0;
+  font-size: 1.4rem;
+  letter-spacing: -0.03em;
+}
+
+.platform-command-close {
+  inline-size: 2.25rem;
+  block-size: 2.25rem;
+  border: 1px solid var(--ds-border);
+  border-radius: 999px;
+  background: var(--ds-surface);
+  color: var(--ds-text-muted);
+  font: inherit;
+  font-size: 1.25rem;
+  cursor: pointer;
+}
+
+.platform-command-close:focus-visible,
+.platform-command-input:focus-visible,
+.platform-command-result:focus-visible {
+  outline: 3px solid color-mix(in srgb, var(--ds-focus) 30%, transparent);
+  outline-offset: 1px;
+}
+
+.platform-command-input {
+  inline-size: calc(100% - 2.5rem);
+  min-block-size: 3rem;
+  margin-inline: 1.25rem;
+  border: 1px solid var(--ds-border);
+  border-radius: var(--ds-radius-sm);
+  background: var(--ds-surface-subtle);
+  color: var(--ds-text);
+  padding-inline: 0.9rem;
+  font: inherit;
+  font-size: 1rem;
+}
+
+.platform-command-results {
+  max-block-size: min(50vh, 500px);
+  overflow-y: auto;
+  margin-block-start: 0.8rem;
+  padding: 0 0.75rem 0.75rem;
+}
+
+.platform-command-result {
+  display: flex;
+  inline-size: 100%;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  border: 0;
+  border-radius: var(--ds-radius-sm);
+  background: transparent;
+  color: var(--ds-text);
+  padding: 0.75rem;
+  text-align: start;
+  cursor: pointer;
+}
+
+.platform-command-result:hover,
+.platform-command-result:focus-visible {
+  background: var(--ds-surface-subtle);
+}
+
+.platform-command-result > span:first-child {
+  display: grid;
+  min-inline-size: 0;
+  gap: 0.2rem;
+}
+
+.platform-command-result small,
+.platform-command-result__meta,
+.platform-command-empty span,
+.platform-command-dialog__footer {
+  color: var(--ds-text-muted);
+  font-size: 0.76rem;
+}
+
+.platform-command-result__meta {
+  display: grid;
+  flex: 0 0 auto;
+  justify-items: end;
+  gap: 0.2rem;
+}
+
+[dir='rtl'] .platform-command-result__meta {
+  justify-items: start;
+}
+
+.platform-command-empty {
+  display: grid;
+  justify-items: center;
+  gap: 0.35rem;
+  padding: 3rem 1rem;
+  text-align: center;
+}
+
+.platform-command-dialog__footer {
+  display: flex;
+  justify-content: space-between;
+  gap: 1rem;
+  border-block-start: 1px solid var(--ds-border);
+  padding: 0.8rem 1.25rem;
+}
+
+.platform-command-dialog__footer span {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+}
+
+@media (max-width: 600px) {
+  .platform-command-backdrop {
+    align-items: end;
+    padding: 1rem 0 0;
+  }
+
+  .platform-command-dialog {
+    inline-size: 100%;
+    max-block-size: 88vh;
+    border-end-start-radius: 0;
+    border-end-end-radius: 0;
+  }
+
+  .platform-command-result {
+    align-items: flex-start;
+  }
+
+  .platform-command-dialog__footer {
+    display: none;
+  }
+}
