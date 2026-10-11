@@ -59,20 +59,25 @@ jobs:
             docs/CAPABILITY_EVIDENCE_MATRIX.md \
             docs/PRODUCTION_READINESS_MATRIX.md \
             tests/integration/sales-lifecycle.ts
-      - name: Emit compact exact formatted contents
+      - name: Stage exact formatted artifact
         run: |
-          for file in \
-            apps/api/src/sales.service.ts \
-            apps/web/app/sales/actions.ts \
-            apps/web/app/sales/page.tsx \
-            apps/web/app/sales/pipeline-builder.tsx \
-            apps/web/e2e/sales-preview.spec.ts \
-            docs/CAPABILITY_EVIDENCE_MATRIX.md \
-            docs/PRODUCTION_READINESS_MATRIX.md \
-            tests/integration/sales-lifecycle.ts
-          do
-            echo "FORMAT_GZIP_BEGIN:${file}"
-            gzip -c "${file}" | base64 -w 0
-            echo
-            echo "FORMAT_GZIP_END:${file}"
-          done
+          mkdir -p sales-format-artifact/apps/api/src
+          mkdir -p sales-format-artifact/apps/web/app/sales
+          mkdir -p sales-format-artifact/apps/web/e2e
+          mkdir -p sales-format-artifact/docs
+          mkdir -p sales-format-artifact/tests/integration
+          cp apps/api/src/sales.service.ts sales-format-artifact/apps/api/src/
+          cp apps/web/app/sales/actions.ts sales-format-artifact/apps/web/app/sales/
+          cp apps/web/app/sales/page.tsx sales-format-artifact/apps/web/app/sales/
+          cp apps/web/app/sales/pipeline-builder.tsx sales-format-artifact/apps/web/app/sales/
+          cp apps/web/e2e/sales-preview.spec.ts sales-format-artifact/apps/web/e2e/
+          cp docs/CAPABILITY_EVIDENCE_MATRIX.md sales-format-artifact/docs/
+          cp docs/PRODUCTION_READINESS_MATRIX.md sales-format-artifact/docs/
+          cp tests/integration/sales-lifecycle.ts sales-format-artifact/tests/integration/
+      - name: Upload exact formatted artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: sales-formatted-files-${{ github.sha }}
+          path: sales-format-artifact
+          if-no-files-found: error
+          retention-days: 1
