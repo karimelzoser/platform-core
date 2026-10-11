@@ -222,6 +222,7 @@ export const approvalActionSchema = z.object({
 export type ApprovalAction = z.infer<typeof approvalActionSchema>;
 
 function canonicalize(value: unknown): string {
+  if (value instanceof Date) return JSON.stringify(value.toISOString());
   if (value === null || typeof value !== 'object') return JSON.stringify(value);
   if (Array.isArray(value)) return `[${value.map(canonicalize).join(',')}]`;
   const record = value as Record<string, unknown>;

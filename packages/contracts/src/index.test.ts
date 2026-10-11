@@ -38,6 +38,25 @@ void test('bounded dimensions reject nested and oversized telemetry payloads', (
   assert.equal(boundedDimensionsSchema.safeParse({ value: 'x'.repeat(257) }).success, false);
 });
 
+void test('approvals bind coerced dates to their serialized instant', () => {
+  const expiresAt = new Date('2026-10-12T10:00:00.000Z');
+  const dated = { ...action, input: { offer: { expiresAt } } };
+  assert.equal(
+    approvalActionDigest(dated),
+    approvalActionDigest({ ...action, input: { offer: { expiresAt: expiresAt.toISOString() } } }),
+  );
+  assert.notEqual(
+    approvalActionDigest(dated),
+    approvalActionDigest({
+      ...action,
+      input: { offer: { expiresAt: new Date('2026-10-13T10:00:00.000Z') } },
+    }),
+  );
+  assert.throws(() =>
+    approvalActionDigest({ ...action, input: { expiresAt: new Date('invalid') } }),
+  );
+});
+
 void test('correlation and operational errors expose bounded safe context', () => {
   assert.equal(
     correlationContextSchema.safeParse({

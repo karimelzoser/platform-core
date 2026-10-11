@@ -18,3 +18,16 @@ void test('audit sanitization recursively redacts credential-shaped fields', () 
     { authorization: '[REDACTED]', profile: { password: '[REDACTED]', displayName: 'Ada' } },
   );
 });
+
+void test('idempotency fingerprints distinguish changed expiry dates', () => {
+  const original = { expiresAt: new Date('2026-10-12T10:00:00.000Z') };
+  assert.equal(
+    requestFingerprint(original),
+    requestFingerprint({ expiresAt: '2026-10-12T10:00:00.000Z' }),
+  );
+  assert.notEqual(
+    requestFingerprint(original),
+    requestFingerprint({ expiresAt: new Date('2026-10-13T10:00:00.000Z') }),
+  );
+  assert.throws(() => requestFingerprint({ expiresAt: new Date('invalid') }));
+});
