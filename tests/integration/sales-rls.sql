@@ -97,6 +97,13 @@ SELECT platform.set_request_context(
   'test-subject-b',
   'sales-rls-b'
 );
+INSERT INTO crm.customers (id, tenant_id, display_name, status)
+VALUES (
+  'bbbbbbbb-0000-0000-0000-000000000801',
+  'bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb',
+  'Sales RLS Customer B',
+  'ACTIVE'
+);
 DO $$
 BEGIN
   IF EXISTS (SELECT 1 FROM sales.pipelines WHERE id = 'aaaaaaaa-0000-0000-0000-000000000802') THEN
@@ -113,7 +120,7 @@ BEGIN
   END IF;
 END;
 $$;
-ROLLBACK;
+COMMIT;
 
 BEGIN;
 SELECT platform.set_request_context(
