@@ -2,7 +2,7 @@
 
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { LocalizedText } from './display-locale';
+import { LocalizedText, useDisplayLocale } from './display-locale';
 
 const links = [
   ['/', 'Home', 'الرئيسية'],
@@ -28,6 +28,7 @@ const secondaryLinks = [
 
 export function PlatformNavigation() {
   const pathname = usePathname();
+  const { locale, setLocale } = useDisplayLocale();
   if (pathname === '/preview-login' || pathname.startsWith('/health')) return null;
 
   return (
@@ -68,6 +69,26 @@ export function PlatformNavigation() {
             </Link>
           ))}
         </nav>
+        <div className="platform-chrome__locale" aria-label="Display language and direction">
+          <button
+            aria-pressed={locale === 'en'}
+            onClick={() => {
+              setLocale('en');
+            }}
+            type="button"
+          >
+            English · LTR
+          </button>
+          <button
+            aria-pressed={locale === 'ar'}
+            onClick={() => {
+              setLocale('ar');
+            }}
+            type="button"
+          >
+            العربية · RTL
+          </button>
+        </div>
       </div>
     </div>
   );
