@@ -12,11 +12,15 @@ This is the authoritative dependency-ordered implementation queue for PRENEURA. 
 - Do not mark a schema, endpoint, page, fixture, preview deployment or green old-SHA CI as completion.
 - Production VPS, customer databases/provider accounts and the existing n8n installation are outside automated repository/preview testing.
 
-## Immediate bounded stabilization — CURRENT
+## Bounded stabilization — VERIFIED BASELINE
 
-Current reviewed `main`: `01b48010b749bc780bfbd21afb464e91553b26d5` (merged Returns / Exchanges / Refunds), with main CI run #528 green.
+Current reviewed `main`: `a99053e9cc207546b23fd887e6f4e8eb60530f76`
+(merged security/preview stabilization). Main CI #536 passed all seven jobs,
+including dependency/image security. Railway deployment
+`166cb1d9-c864-4371-8a95-1f11b5601827` reports this SHA, and its public health
+endpoint returned HTTP 200 with matching provenance and development environment.
 
-Before the next domain branch is promoted:
+The merged stabilization closed:
 
 1. close the known Web/Admin dependency advisories using supported patched Next.js/React versions and current transitive fixes;
 2. keep dependency and container-image vulnerability scans in CI;
@@ -26,7 +30,7 @@ Before the next domain branch is promoted:
 
 This stabilization is not a substitute for product implementation and must remain bounded.
 
-## Next product workstream — Recovery
+## CURRENT — Recovery
 
 Recovery is the next dependency-ready domain after merged Returns. Closure requires:
 
