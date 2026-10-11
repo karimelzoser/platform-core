@@ -1,4 +1,9 @@
-FROM openpolicyagent/opa:1.20.2-static AS opa
+FROM golang:1.27.2-bookworm AS opa
+WORKDIR /src/opa
+ADD https://github.com/open-policy-agent/opa/archive/refs/tags/v1.21.1.tar.gz /tmp/opa.tar.gz
+RUN tar -xzf /tmp/opa.tar.gz --strip-components=1 \
+  && go get golang.org/x/net@v0.60.0 \
+  && CGO_ENABLED=0 go build -tags=opa_wasm -trimpath -ldflags="-s -w" -o /opa .
 
 FROM node:24-bookworm-slim AS build
 WORKDIR /workspace
@@ -20,7 +25,10 @@ RUN apt-get update \
 COPY --from=opa /opa /usr/local/bin/opa
 COPY --from=build /workspace /workspace
 RUN rm -rf node_modules apps/*/node_modules packages/*/node_modules tests/node_modules \
-  && pnpm install --prod --frozen-lockfile --ignore-scripts
+  && pnpm install --prod --frozen-lockfile --ignore-scripts \
+  && rm -rf /root/.cache/node/corepack /root/.cache/pnpm /root/.local/share/pnpm /root/.pnpm-store \
+  && rm -rf /usr/local/lib/node_modules/corepack \
+  && rm -f /usr/local/bin/corepack /usr/local/bin/pnpm /usr/local/bin/pnpx
 RUN chmod +x \
   scripts/hosted/bootstrap-postgres.sh \
   scripts/hosted/migrate.sh \
