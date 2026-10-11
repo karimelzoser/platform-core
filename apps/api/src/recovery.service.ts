@@ -12,6 +12,7 @@ import {
 } from '@platform/database';
 import { z } from 'zod';
 import { MessagingService } from './messaging.service.js';
+import { RecoveryLifecycleCommands, recoveryWorkflowId } from '@platform/recovery';
 
 const uuidSchema = z.string().uuid();
 const channelSchema = z.enum(['EMAIL', 'WHATSAPP', 'MESSENGER', 'INSTAGRAM']);
@@ -404,7 +405,7 @@ export class RecoveryService {
     context: TenantRequestContext,
     idempotencyKey: string,
     orderId: string,
-  ): Promise<CommandResult<{ opportunityId: string; status: 'ELIGIBLE'; workflowId: string }>> {
+  ): Promise<CommandResult<{ opportunityId: string; status: string; workflowId: string }>> {
     const sourceOrderId = uuidSchema.parse(orderId);
     const generatedId = randomUUID();
     return this.commands.execute(
@@ -416,18 +417,23 @@ export class RecoveryService {
         event: {
           type: 'recovery.opportunity.created',
           data: (_input, result) => result,
-          dedupeKey: () => `recovery:detect:${idempotencyKey.trim()}`,
+          dedupeKey: (_input, result) => `recovery:detect:${result.opportunityId}`,
         },
         audit: { afterState: (_input, result) => result },
         execute: async (transaction) => {
-          const existing = await sql<{ id: string; temporal_workflow_id: string }>`
-            select id, temporal_workflow_id from recovery.opportunities
-            where source_order_id = ${sourceOrderId}::uuid for update
+          // Serialize both new and repeated detection on the canonical source
+          // row, including the first detection before an opportunity exists.
+          const source = await sql<{ id: string }>`select id from commerce.orders
+            where id = ${sourceOrderId}::uuid for update`.execute(transaction);
+          if (!source.rows[0]) throw new RecoveryInvariantError('Source order was not found');
+          const existing = await sql<{ id: string; status: string; temporal_workflow_id: string }>`
+            select id, status, temporal_workflow_id from recovery.opportunities
+            where source_order_id = ${sourceOrderId}::uuid
           `.execute(transaction);
           if (existing.rows[0]) {
             return {
               opportunityId: existing.rows[0].id,
-              status: 'ELIGIBLE' as const,
+              status: existing.rows[0].status,
               workflowId: existing.rows[0].temporal_workflow_id,
             };
           }
@@ -456,7 +462,7 @@ export class RecoveryService {
             for share`.execute(transaction);
           const policyRow = policy.rows[0];
           if (!policyRow) throw new RecoveryInvariantError('Active recovery policy was not found');
-          const workflowId = `recovery:${context.tenantId}:${sourceOrderId}`;
+          const workflowId = recoveryWorkflowId(context.tenantId, sourceOrderId);
           const inserted = await sql<{ id: string }>`insert into recovery.opportunities (
               id, tenant_id, store_id, source_order_id, customer_id, policy_id,
               status, potential_value_minor, currency, detected_at, eligible_at,
@@ -579,29 +585,22 @@ export class RecoveryService {
   ): Promise<{ attemptId: string; messageId: string; status: 'QUEUED' }> {
     const validated = attemptInputSchema.parse(input);
     const reserved = await this.reserveAttempt(context, `${idempotencyKey}:reserve`, validated);
-    try {
-      const message = await this.messaging.send(
-        context,
-        `${idempotencyKey}:message`,
-        reserved.result.conversationId,
-        reserved.result.body,
-      );
-      const linked = await this.linkAttemptMessage(
-        context,
-        `${idempotencyKey}:link`,
-        reserved.result.attemptId,
-        message.result.messageId,
-      );
-      return linked.result;
-    } catch (error) {
-      await this.failReservedAttempt(
-        context,
-        `${idempotencyKey}:failure`,
-        reserved.result.attemptId,
-        error instanceof Error ? error.message : 'Messaging dispatch reservation failed',
-      );
-      throw error;
-    }
+    // A timeout does not prove Messaging rolled back. Keep the reservation
+    // retryable and replay the same canonical message command before linking;
+    // never turn an ambiguous post-commit failure into a terminal failed send.
+    const message = await this.messaging.send(
+      context,
+      `${idempotencyKey}:message`,
+      reserved.result.conversationId,
+      reserved.result.body,
+    );
+    const linked = await this.linkAttemptMessage(
+      context,
+      `${idempotencyKey}:link`,
+      reserved.result.attemptId,
+      message.result.messageId,
+    );
+    return linked.result;
   }
 
   public async markRecovered(
@@ -744,6 +743,18 @@ export class RecoveryService {
     );
   }
 
+  public expireOpportunity(
+    context: TenantRequestContext,
+    idempotencyKey: string,
+    opportunityId: string,
+  ) {
+    return new RecoveryLifecycleCommands(this.database, this.commands).expireOpportunity(
+      context,
+      idempotencyKey,
+      opportunityId,
+    );
+  }
+
   private async reserveAttempt(
     context: TenantRequestContext,
     idempotencyKey: string,
@@ -780,11 +791,14 @@ export class RecoveryService {
             throw new RecoveryInvariantError('Recovery channel is not enabled by policy');
           const attempts = await sql<{
             count: string;
+            max_sequence: number;
             last_attempt_at: Date | null;
-          }>`select count(*)::text as count,
-              max(coalesce(sent_at, queued_at, scheduled_at)) as last_attempt_at
+          }>`select count(*) filter (where status not in ('CANCELLED','SUPPRESSED'))::text as count,
+              coalesce(max(sequence), 0) as max_sequence,
+              max(coalesce(sent_at, queued_at, scheduled_at))
+                filter (where status not in ('CANCELLED','SUPPRESSED')) as last_attempt_at
             from recovery.attempts where opportunity_id = ${opportunity.id}::uuid
-              and status not in ('CANCELLED','SUPPRESSED')`.execute(transaction);
+            `.execute(transaction);
           const attemptCount = Number(attempts.rows[0]?.count ?? '0');
           if (attemptCount >= policy.max_attempts)
             throw new RecoveryInvariantError('Recovery attempt limit has been reached');
@@ -829,7 +843,7 @@ export class RecoveryService {
             if (!offer.rows[0])
               throw new RecoveryInvariantError('Active recovery offer was not found');
           }
-          const sequence = attemptCount + 1;
+          const sequence = (attempts.rows[0]?.max_sequence ?? 0) + 1;
           await sql`insert into recovery.attempts (
               id, tenant_id, store_id, opportunity_id, sequence, channel, status,
               conversation_id, offer_id, body_snapshot, scheduled_at
@@ -888,6 +902,9 @@ export class RecoveryService {
                 select 1 from messaging.messages message
                 where message.tenant_id = ${context.tenantId}::uuid
                   and message.id = ${messageId}::uuid
+                  and message.conversation_id = recovery.attempts.conversation_id
+                  and message.direction = 'OUTBOUND'
+                  and message.body = recovery.attempts.body_snapshot
               )
             returning opportunity_id, store_id
           `.execute(transaction);
@@ -908,34 +925,6 @@ export class RecoveryService {
         },
       },
       { context, input: { attemptId, messageId }, idempotencyKey },
-    );
-  }
-
-  private async failReservedAttempt(
-    context: TenantRequestContext,
-    idempotencyKey: string,
-    attemptId: string,
-    reason: string,
-  ): Promise<void> {
-    await this.commands.execute(
-      {
-        action: 'recovery.attempt.fail',
-        permission: 'recovery.execute',
-        risk: 'LOW',
-        resource: () => ({ type: 'recovery.attempt', id: attemptId }),
-        event: {
-          type: 'recovery.attempt.failed',
-          data: () => ({ attemptId, reason: reason.slice(0, 4000) }),
-          dedupeKey: () => `recovery:attempt:failed:${idempotencyKey.trim()}`,
-        },
-        execute: async (transaction) => {
-          await sql`update recovery.attempts set status = 'FAILED', failed_at = now(),
-              last_error = ${reason.slice(0, 4000)}, updated_at = now()
-            where id = ${attemptId}::uuid and status = 'RESERVED'`.execute(transaction);
-          return { attemptId };
-        },
-      },
-      { context, input: { attemptId }, idempotencyKey },
     );
   }
 

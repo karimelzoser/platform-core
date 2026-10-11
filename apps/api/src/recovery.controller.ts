@@ -176,6 +176,21 @@ export class RecoveryController {
     return this.execute(() => this.recovery.expireDue(context, requireIdempotency(idempotencyKey)));
   }
 
+  @Post(':opportunityId/expire')
+  public async expireOpportunity(
+    @Param('opportunityId') opportunityId: string,
+    @Headers('authorization') authorization: string | undefined,
+    @Headers('x-tenant-id') tenantId: string | undefined,
+    @Headers('x-correlation-id') correlationId: string | undefined,
+    @Headers('idempotency-key') idempotencyKey: string | undefined,
+  ) {
+    const context = await this.context(authorization, tenantId, correlationId);
+    this.require(context.permissions, 'recovery.execute');
+    return this.execute(() =>
+      this.recovery.expireOpportunity(context, requireIdempotency(idempotencyKey), opportunityId),
+    );
+  }
+
   private async context(
     authorization: string | undefined,
     tenantId: string | undefined,

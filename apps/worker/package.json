@@ -9,8 +9,15 @@
     "start": "node dist/main.js"
   },
   "dependencies": {
+    "@platform/authorization": "workspace:*",
+    "@platform/command-execution": "workspace:*",
     "@platform/connectors": "workspace:*",
+    "@platform/contracts": "workspace:*",
     "@platform/database": "workspace:*",
+    "@platform/recovery": "workspace:*",
+    "@temporalio/client": "1.24.0",
+    "@temporalio/worker": "1.24.0",
+    "@temporalio/workflow": "1.24.0",
     "nats": "2.29.2",
     "pino": "9.6.0",
     "zod": "3.24.1"

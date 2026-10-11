@@ -22,6 +22,7 @@ import { OutboxPublisher } from './outbox-publisher.js';
 import { ProviderActionProcessor } from './provider-action-processor.js';
 import { TicketSlaProcessor } from './ticket-sla-processor.js';
 import { WebhookSubscriptionProcessor } from './webhook-subscription-processor.js';
+import { startRecoveryOrchestrator } from './recovery-orchestrator.js';
 
 const environmentSchema = z.object({
   APP_ENV: z.enum(['development', 'test', 'production']).default('development'),
@@ -31,6 +32,9 @@ const environmentSchema = z.object({
     .transform((value) => value === 'true'),
   DATABASE_URL: z.string().url(),
   NATS_URL: z.string().url(),
+  OPA_URL: z.string().url().default('http://127.0.0.1:8181'),
+  TEMPORAL_ADDRESS: z.string().min(1).optional(),
+  TEMPORAL_NAMESPACE: z.string().min(1).default('platform'),
   WORKER_HEALTH_PORT: z.coerce.number().default(3002),
   SLA_EVALUATION_INTERVAL_MS: z.coerce.number().int().min(1_000).max(300_000).default(10_000),
 });
@@ -40,6 +44,11 @@ async function main(): Promise<void> {
     ...process.env,
     WORKER_HEALTH_PORT: process.env.WORKER_HEALTH_PORT ?? process.env.PORT,
   });
+  if (environment.APP_ENV === 'production' && !environment.TEMPORAL_ADDRESS) {
+    throw new Error(
+      'Production worker requires TEMPORAL_ADDRESS for durable Recovery coordination',
+    );
+  }
   const nats = await connect({ servers: environment.NATS_URL, name: 'platform-worker' });
   const db = createDatabase(environment.DATABASE_URL);
   const publisher = new OutboxPublisher(db, nats, `${hostname()}-${String(process.pid)}`);
@@ -62,6 +71,16 @@ async function main(): Promise<void> {
   const webhookSubscriptionProcessor = new WebhookSubscriptionProcessor(db, connectors, workerId);
   const providerActionProcessor = new ProviderActionProcessor(db, connectors, workerId);
   const ticketSlaProcessor = new TicketSlaProcessor(db);
+  await publisher.ensureEventStream();
+  const recoveryOrchestrator = environment.TEMPORAL_ADDRESS
+    ? await startRecoveryOrchestrator({
+        database: db,
+        nats,
+        address: environment.TEMPORAL_ADDRESS,
+        namespace: environment.TEMPORAL_NAMESPACE,
+        opaUrl: environment.OPA_URL,
+      })
+    : undefined;
   let nextSlaEvaluationAt = 0;
   const startedAt = new Date().toISOString();
   const healthServer = createServer((request, response) => {
@@ -69,14 +88,25 @@ async function main(): Promise<void> {
       response.writeHead(404).end();
       return;
     }
-    response.writeHead(200, { 'content-type': 'application/json; charset=utf-8' });
-    response.end(JSON.stringify({ status: 'ok', service: 'worker', startedAt }));
+    const ready = !recoveryOrchestrator || recoveryOrchestrator.ready();
+    response.writeHead(ready ? 200 : 503, { 'content-type': 'application/json; charset=utf-8' });
+    response.end(
+      JSON.stringify({
+        status: ready ? 'ok' : 'not_ready',
+        service: 'worker',
+        startedAt,
+        recoveryCoordination: recoveryOrchestrator
+          ? ready
+            ? 'running'
+            : 'not_ready'
+          : 'not_configured_development_only',
+      }),
+    );
   });
   await new Promise<void>((resolve, reject) => {
     healthServer.once('error', reject);
     healthServer.listen(environment.WORKER_HEALTH_PORT, resolve);
   });
-  await publisher.ensureEventStream();
   console.log(
     JSON.stringify({
       level: 'info',
@@ -84,11 +114,13 @@ async function main(): Promise<void> {
       natsServer: nats.getServer(),
       healthPort: environment.WORKER_HEALTH_PORT,
       slaEvaluationIntervalMs: environment.SLA_EVALUATION_INTERVAL_MS,
+      recoveryCoordination: recoveryOrchestrator ? 'enabled' : 'not_configured_development_only',
     }),
   );
   const shutdown = new AbortController();
   const close = async (): Promise<void> => {
     shutdown.abort();
+    await recoveryOrchestrator?.close();
     await Promise.all([
       nats.drain(),
       destroyDatabase(db),

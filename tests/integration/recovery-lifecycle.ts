@@ -4,6 +4,7 @@ import { CommandAuthorizer, OpaClient } from '@platform/authorization';
 import { CommandExecutor, type TenantRequestContext } from '@platform/command-execution';
 import { approvalActionDigest, type ApprovalAction } from '@platform/contracts';
 import { sql, withTenantTransaction, type PlatformDatabase } from '@platform/database';
+import { RecoveryLifecycleCommands, type RecoveryWorkflowReference } from '@platform/recovery';
 import { ApiDatabaseService } from '../../apps/api/src/api-database.service.js';
 import { MessagingService } from '../../apps/api/src/messaging.service.js';
 import { RecoveryService } from '../../apps/api/src/recovery.service.js';
@@ -59,6 +60,22 @@ const consentWorkerContext: TenantRequestContext = {
   actorType: 'SERVICE',
   permissions: [],
 };
+
+/** Simulate a response lost after canonical Messaging has already committed. */
+class AmbiguousMessagingService extends MessagingService {
+  private loseNextResponse = true;
+
+  public override async send(
+    ...args: Parameters<MessagingService['send']>
+  ): ReturnType<MessagingService['send']> {
+    const committed = await super.send(...args);
+    if (this.loseNextResponse) {
+      this.loseNextResponse = false;
+      throw new Error('Simulated response loss after message commit');
+    }
+    return committed;
+  }
+}
 
 async function approvedEvidence(
   database: PlatformDatabase,
@@ -141,7 +158,7 @@ async function main(): Promise<void> {
         new OpaClient({ endpoint: new URL('/v1/data/platform/authorization/decision', opaUrl) }),
       ),
     );
-    const messaging = new MessagingService(databaseService, commands);
+    const messaging = new AmbiguousMessagingService(databaseService, commands);
     const recovery = new RecoveryService(database, commands, messaging);
 
     const policyInput = {
@@ -177,6 +194,38 @@ async function main(): Promise<void> {
     assert.equal(replayed.result.opportunityId, detected.result.opportunityId);
     assert.match(detected.result.workflowId, /^recovery:/u);
     assert.equal(await recovery.get(contextB, detected.result.opportunityId), undefined);
+    const lifecycle = new RecoveryLifecycleCommands(database, commands);
+    const origin = await withTenantTransaction(database, contextA, async (transaction) => {
+      const result = await sql<{ id: string }>`select id from platform.outbox_events
+        where event_type = 'recovery.opportunity.created'
+          and data->>'opportunityId' = ${detected.result.opportunityId}`.execute(transaction);
+      return result.rows[0];
+    });
+    assert.ok(origin);
+    const workflowReference: RecoveryWorkflowReference = {
+      tenantId: tenantA,
+      opportunityId: detected.result.opportunityId,
+      creationEventId: origin.id,
+      workflowId: detected.result.workflowId,
+    };
+    assert.equal((await lifecycle.snapshot(contextA, workflowReference)).status, 'ELIGIBLE');
+    await assert.rejects(lifecycle.snapshot(contextB, workflowReference), /tenant mismatch/i);
+    await assert.rejects(
+      lifecycle.snapshot(contextB, { ...workflowReference, tenantId: tenantB }),
+      /origin was not found/i,
+    );
+    await assert.rejects(
+      lifecycle.snapshot(contextA, { ...workflowReference, creationEventId: randomUUID() }),
+      /origin was not found/i,
+    );
+    await assert.rejects(
+      recovery.expireOpportunity(
+        contextA,
+        'recovery-premature-expiry',
+        detected.result.opportunityId,
+      ),
+      /not due/i,
+    );
 
     const offerExpiresAt = new Date(Date.now() + 24 * 60 * 60 * 1000);
     const offerInput = {
@@ -309,6 +358,24 @@ async function main(): Promise<void> {
       body: 'Complete your order and use RECOVER5.',
       offerId: offer.result.offerId,
     };
+    await withTenantTransaction(database, contextA, async (transaction) => {
+      await sql`insert into recovery.attempts (
+          tenant_id, store_id, opportunity_id, sequence, channel, status,
+          conversation_id, body_snapshot, scheduled_at
+        ) values (
+          ${tenantA}::uuid, ${storeA}::uuid, ${detected.result.opportunityId}::uuid,
+          1, 'EMAIL', 'CANCELLED', ${conversationA}::uuid,
+          'Cancelled before dispatch; not a send-budget unit', now()
+        )`.execute(transaction);
+    });
+    await assert.rejects(
+      recovery.dispatchAttempt(contextA, 'recovery-attempt-lifecycle', attemptInput),
+      /Simulated response loss after message commit/u,
+    );
+    const ambiguousDetail = await recovery.get(contextA, detected.result.opportunityId);
+    assert.ok(ambiguousDetail);
+    assert.equal(ambiguousDetail.attempts[0]?.status, 'RESERVED');
+    assert.equal(ambiguousDetail.attempts[0]?.sequence, 2, 'Cancelled sequences cannot be reused');
     const queued = await recovery.dispatchAttempt(
       contextA,
       'recovery-attempt-lifecycle',
@@ -322,6 +389,12 @@ async function main(): Promise<void> {
     assert.equal(queued.status, 'QUEUED');
     assert.equal(queuedReplay.attemptId, queued.attemptId);
     assert.equal(queuedReplay.messageId, queued.messageId);
+    await withTenantTransaction(database, contextA, async (transaction) => {
+      const messages = await sql<{ count: string }>`select count(*)::text as count
+        from messaging.messages where conversation_id = ${conversationA}::uuid
+          and direction = 'OUTBOUND'`.execute(transaction);
+      assert.equal(messages.rows[0]?.count, '1', 'Lost response retry must not duplicate sends');
+    });
 
     await assert.rejects(
       recovery.dispatchAttempt(contextA, 'recovery-attempt-cooldown', attemptInput),
@@ -343,20 +416,28 @@ async function main(): Promise<void> {
     assert.ok(detail);
     assert.equal(detail.status, 'RECOVERED');
     assert.equal(detail.recoveredOrderId, sourceOrderA);
-    assert.equal(detail.attempts.length, 1);
+    assert.equal(detail.attempts.length, 2);
     assert.equal(detail.offers[0]?.status, 'REDEEMED');
 
+    const redetected = await recovery.detect(contextA, 'recovery-redetect-terminal', sourceOrderA);
+    assert.equal(redetected.result.opportunityId, detected.result.opportunityId);
+    assert.equal(redetected.result.status, 'RECOVERED', 'Detection must preserve canonical status');
+
     await withTenantTransaction(database, contextA, async (transaction) => {
-      const [audit, outbox] = await Promise.all([
+      const [audit, outbox, detections] = await Promise.all([
         sql<{ count: string }>`select count(*)::text as count from platform.audit_log
           where action = 'recovery.opportunity.mark_recovered'
             and resource_id = ${detected.result.opportunityId}`.execute(transaction),
         sql<{ count: string }>`select count(*)::text as count from platform.outbox_events
           where event_type = 'recovery.opportunity.recovered'
             and resource_id = ${detected.result.opportunityId}`.execute(transaction),
+        sql<{ count: string }>`select count(*)::text as count from platform.outbox_events
+          where event_type = 'recovery.opportunity.created'
+            and data->>'opportunityId' = ${detected.result.opportunityId}`.execute(transaction),
       ]);
       assert.equal(audit.rows[0]?.count, '1');
       assert.equal(outbox.rows[0]?.count, '1');
+      assert.equal(detections.rows[0]?.count, '1', 'Repeat detection emits no new creation event');
     });
 
     const listedA = await recovery.list(contextA);
@@ -365,6 +446,55 @@ async function main(): Promise<void> {
     assert.equal(
       listedB.some((item) => item.id === detected.result.opportunityId),
       false,
+    );
+
+    const expiringOrder = randomUUID();
+    await withTenantTransaction(database, contextA, async (transaction) => {
+      await sql`insert into commerce.orders (
+          id, tenant_id, store_id, customer_id, order_number, status,
+          currency, subtotal_minor, total_minor, source, updated_at
+        ) values (
+          ${expiringOrder}::uuid, ${tenantA}::uuid, ${storeA}::uuid, ${customerA}::uuid,
+          ${`RECOVERY-EXPIRY-${expiringOrder}`}, 'PENDING', 'EGP', 4500, 4500,
+          'recovery-expiry-fixture', now() - interval '2 hours'
+        )`.execute(transaction);
+    });
+    const expiring = await recovery.detect(contextA, 'recovery-expiring-detect', expiringOrder);
+    await withTenantTransaction(database, contextA, async (transaction) => {
+      await sql`update recovery.opportunities set eligible_at = now() - interval '2 hours',
+          expires_at = now() - interval '1 hour'
+        where id = ${expiring.result.opportunityId}::uuid`.execute(transaction);
+    });
+    await assert.rejects(
+      recovery.expireOpportunity(
+        contextB,
+        'recovery-cross-tenant-expiry',
+        expiring.result.opportunityId,
+      ),
+      /not found/i,
+    );
+    const expired = await recovery.expireOpportunity(
+      contextA,
+      'recovery-expiry-command',
+      expiring.result.opportunityId,
+    );
+    assert.equal(expired.result.status, 'EXPIRED');
+    assert.equal(
+      (
+        await recovery.expireOpportunity(
+          contextA,
+          'recovery-expiry-command',
+          expiring.result.opportunityId,
+        )
+      ).replayed,
+      true,
+    );
+    const expiryDetail = await recovery.get(contextA, expiring.result.opportunityId);
+    assert.ok(expiryDetail);
+    assert.equal(expiryDetail.status, 'EXPIRED');
+    assert.equal(
+      expiryDetail.timeline.filter((event) => event.eventType === 'recovery.expired').length,
+      1,
     );
   } finally {
     await databaseService.onModuleDestroy();
