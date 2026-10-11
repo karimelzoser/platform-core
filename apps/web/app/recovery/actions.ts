@@ -31,10 +31,10 @@ export async function saveRecoveryPolicy(formData: FormData): Promise<void> {
 
 export async function detectRecoveryOpportunity(formData: FormData): Promise<void> {
   const orderId = required(formData, 'orderId');
-  const result = await platformRequest<{ result?: { opportunityId?: string }; opportunityId?: string }>(
-    `/v1/recovery/detect/${encodeURIComponent(orderId)}`,
-    { method: 'POST', idempotent: true },
-  );
+  const result = await platformRequest<{
+    result?: { opportunityId?: string };
+    opportunityId?: string;
+  }>(`/v1/recovery/detect/${encodeURIComponent(orderId)}`, { method: 'POST', idempotent: true });
   if (result.kind !== 'success')
     redirect(`/recovery?message=${encodeURIComponent(apiMessage(result))}`);
   const opportunityId = result.data.result?.opportunityId ?? result.data.opportunityId;
@@ -58,15 +58,12 @@ export async function createRecoveryOffer(formData: FormData): Promise<void> {
     body.amountMinor = integer(formData, 'amountMinor');
     body.currency = required(formData, 'currency').toUpperCase();
   }
-  const result = await platformRequest(
-    `/v1/recovery/${encodeURIComponent(opportunityId)}/offers`,
-    {
-      method: 'POST',
-      idempotent: true,
-      approvalId: optional(formData, 'approvalId'),
-      body,
-    },
-  );
+  const result = await platformRequest(`/v1/recovery/${encodeURIComponent(opportunityId)}/offers`, {
+    method: 'POST',
+    idempotent: true,
+    approvalId: optional(formData, 'approvalId'),
+    body,
+  });
   redirect(
     back(opportunityId, result.kind === 'success' ? 'Recovery offer created.' : apiMessage(result)),
   );

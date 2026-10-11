@@ -29,7 +29,9 @@ test.describe('Recovery disposable development preview', () => {
     await expect(page).toHaveURL(/\/recovery\/[0-9a-f-]{36}/u);
     await expect(page.getByRole('heading', { name: 'RECOVERY-PREVIEW-1001' })).toBeVisible();
     await expect(page.getByText('WHATSAPP · OPTED_IN', { exact: false })).toBeVisible();
-    await expect(page.getByText('1 dispatchable customer conversation(s) are available.')).toBeVisible();
+    await expect(
+      page.getByText('1 dispatchable customer conversation(s) are available.'),
+    ).toBeVisible();
 
     const noAttempts = page.getByRole('heading', { name: 'No recovery attempts' });
     if (await noAttempts.isVisible()) {
@@ -39,7 +41,9 @@ test.describe('Recovery disposable development preview', () => {
         .getByLabel('Message body')
         .fill('Disposable preview recovery message through canonical Messaging.');
       await page.getByRole('button', { name: 'Queue recovery outreach' }).click();
-      await expect(page.getByRole('status')).toContainText('Recovery message queued through Messaging.');
+      await expect(page.getByRole('status')).toContainText(
+        'Recovery message queued through Messaging.',
+      );
     }
     await expect(page.getByRole('heading', { name: 'Outreach history' })).toBeVisible();
     await expect(page.getByRole('table')).toContainText('QUEUED');

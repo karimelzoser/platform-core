@@ -74,21 +74,14 @@ export default async function RecoveryPage({ searchParams }: PageProps) {
       </PageShell>
     );
   }
-  if (
-    opportunities.kind !== 'success' ||
-    policies.kind !== 'success' ||
-    stores.kind !== 'success'
-  )
+  if (opportunities.kind !== 'success' || policies.kind !== 'success' || stores.kind !== 'success')
     return null;
 
   const active = opportunities.data.filter((item) => ['ELIGIBLE', 'ACTIVE'].includes(item.status));
   const recovered = opportunities.data.filter((item) => item.status === 'RECOVERED');
   const suppressed = opportunities.data.filter((item) => item.status === 'SUPPRESSED');
   const potentialValue = active.reduce((sum, item) => sum + item.potentialValueMinor, 0);
-  const recoveredValue = recovered.reduce(
-    (sum, item) => sum + (item.recoveredValueMinor ?? 0),
-    0,
-  );
+  const recoveredValue = recovered.reduce((sum, item) => sum + (item.recoveredValueMinor ?? 0), 0);
 
   return (
     <PageShell aria-labelledby="recovery-title">
@@ -127,7 +120,10 @@ export default async function RecoveryPage({ searchParams }: PageProps) {
               </div>
               <StatusBadge tone="info">Canonical Commerce order</StatusBadge>
             </div>
-            <form action={detectRecoveryOpportunity} className="identity-form identity-form--inline">
+            <form
+              action={detectRecoveryOpportunity}
+              className="identity-form identity-form--inline"
+            >
               <div className="identity-field">
                 <label htmlFor="recovery-order-id">Draft / pending order ID</label>
                 <input
@@ -142,9 +138,9 @@ export default async function RecoveryPage({ searchParams }: PageProps) {
               </button>
             </form>
             <p className="identity-muted">
-              Detection never creates a second cart or customer. It references the canonical Commerce
-              order and CRM customer and assigns a deterministic workflow identity for durable
-              scheduling.
+              Detection never creates a second cart or customer. It references the canonical
+              Commerce order and CRM customer and assigns a deterministic workflow identity for
+              durable scheduling.
             </p>
           </Stack>
         </SurfaceCard>
@@ -165,17 +161,74 @@ export default async function RecoveryPage({ searchParams }: PageProps) {
                     id="recovery-policy-store"
                     name="storeId"
                     label="Store"
-                    options={stores.data.items.map((store) => ({ value: store.id, label: store.name }))}
+                    options={stores.data.items.map((store) => ({
+                      value: store.id,
+                      label: store.name,
+                    }))}
                   />
-                  <FieldInput id="recovery-policy-name" name="name" label="Policy name" value="Standard recovery" />
-                  <NumberField id="recovery-delay" name="abandonmentDelayMinutes" label="Abandonment delay (minutes)" value={60} min={1} />
-                  <NumberField id="recovery-ttl" name="opportunityTtlHours" label="Opportunity lifetime (hours)" value={72} min={1} />
-                  <NumberField id="recovery-attempts" name="maxAttempts" label="Maximum attempts" value={3} min={1} max={20} />
-                  <NumberField id="recovery-cooldown" name="cooldownMinutes" label="Cooldown (minutes)" value={240} min={1} />
-                  <NumberField id="recovery-attribution" name="attributionWindowHours" label="Attribution window (hours)" value={168} min={1} />
-                  <NumberField id="recovery-percent" name="maxOfferPercentBasisPoints" label="Max discount (basis points)" value={1000} min={0} max={10000} />
-                  <NumberField id="recovery-fixed" name="maxOfferAmountMinor" label="Max fixed offer (minor units)" value={0} min={0} />
-                  <FieldInput id="recovery-approval" name="approvalId" label="Approval ID" placeholder="When required by policy" />
+                  <FieldInput
+                    id="recovery-policy-name"
+                    name="name"
+                    label="Policy name"
+                    value="Standard recovery"
+                  />
+                  <NumberField
+                    id="recovery-delay"
+                    name="abandonmentDelayMinutes"
+                    label="Abandonment delay (minutes)"
+                    value={60}
+                    min={1}
+                  />
+                  <NumberField
+                    id="recovery-ttl"
+                    name="opportunityTtlHours"
+                    label="Opportunity lifetime (hours)"
+                    value={72}
+                    min={1}
+                  />
+                  <NumberField
+                    id="recovery-attempts"
+                    name="maxAttempts"
+                    label="Maximum attempts"
+                    value={3}
+                    min={1}
+                    max={20}
+                  />
+                  <NumberField
+                    id="recovery-cooldown"
+                    name="cooldownMinutes"
+                    label="Cooldown (minutes)"
+                    value={240}
+                    min={1}
+                  />
+                  <NumberField
+                    id="recovery-attribution"
+                    name="attributionWindowHours"
+                    label="Attribution window (hours)"
+                    value={168}
+                    min={1}
+                  />
+                  <NumberField
+                    id="recovery-percent"
+                    name="maxOfferPercentBasisPoints"
+                    label="Max discount (basis points)"
+                    value={1000}
+                    min={0}
+                    max={10000}
+                  />
+                  <NumberField
+                    id="recovery-fixed"
+                    name="maxOfferAmountMinor"
+                    label="Max fixed offer (minor units)"
+                    value={0}
+                    min={0}
+                  />
+                  <FieldInput
+                    id="recovery-approval"
+                    name="approvalId"
+                    label="Approval ID"
+                    placeholder="When required by policy"
+                  />
                 </div>
                 <fieldset className="identity-field">
                   <legend>Allowed outreach channels</legend>
@@ -206,7 +259,10 @@ export default async function RecoveryPage({ searchParams }: PageProps) {
             {policies.data.length ? (
               <div className="identity-role-list" aria-label="Active recovery policies">
                 {policies.data.map((policy) => (
-                  <StatusBadge key={policy.id} tone={policy.status === 'ACTIVE' ? 'success' : 'neutral'}>
+                  <StatusBadge
+                    key={policy.id}
+                    tone={policy.status === 'ACTIVE' ? 'success' : 'neutral'}
+                  >
                     {policy.name} · {policy.channels.join(' / ')}
                   </StatusBadge>
                 ))}

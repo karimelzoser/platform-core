@@ -118,7 +118,9 @@ async function main(): Promise<void> {
           'integration-fixture', now(), 'Initial suppression assertion'
         ) on conflict (tenant_id, customer_id, channel) do update set
           status = 'OPTED_OUT', source = excluded.source, captured_at = excluded.captured_at,
-          suppressed_until = null, reason = excluded.reason, updated_at = now()`.execute(transaction);
+          suppressed_until = null, reason = excluded.reason, updated_at = now()`.execute(
+        transaction,
+      );
     });
 
     const opaUrl = process.env.OPA_URL;
@@ -233,7 +235,11 @@ async function main(): Promise<void> {
       body: 'Complete your order and use RECOVER5.',
       offerId: offer.result.offerId,
     };
-    const queued = await recovery.dispatchAttempt(contextA, 'recovery-attempt-lifecycle', attemptInput);
+    const queued = await recovery.dispatchAttempt(
+      contextA,
+      'recovery-attempt-lifecycle',
+      attemptInput,
+    );
     const queuedReplay = await recovery.dispatchAttempt(
       contextA,
       'recovery-attempt-lifecycle',
@@ -282,7 +288,10 @@ async function main(): Promise<void> {
     const listedA = await recovery.list(contextA);
     const listedB = await recovery.list(contextB);
     assert.ok(listedA.some((item) => item.id === detected.result.opportunityId));
-    assert.equal(listedB.some((item) => item.id === detected.result.opportunityId), false);
+    assert.equal(
+      listedB.some((item) => item.id === detected.result.opportunityId),
+      false,
+    );
   } finally {
     await databaseService.onModuleDestroy();
   }

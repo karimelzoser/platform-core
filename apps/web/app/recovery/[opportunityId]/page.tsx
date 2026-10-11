@@ -8,11 +8,7 @@ import {
   StatusBadge,
   SurfaceCard,
 } from '../../ui-primitives';
-import {
-  createRecoveryOffer,
-  dispatchRecoveryAttempt,
-  markRecoveryAttributed,
-} from '../actions';
+import { createRecoveryOffer, dispatchRecoveryAttempt, markRecoveryAttributed } from '../actions';
 import { platformRequest } from '../platform-api';
 
 export const metadata: Metadata = { title: 'Recovery Opportunity | Platform' };
@@ -132,7 +128,10 @@ export default async function RecoveryDetailPage({ params, searchParams }: PageP
 
         <div className="ds-metric-grid">
           <MetricCard label="Status" value={detail.status} />
-          <MetricCard label="Potential value" value={`${formatMoney(detail.potentialValueMinor)} ${detail.currency}`} />
+          <MetricCard
+            label="Potential value"
+            value={`${formatMoney(detail.potentialValueMinor)} ${detail.currency}`}
+          />
           <MetricCard label="Attempts" value={detail.attempts.length} />
           <MetricCard label="Consent-ready channels" value={eligiblePreferenceCount} />
         </div>
@@ -149,7 +148,9 @@ export default async function RecoveryDetailPage({ params, searchParams }: PageP
             <dl className="order-detail-list">
               <div>
                 <dt>Source order</dt>
-                <dd>{detail.orderNumber} · {detail.sourceOrderStatus}</dd>
+                <dd>
+                  {detail.orderNumber} · {detail.sourceOrderStatus}
+                </dd>
               </div>
               <div>
                 <dt>Eligible</dt>
@@ -161,11 +162,16 @@ export default async function RecoveryDetailPage({ params, searchParams }: PageP
               </div>
               <div>
                 <dt>Workflow identity</dt>
-                <dd><code>{detail.temporalWorkflowId}</code></dd>
+                <dd>
+                  <code>{detail.temporalWorkflowId}</code>
+                </dd>
               </div>
               <div>
                 <dt>Suppression</dt>
-                <dd>{detail.suppressionCode ?? 'None'}{detail.suppressionReason ? ` · ${detail.suppressionReason}` : ''}</dd>
+                <dd>
+                  {detail.suppressionCode ?? 'None'}
+                  {detail.suppressionReason ? ` · ${detail.suppressionReason}` : ''}
+                </dd>
               </div>
               <div>
                 <dt>Recovered order</dt>
@@ -189,7 +195,11 @@ export default async function RecoveryDetailPage({ params, searchParams }: PageP
                 {detail.preferences.map((preference) => (
                   <StatusBadge
                     key={preference.channel}
-                    tone={preference.status === 'OPTED_IN' && !preference.suppressedUntil ? 'success' : 'warning'}
+                    tone={
+                      preference.status === 'OPTED_IN' && !preference.suppressedUntil
+                        ? 'success'
+                        : 'warning'
+                    }
                   >
                     {preference.channel} · {preference.status}
                     {preference.suppressedUntil ? ' · temporarily suppressed' : ''}
@@ -225,7 +235,9 @@ export default async function RecoveryDetailPage({ params, searchParams }: PageP
               <StatusBadge tone="warning">High-risk change</StatusBadge>
             </div>
             <p className="identity-muted">
-              This records recovery offer terms and a code snapshot. It does not claim to provision a provider coupon; production connector/configuration work owns provider-side materialization.
+              This records recovery offer terms and a code snapshot. It does not claim to provision
+              a provider coupon; production connector/configuration work owns provider-side
+              materialization.
             </p>
             <form action={createRecoveryOffer} className="identity-form">
               <input type="hidden" name="opportunityId" value={detail.id} />
@@ -238,15 +250,45 @@ export default async function RecoveryDetailPage({ params, searchParams }: PageP
                     <option value="FREE_SHIPPING">Free shipping</option>
                   </select>
                 </div>
-                <NumberField id="recovery-offer-percent" name="percentBasisPoints" label="Percent basis points" value={500} />
-                <NumberField id="recovery-offer-amount" name="amountMinor" label="Fixed amount (minor units)" value={100} />
-                <TextField id="recovery-offer-currency" name="currency" label="Currency" value={detail.currency} />
-                <TextField id="recovery-offer-code" name="code" label="Code snapshot" value="RECOVER5" />
+                <NumberField
+                  id="recovery-offer-percent"
+                  name="percentBasisPoints"
+                  label="Percent basis points"
+                  value={500}
+                />
+                <NumberField
+                  id="recovery-offer-amount"
+                  name="amountMinor"
+                  label="Fixed amount (minor units)"
+                  value={100}
+                />
+                <TextField
+                  id="recovery-offer-currency"
+                  name="currency"
+                  label="Currency"
+                  value={detail.currency}
+                />
+                <TextField
+                  id="recovery-offer-code"
+                  name="code"
+                  label="Code snapshot"
+                  value="RECOVER5"
+                />
                 <div className="identity-field">
                   <label htmlFor="recovery-offer-expiry">Expires at</label>
-                  <input id="recovery-offer-expiry" name="expiresAt" type="datetime-local" required />
+                  <input
+                    id="recovery-offer-expiry"
+                    name="expiresAt"
+                    type="datetime-local"
+                    required
+                  />
                 </div>
-                <TextField id="recovery-offer-approval" name="approvalId" label="Approval ID" placeholder="When required by policy" />
+                <TextField
+                  id="recovery-offer-approval"
+                  name="approvalId"
+                  label="Approval ID"
+                  placeholder="When required by policy"
+                />
               </div>
               <button className="ds-button ds-button--secondary" type="submit">
                 Create offer
@@ -254,7 +296,8 @@ export default async function RecoveryDetailPage({ params, searchParams }: PageP
             </form>
             {activeOffer ? (
               <p className="identity-muted">
-                Active offer: {activeOffer.type} {activeOffer.code ? `· ${activeOffer.code}` : ''} · expires {formatDate(activeOffer.expiresAt)}
+                Active offer: {activeOffer.type} {activeOffer.code ? `· ${activeOffer.code}` : ''} ·
+                expires {formatDate(activeOffer.expiresAt)}
               </p>
             ) : null}
           </Stack>
@@ -275,8 +318,15 @@ export default async function RecoveryDetailPage({ params, searchParams }: PageP
                 <div className="identity-form-grid">
                   <div className="identity-field">
                     <label htmlFor="recovery-conversation">Conversation</label>
-                    <select id="recovery-conversation" name="conversationId" required defaultValue="">
-                      <option value="" disabled>Select conversation</option>
+                    <select
+                      id="recovery-conversation"
+                      name="conversationId"
+                      required
+                      defaultValue=""
+                    >
+                      <option value="" disabled>
+                        Select conversation
+                      </option>
                       {detail.conversations.map((conversation) => (
                         <option key={conversation.id} value={conversation.id}>
                           {conversation.channel} · {shortId(conversation.id)}
@@ -286,19 +336,36 @@ export default async function RecoveryDetailPage({ params, searchParams }: PageP
                   </div>
                   <div className="identity-field">
                     <label htmlFor="recovery-channel">Channel</label>
-                    <select id="recovery-channel" name="channel" required defaultValue={detail.conversations[0]?.channel ?? 'EMAIL'}>
-                      {Array.from(new Set(detail.conversations.map((conversation) => conversation.channel))).map((channel) => (
-                        <option key={channel} value={channel}>{channel}</option>
+                    <select
+                      id="recovery-channel"
+                      name="channel"
+                      required
+                      defaultValue={detail.conversations[0]?.channel ?? 'EMAIL'}
+                    >
+                      {Array.from(
+                        new Set(detail.conversations.map((conversation) => conversation.channel)),
+                      ).map((channel) => (
+                        <option key={channel} value={channel}>
+                          {channel}
+                        </option>
                       ))}
                     </select>
                   </div>
                   <div className="identity-field">
                     <label htmlFor="recovery-offer-id">Offer</label>
-                    <select id="recovery-offer-id" name="offerId" defaultValue={activeOffer?.id ?? ''}>
+                    <select
+                      id="recovery-offer-id"
+                      name="offerId"
+                      defaultValue={activeOffer?.id ?? ''}
+                    >
                       <option value="">No offer</option>
-                      {detail.offers.filter((offer) => offer.status === 'ACTIVE').map((offer) => (
-                        <option key={offer.id} value={offer.id}>{offer.type} {offer.code ?? ''}</option>
-                      ))}
+                      {detail.offers
+                        .filter((offer) => offer.status === 'ACTIVE')
+                        .map((offer) => (
+                          <option key={offer.id} value={offer.id}>
+                            {offer.type} {offer.code ?? ''}
+                          </option>
+                        ))}
                     </select>
                   </div>
                 </div>
@@ -345,7 +412,9 @@ export default async function RecoveryDetailPage({ params, searchParams }: PageP
               </button>
             </form>
             <p className="identity-muted">
-              Same-order conversion and distinct recovered orders are supported. Attribution still requires the same tenant, store, customer, currency, a dispatched attempt, and the policy attribution window.
+              Same-order conversion and distinct recovered orders are supported. Attribution still
+              requires the same tenant, store, customer, currency, a dispatched attempt, and the
+              policy attribution window.
             </p>
           </Stack>
         </SurfaceCard>
@@ -362,22 +431,41 @@ export default async function RecoveryDetailPage({ params, searchParams }: PageP
             {detail.attempts.length ? (
               <div className="identity-table-wrap">
                 <table className="identity-table">
-                  <thead><tr><th>#</th><th>Channel</th><th>Status</th><th>Queued</th><th>Message</th></tr></thead>
+                  <thead>
+                    <tr>
+                      <th>#</th>
+                      <th>Channel</th>
+                      <th>Status</th>
+                      <th>Queued</th>
+                      <th>Message</th>
+                    </tr>
+                  </thead>
                   <tbody>
                     {detail.attempts.map((attempt) => (
                       <tr key={attempt.id}>
                         <td data-label="#">{attempt.sequence}</td>
                         <td data-label="Channel">{attempt.channel}</td>
-                        <td data-label="Status"><StatusBadge tone={statusTone(attempt.status)}>{attempt.status}</StatusBadge></td>
-                        <td data-label="Queued">{attempt.queuedAt ? formatDate(attempt.queuedAt) : '—'}</td>
-                        <td data-label="Message"><code>{attempt.messageId ? shortId(attempt.messageId) : '—'}</code></td>
+                        <td data-label="Status">
+                          <StatusBadge tone={statusTone(attempt.status)}>
+                            {attempt.status}
+                          </StatusBadge>
+                        </td>
+                        <td data-label="Queued">
+                          {attempt.queuedAt ? formatDate(attempt.queuedAt) : '—'}
+                        </td>
+                        <td data-label="Message">
+                          <code>{attempt.messageId ? shortId(attempt.messageId) : '—'}</code>
+                        </td>
                       </tr>
                     ))}
                   </tbody>
                 </table>
               </div>
             ) : (
-              <EmptyState title="No recovery attempts" description="Consent and channel policy are evaluated before the first message can be reserved." />
+              <EmptyState
+                title="No recovery attempts"
+                description="Consent and channel policy are evaluated before the first message can be reserved."
+              />
             )}
           </Stack>
         </SurfaceCard>
@@ -385,7 +473,10 @@ export default async function RecoveryDetailPage({ params, searchParams }: PageP
         <SurfaceCard>
           <Stack>
             <div className="identity-section-heading">
-              <div><p className="ds-eyebrow">TIMELINE</p><h2>Recovery evidence</h2></div>
+              <div>
+                <p className="ds-eyebrow">TIMELINE</p>
+                <h2>Recovery evidence</h2>
+              </div>
               <StatusBadge tone="neutral">Append-only</StatusBadge>
             </div>
             <ol className="detail-list">
@@ -403,12 +494,44 @@ export default async function RecoveryDetailPage({ params, searchParams }: PageP
   );
 }
 
-function TextField({ id, name, label, value, placeholder }: { id: string; name: string; label: string; value?: string; placeholder?: string }) {
-  return <div className="identity-field"><label htmlFor={id}>{label}</label><input id={id} name={name} defaultValue={value} placeholder={placeholder} /></div>;
+function TextField({
+  id,
+  name,
+  label,
+  value,
+  placeholder,
+}: {
+  id: string;
+  name: string;
+  label: string;
+  value?: string;
+  placeholder?: string;
+}) {
+  return (
+    <div className="identity-field">
+      <label htmlFor={id}>{label}</label>
+      <input id={id} name={name} defaultValue={value} placeholder={placeholder} />
+    </div>
+  );
 }
 
-function NumberField({ id, name, label, value }: { id: string; name: string; label: string; value: number }) {
-  return <div className="identity-field"><label htmlFor={id}>{label}</label><input id={id} name={name} type="number" min="0" defaultValue={value} /></div>;
+function NumberField({
+  id,
+  name,
+  label,
+  value,
+}: {
+  id: string;
+  name: string;
+  label: string;
+  value: number;
+}) {
+  return (
+    <div className="identity-field">
+      <label htmlFor={id}>{label}</label>
+      <input id={id} name={name} type="number" min="0" defaultValue={value} />
+    </div>
+  );
 }
 
 function failureMessage(result: { kind: string; detail?: string }) {

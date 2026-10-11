@@ -32,7 +32,10 @@ const offerInputSchema = z.object({
   offerType: z.enum(['PERCENT', 'FIXED', 'FREE_SHIPPING']),
   percentBasisPoints: z.number().int().min(1).max(10_000).optional(),
   amountMinor: z.number().int().positive().max(Number.MAX_SAFE_INTEGER).optional(),
-  currency: z.string().regex(/^[A-Z]{3}$/u).optional(),
+  currency: z
+    .string()
+    .regex(/^[A-Z]{3}$/u)
+    .optional(),
   code: z.string().trim().min(1).max(200).optional(),
   expiresAt: z.coerce.date(),
 });
@@ -182,7 +185,11 @@ export class RecoveryService {
     const id = uuidSchema.parse(opportunityId);
     return withTenantTransaction(this.database, context, async (transaction) => {
       const opportunityResult = await sql<
-        OpportunityRow & { order_number: string; source_order_status: string; customer_name: string }
+        OpportunityRow & {
+          order_number: string;
+          source_order_status: string;
+          customer_name: string;
+        }
       >`select opportunity.id, opportunity.store_id, opportunity.source_order_id,
           opportunity.customer_id, opportunity.policy_id, opportunity.status,
           opportunity.potential_value_minor::text, opportunity.currency,
@@ -464,11 +471,19 @@ export class RecoveryService {
               ${workflowId}
             ) returning id`.execute(transaction);
           const opportunityId = inserted.rows[0]?.id;
-          if (!opportunityId) throw new RecoveryInvariantError('Recovery opportunity was not created');
-          await this.timeline(transaction, context, row.store_id, opportunityId, 'recovery.detected', {
-            sourceOrderId,
-            workflowId,
-          });
+          if (!opportunityId)
+            throw new RecoveryInvariantError('Recovery opportunity was not created');
+          await this.timeline(
+            transaction,
+            context,
+            row.store_id,
+            opportunityId,
+            'recovery.detected',
+            {
+              sourceOrderId,
+              workflowId,
+            },
+          );
           return { opportunityId, status: 'ELIGIBLE' as const, workflowId };
         },
       },
@@ -497,10 +512,7 @@ export class RecoveryService {
         },
         audit: { afterState: (_input, result) => result },
         execute: async (transaction) => {
-          const opportunity = await this.lockOpportunity(
-            transaction,
-            validated.opportunityId,
-          );
+          const opportunity = await this.lockOpportunity(transaction, validated.opportunityId);
           if (!['ELIGIBLE', 'ACTIVE'].includes(opportunity.status))
             throw new RecoveryInvariantError('Recovery opportunity cannot accept an offer');
           if (validated.expiresAt <= new Date())
@@ -519,10 +531,14 @@ export class RecoveryService {
             if (validated.amountMinor > Number(policy.max_offer_amount_minor))
               throw new RecoveryInvariantError('Fixed recovery offer exceeds policy limit');
             if (validated.currency !== opportunity.currency)
-              throw new RecoveryInvariantError('Recovery offer currency must match the source order');
+              throw new RecoveryInvariantError(
+                'Recovery offer currency must match the source order',
+              );
           }
           await sql`update recovery.offers set status = 'CANCELLED', updated_at = now()
-            where opportunity_id = ${opportunity.id}::uuid and status = 'ACTIVE'`.execute(transaction);
+            where opportunity_id = ${opportunity.id}::uuid and status = 'ACTIVE'`.execute(
+            transaction,
+          );
           await sql`insert into recovery.offers (
               id, tenant_id, store_id, opportunity_id, offer_type, percent_basis_points,
               amount_minor, currency, code, status, expires_at
@@ -533,10 +549,17 @@ export class RecoveryService {
               ${validated.currency ?? null}, ${validated.code ?? null}, 'ACTIVE',
               ${validated.expiresAt}
             )`.execute(transaction);
-          await this.timeline(transaction, context, opportunity.store_id, opportunity.id, 'recovery.offer_created', {
-            offerId,
-            offerType: validated.offerType,
-          });
+          await this.timeline(
+            transaction,
+            context,
+            opportunity.store_id,
+            opportunity.id,
+            'recovery.offer_created',
+            {
+              offerId,
+              offerType: validated.offerType,
+            },
+          );
           return { offerId, status: 'ACTIVE' as const };
         },
       },
@@ -555,11 +578,7 @@ export class RecoveryService {
     input: RecoveryAttemptInput,
   ): Promise<{ attemptId: string; messageId: string; status: 'QUEUED' }> {
     const validated = attemptInputSchema.parse(input);
-    const reserved = await this.reserveAttempt(
-      context,
-      `${idempotencyKey}:reserve`,
-      validated,
-    );
+    const reserved = await this.reserveAttempt(context, `${idempotencyKey}:reserve`, validated);
     try {
       const message = await this.messaging.send(
         context,
@@ -589,7 +608,9 @@ export class RecoveryService {
     context: TenantRequestContext,
     idempotencyKey: string,
     input: MarkRecoveredInput,
-  ): Promise<CommandResult<{ opportunityId: string; recoveredOrderId: string; recoveredValueMinor: number }>> {
+  ): Promise<
+    CommandResult<{ opportunityId: string; recoveredOrderId: string; recoveredValueMinor: number }>
+  > {
     const validated = recoveryInputSchema.parse(input);
     return this.commands.execute(
       {
@@ -637,8 +658,13 @@ export class RecoveryService {
           );
           const recovered = order.rows[0];
           if (!recovered) throw new RecoveryInvariantError('Recovered order was not found');
-          if (recovered.store_id !== opportunity.store_id || recovered.customer_id !== opportunity.customer_id)
-            throw new RecoveryInvariantError('Recovered order must match the source store and customer');
+          if (
+            recovered.store_id !== opportunity.store_id ||
+            recovered.customer_id !== opportunity.customer_id
+          )
+            throw new RecoveryInvariantError(
+              'Recovered order must match the source store and customer',
+            );
           if (!['CONFIRMED', 'CLOSED'].includes(recovered.status))
             throw new RecoveryInvariantError('Recovered order must be confirmed or closed');
           if (recovered.currency !== opportunity.currency)
@@ -664,11 +690,18 @@ export class RecoveryService {
             where opportunity_id = ${opportunity.id}::uuid and status = 'ACTIVE'
               and id = (select offer_id from recovery.attempts where id = ${attributedAttempt.id}::uuid)
           `.execute(transaction);
-          await this.timeline(transaction, context, opportunity.store_id, opportunity.id, 'recovery.recovered', {
-            recoveredOrderId: recovered.id,
-            recoveredValueMinor,
-            attributedAttemptId: attributedAttempt.id,
-          });
+          await this.timeline(
+            transaction,
+            context,
+            opportunity.store_id,
+            opportunity.id,
+            'recovery.recovered',
+            {
+              recoveredOrderId: recovered.id,
+              recoveredValueMinor,
+              attributedAttemptId: attributedAttempt.id,
+            },
+          );
           return {
             opportunityId: opportunity.id,
             recoveredOrderId: recovered.id,
@@ -770,9 +803,13 @@ export class RecoveryService {
           );
           const preferenceRow = preference.rows[0];
           if (!preferenceRow || preferenceRow.status !== 'OPTED_IN')
-            throw new RecoveryInvariantError('Verified customer opt-in is required for recovery outreach');
+            throw new RecoveryInvariantError(
+              'Verified customer opt-in is required for recovery outreach',
+            );
           if (preferenceRow.suppressed_until && preferenceRow.suppressed_until > now)
-            throw new RecoveryInvariantError('Customer recovery outreach is temporarily suppressed');
+            throw new RecoveryInvariantError(
+              'Customer recovery outreach is temporarily suppressed',
+            );
           const conversation = await sql<{ id: string; channel: string }>`
             select id, channel from messaging.conversations
             where id = ${validated.conversationId}::uuid
@@ -789,7 +826,8 @@ export class RecoveryService {
               where id = ${validated.offerId}::uuid
                 and opportunity_id = ${opportunity.id}::uuid
                 and status = 'ACTIVE' and expires_at > now() for share`.execute(transaction);
-            if (!offer.rows[0]) throw new RecoveryInvariantError('Active recovery offer was not found');
+            if (!offer.rows[0])
+              throw new RecoveryInvariantError('Active recovery offer was not found');
           }
           const sequence = attemptCount + 1;
           await sql`insert into recovery.attempts (
@@ -804,11 +842,18 @@ export class RecoveryService {
           await sql`update recovery.opportunities set status = 'ACTIVE',
               suppression_code = null, suppression_reason = null, updated_at = now()
             where id = ${opportunity.id}::uuid`.execute(transaction);
-          await this.timeline(transaction, context, opportunity.store_id, opportunity.id, 'recovery.attempt_reserved', {
-            attemptId,
-            sequence,
-            channel: validated.channel,
-          });
+          await this.timeline(
+            transaction,
+            context,
+            opportunity.store_id,
+            opportunity.id,
+            'recovery.attempt_reserved',
+            {
+              attemptId,
+              sequence,
+              channel: validated.channel,
+            },
+          );
           return { attemptId, conversationId: validated.conversationId, body: validated.body };
         },
       },
@@ -848,10 +893,17 @@ export class RecoveryService {
           `.execute(transaction);
           const row = attempt.rows[0];
           if (!row) throw new RecoveryInvariantError('Reserved recovery attempt was not found');
-          await this.timeline(transaction, context, row.store_id, row.opportunity_id, 'recovery.attempt_queued', {
-            attemptId,
-            messageId,
-          });
+          await this.timeline(
+            transaction,
+            context,
+            row.store_id,
+            row.opportunity_id,
+            'recovery.attempt_queued',
+            {
+              attemptId,
+              messageId,
+            },
+          );
           return { attemptId, messageId, status: 'QUEUED' as const };
         },
       },
@@ -903,10 +955,7 @@ export class RecoveryService {
     return row;
   }
 
-  private async policyById(
-    transaction: PlatformTransaction,
-    policyId: string,
-  ): Promise<PolicyRow> {
+  private async policyById(transaction: PlatformTransaction, policyId: string): Promise<PolicyRow> {
     const result = await sql<PolicyRow>`select id, store_id, name, status,
         abandonment_delay_minutes, opportunity_ttl_hours, max_attempts,
         cooldown_minutes, attribution_window_hours, channels,

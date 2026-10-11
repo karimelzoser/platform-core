@@ -137,11 +137,10 @@ export class RecoveryController {
     this.require(context.permissions, 'messaging.conversations.reply');
     const input = parseJsonObject(body, 'Recovery attempt body');
     return this.execute(() =>
-      this.recovery.dispatchAttempt(
-        context,
-        requireIdempotency(idempotencyKey),
-        { ...input, opportunityId } as RecoveryAttemptInput,
-      ),
+      this.recovery.dispatchAttempt(context, requireIdempotency(idempotencyKey), {
+        ...input,
+        opportunityId,
+      } as RecoveryAttemptInput),
     );
   }
 
@@ -158,11 +157,10 @@ export class RecoveryController {
     this.require(context.permissions, 'recovery.execute');
     const input = parseJsonObject(body, 'Recovery attribution body');
     return this.execute(() =>
-      this.recovery.markRecovered(
-        context,
-        requireIdempotency(idempotencyKey),
-        { ...input, opportunityId } as MarkRecoveredInput,
-      ),
+      this.recovery.markRecovered(context, requireIdempotency(idempotencyKey), {
+        ...input,
+        opportunityId,
+      } as MarkRecoveredInput),
     );
   }
 
@@ -175,9 +173,7 @@ export class RecoveryController {
   ) {
     const context = await this.context(authorization, tenantId, correlationId);
     this.require(context.permissions, 'recovery.execute');
-    return this.execute(() =>
-      this.recovery.expireDue(context, requireIdempotency(idempotencyKey)),
-    );
+    return this.execute(() => this.recovery.expireDue(context, requireIdempotency(idempotencyKey)));
   }
 
   private async context(
