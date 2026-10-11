@@ -20,6 +20,10 @@ export PLATFORM_ADMIN_DATABASE_URL="postgresql://postgres:${POSTGRES_ADMIN_PASSW
 export PLATFORM_MIGRATOR_DATABASE_URL="postgresql://platform_migrator:${PLATFORM_MIGRATOR_PASSWORD}@${POSTGRES_HOST}:5432/platform"
 export DATABASE_URL="postgresql://platform_app:${PLATFORM_APP_PASSWORD}@${POSTGRES_HOST}:5432/platform"
 export NATS_URL="nats://${NATS_HOST}:4222"
+if [ -n "${TEMPORAL_HOST:-}" ]; then
+  export TEMPORAL_ADDRESS="${TEMPORAL_ADDRESS:-${TEMPORAL_HOST}:7233}"
+fi
+export TEMPORAL_NAMESPACE="${TEMPORAL_NAMESPACE:-platform}"
 export OPA_URL="http://127.0.0.1:8181"
 export API_INTERNAL_URL="http://127.0.0.1:3001"
 export API_PORT="3001"
@@ -92,5 +96,7 @@ pids+=("$!")
   exec node node_modules/next/dist/bin/next start --hostname 0.0.0.0 --port "${PORT:-3000}"
 ) &
 pids+=("$!")
+
+node scripts/preview/seed-recovery-consent.mjs
 
 wait -n "${pids[@]}"

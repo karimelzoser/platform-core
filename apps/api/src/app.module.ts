@@ -28,6 +28,8 @@ import { IdentityController } from './identity.controller.js';
 import { IdentityService } from './identity.service.js';
 import { OnboardingController } from './onboarding.controller.js';
 import { OnboardingService } from './onboarding.service.js';
+import { RecoveryController } from './recovery.controller.js';
+import { RecoveryService } from './recovery.service.js';
 import { ReturnsController } from './returns.controller.js';
 import { ReturnsService } from './returns.service.js';
 import { SessionController } from './session.controller.js';
@@ -88,6 +90,7 @@ function createRuntimeConnectorRegistry(): ConnectorRegistry {
     ShippingController,
     ShippingRoutingController,
     ReturnsController,
+    RecoveryController,
   ],
   providers: [
     ApiDatabaseService,
@@ -147,6 +150,15 @@ function createRuntimeConnectorRegistry(): ConnectorRegistry {
       useFactory: (database: ApiDatabaseService, commands: CommandExecutor) =>
         new ReturnsService(database.database, commands),
       inject: [ApiDatabaseService, CommandExecutor],
+    },
+    {
+      provide: RecoveryService,
+      useFactory: (
+        database: ApiDatabaseService,
+        commands: CommandExecutor,
+        messaging: MessagingService,
+      ) => new RecoveryService(database.database, commands, messaging),
+      inject: [ApiDatabaseService, CommandExecutor, MessagingService],
     },
     {
       provide: LocalMediaStore,

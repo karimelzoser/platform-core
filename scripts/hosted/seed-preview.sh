@@ -21,5 +21,6 @@ run_embedded_sql scripts/preview/seed-integration-fixtures.sh
 run_embedded_sql scripts/preview/seed-shipping-fixtures.sh
 run_embedded_sql scripts/preview/seed-shipping-routing-fixtures.sh
 run_embedded_sql scripts/preview/seed-returns-fixtures.sh
+run_embedded_sql scripts/preview/seed-recovery-fixtures.sh
 
 printf '%s\n' 'PRENEURA hosted preview fixtures verified.'

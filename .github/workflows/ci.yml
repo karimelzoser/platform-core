@@ -47,6 +47,11 @@ jobs:
       - name: Verify Temporal restart durability
         run: scripts/integration/test-temporal-durability.sh
       - run: pnpm --filter @platform/api... --filter @platform/worker... --filter @platform/commerce... build
+      - name: Verify registered Recovery Temporal workflow
+        env:
+          TEMPORAL_ADDRESS: 127.0.0.1:7233
+          TEMPORAL_NAMESPACE: platform
+        run: pnpm --filter @platform/integration-tests exec tsx integration/recovery-workflow.ts
       - name: Verify two-tenant application lifecycles
         env:
           DATABASE_URL: postgres://platform_app:platform-test-app-password@127.0.0.1:5432/platform

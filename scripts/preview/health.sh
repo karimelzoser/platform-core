@@ -13,6 +13,7 @@ wait_for() {
   return 1
 }
 wait_for API http://localhost:4000/health
+wait_for Worker http://localhost:3002/health
 wait_for AI-gateway http://localhost:8000/health
 wait_for Web http://localhost:3000
 wait_for Admin http://localhost:3001

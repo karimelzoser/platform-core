@@ -14,7 +14,7 @@
     "test": "corepack pnpm -r --if-present test",
     "format:check": "prettier --check .",
     "migration:verify": "tsx scripts/verify-migrations.ts",
-    "security:dependencies": "node --test scripts/security/braces-regression.test.mjs && corepack pnpm audit --audit-level high",
+    "security:dependencies": "node --test scripts/security/*.test.mjs && corepack pnpm audit --audit-level high",
     "preview:up": "sh scripts/preview/up.sh",
     "preview:down": "sh scripts/preview/down.sh",
     "preview:reset": "sh scripts/preview/reset.sh",
@@ -37,6 +37,7 @@
   },
   "pnpm": {
     "onlyBuiltDependencies": [
+      "@swc/core",
       "esbuild",
       "protobufjs"
     ],
