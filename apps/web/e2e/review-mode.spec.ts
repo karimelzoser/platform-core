@@ -51,13 +51,30 @@ test.describe('backend-independent PRENEURA product review', () => {
       const response = await page.goto(`/review/${surface}`);
       expect(response?.ok(), `${surface} review route should answer successfully`).toBe(true);
       await expect(page.getByText('Safe product-review environment')).toBeVisible();
-      await expect(page.getByText('Review mode', { exact: true })).toBeVisible();
+      await expect(page.getByText('Review mode', { exact: true }).first()).toBeVisible();
       await expect(page.locator('.ds-metric')).toHaveCount(4);
       await expect(page.locator('.preview-lane')).toHaveCount(3);
       await expect(page.locator('.preview-table tbody tr')).toHaveCount(3);
     }
 
     expect(consoleErrors, `Unexpected browser errors:\n${consoleErrors.join('\n')}`).toEqual([]);
+  });
+
+  test('supports keyboard skip navigation and catalog command search', async ({ page }) => {
+    await page.goto('/');
+    await page.keyboard.press('Tab');
+    await expect(page.getByRole('link', { name: 'Skip to main content' })).toBeFocused();
+    await page.keyboard.press('Enter');
+    await expect(page.locator('#main-content')).toBeFocused();
+
+    await page.keyboard.press('Control+k');
+    await expect(page.getByRole('heading', { name: 'Find a workspace' })).toBeVisible();
+    const commandSearch = page.getByPlaceholder('Module, route, group…');
+    await commandSearch.fill('billing');
+    await expect(page.getByRole('option')).toHaveCount(1);
+    await page.keyboard.press('Enter');
+    await expect(page).toHaveURL(/\/review\/billing$/);
+    await expect(page.getByRole('heading', { name: 'Billing & usage' })).toBeVisible();
   });
 
   test('supports local interaction, empty states, mobile layout and Arabic RTL', async ({
