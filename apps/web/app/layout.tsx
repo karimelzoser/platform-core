@@ -1,10 +1,11 @@
 import type { Metadata } from 'next';
-import { DisplayLocaleProvider } from './display-locale';
+import { DisplayLocaleProvider, LocalizedText } from './display-locale';
 import { PlatformNavigation } from './platform-navigation';
 import './styles.css';
 import './design-system.css';
 import './platform-navigation.css';
 import './preview-interactions.css';
+import './global-states.css';
 
 export const metadata: Metadata = {
   title: 'PRENEURA Platform',
@@ -16,8 +17,13 @@ export default function RootLayout({ children }: Readonly<{ children: React.Reac
     <html lang="en" dir="ltr">
       <body>
         <DisplayLocaleProvider>
+          <a className="skip-link" href="#main-content">
+            <LocalizedText en="Skip to main content" ar="تخطَّ إلى المحتوى الرئيسي" />
+          </a>
           <PlatformNavigation />
-          {children}
+          <div id="main-content" tabIndex={-1}>
+            {children}
+          </div>
         </DisplayLocaleProvider>
       </body>
     </html>
