@@ -29,6 +29,7 @@ const secondaryLinks = [
 export function PlatformNavigation() {
   const pathname = usePathname();
   const { locale, setLocale } = useDisplayLocale();
+  const reviewMode = pathname === '/' || pathname.startsWith('/review/');
   if (pathname === '/preview-login' || pathname.startsWith('/health')) return null;
 
   return (
@@ -41,33 +42,43 @@ export function PlatformNavigation() {
           <span>
             <strong>PRENEURA</strong>
             <small>
-              <LocalizedText en="Platform" ar="المنصة" />
+              {reviewMode ? (
+                <LocalizedText en="Review mode" ar="وضع المراجعة" />
+              ) : (
+                <LocalizedText en="Platform" ar="المنصة" />
+              )}
             </small>
           </span>
         </Link>
         <nav className="platform-chrome__nav" aria-label="Platform modules">
-          {links.map(([href, en, ar]) => (
-            <Link
-              className="platform-chrome__link"
-              data-active={isActive(pathname, href)}
-              href={href}
-              key={href}
-            >
-              <LocalizedText en={en} ar={ar} />
-            </Link>
-          ))}
+          {links.map(([href, en, ar]) => {
+            const target = navigationHref(href, reviewMode);
+            return (
+              <Link
+                className="platform-chrome__link"
+                data-active={isActive(pathname, target)}
+                href={target}
+                key={href}
+              >
+                <LocalizedText en={en} ar={ar} />
+              </Link>
+            );
+          })}
         </nav>
         <nav className="platform-chrome__utilities" aria-label="Platform administration">
-          {secondaryLinks.map(([href, en, ar]) => (
-            <Link
-              className="platform-chrome__utility"
-              data-active={isActive(pathname, href)}
-              href={href}
-              key={href}
-            >
-              <LocalizedText en={en} ar={ar} />
-            </Link>
-          ))}
+          {secondaryLinks.map(([href, en, ar]) => {
+            const target = navigationHref(href, reviewMode);
+            return (
+              <Link
+                className="platform-chrome__utility"
+                data-active={isActive(pathname, target)}
+                href={target}
+                key={href}
+              >
+                <LocalizedText en={en} ar={ar} />
+              </Link>
+            );
+          })}
         </nav>
         <div className="platform-chrome__locale" aria-label="Display language and direction">
           <button
@@ -92,6 +103,11 @@ export function PlatformNavigation() {
       </div>
     </div>
   );
+}
+
+function navigationHref(href: string, reviewMode: boolean): string {
+  if (href === '/') return '/';
+  return reviewMode ? `/review${href}` : href;
 }
 
 function isActive(pathname: string, href: string): boolean {
