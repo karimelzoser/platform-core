@@ -105,7 +105,8 @@ export default async function SalesPage({ searchParams }: PageProps) {
     0,
   );
   const weightedValueMinor = openOpportunities.reduce(
-    (sum, item) => sum + Math.round((Number(item.expectedValueMinor) * item.probabilityBps) / 10000),
+    (sum, item) =>
+      sum + Math.round((Number(item.expectedValueMinor) * item.probabilityBps) / 10000),
     0,
   );
 
@@ -185,8 +186,8 @@ export default async function SalesPage({ searchParams }: PageProps) {
               </button>
             </form>
             <p className="identity-muted">
-              Create or resolve the customer in Customer 360 first. Sales stores only the tenant-safe
-              customer reference and commercial lifecycle state.
+              Create or resolve the customer in Customer 360 first. Sales stores only the
+              tenant-safe customer reference and commercial lifecycle state.
             </p>
             {dashboard.leads.length ? (
               <div className="identity-member-grid">
@@ -204,7 +205,10 @@ export default async function SalesPage({ searchParams }: PageProps) {
                       <StatusBadge tone="info">{lead.qualificationGrade}</StatusBadge>
                     </div>
                     {lead.status !== 'CONVERTED' ? (
-                      <form action={qualifySalesLead} className="identity-form identity-form--compact">
+                      <form
+                        action={qualifySalesLead}
+                        className="identity-form identity-form--compact"
+                      >
                         <input type="hidden" name="leadId" value={lead.id} />
                         <div className="identity-form-grid">
                           <div className="identity-field">
@@ -234,7 +238,11 @@ export default async function SalesPage({ searchParams }: PageProps) {
                           </div>
                           <div className="identity-field">
                             <label htmlFor={`sales-lead-status-${lead.id}`}>Qualification</label>
-                            <select id={`sales-lead-status-${lead.id}`} name="status" defaultValue="QUALIFIED">
+                            <select
+                              id={`sales-lead-status-${lead.id}`}
+                              name="status"
+                              defaultValue="QUALIFIED"
+                            >
                               <option value="QUALIFYING">Qualifying</option>
                               <option value="QUALIFIED">Qualified</option>
                               <option value="DISQUALIFIED">Disqualified</option>
@@ -246,7 +254,9 @@ export default async function SalesPage({ searchParams }: PageProps) {
                           <textarea id={`sales-lead-notes-${lead.id}`} name="notes" rows={2} />
                         </div>
                         <div className="identity-field">
-                          <label htmlFor={`sales-lead-reason-${lead.id}`}>Disqualification reason</label>
+                          <label htmlFor={`sales-lead-reason-${lead.id}`}>
+                            Disqualification reason
+                          </label>
                           <input id={`sales-lead-reason-${lead.id}`} name="reason" />
                         </div>
                         <button className="ds-button ds-button--secondary" type="submit">
@@ -280,12 +290,17 @@ export default async function SalesPage({ searchParams }: PageProps) {
             {openStageOptions(dashboard).length ? (
               <form action={createSalesOpportunity} className="identity-form">
                 <div className="identity-form-grid">
-                  <Field name="customerId" label="CRM customer ID" required />
-                  <Field name="leadId" label="Lead ID (optional)" />
-                  <Field name="name" label="Opportunity name" required />
+                  <Field scope="opportunity" name="customerId" label="CRM customer ID" required />
+                  <Field scope="opportunity" name="leadId" label="Lead ID (optional)" />
+                  <Field scope="opportunity" name="name" label="Opportunity name" required />
                   <div className="identity-field">
                     <label htmlFor="sales-opportunity-stage">Pipeline / initial stage</label>
-                    <select id="sales-opportunity-stage" name="pipelineStage" required defaultValue="">
+                    <select
+                      id="sales-opportunity-stage"
+                      name="pipelineStage"
+                      required
+                      defaultValue=""
+                    >
                       <option value="" disabled>
                         Select an open stage
                       </option>
@@ -296,15 +311,28 @@ export default async function SalesPage({ searchParams }: PageProps) {
                       ))}
                     </select>
                   </div>
-                  <Field name="currencyCode" label="Currency" value="EGP" required maxLength={3} />
                   <Field
+                    scope="opportunity"
+                    name="currencyCode"
+                    label="Currency"
+                    value="EGP"
+                    required
+                    maxLength={3}
+                  />
+                  <Field
+                    scope="opportunity"
                     name="expectedValueMinor"
                     label="Expected value (minor units)"
                     type="number"
                     value="0"
                     required
                   />
-                  <Field name="expectedCloseDate" label="Expected close" type="date" />
+                  <Field
+                    scope="opportunity"
+                    name="expectedCloseDate"
+                    label="Expected close"
+                    type="date"
+                  />
                 </div>
                 <button className="ds-button ds-button--primary" type="submit">
                   Create opportunity
@@ -367,7 +395,10 @@ export default async function SalesPage({ searchParams }: PageProps) {
                 </table>
               </div>
             ) : (
-              <EmptyState title="No opportunities yet" description="Convert a qualified customer into pipeline value." />
+              <EmptyState
+                title="No opportunities yet"
+                description="Convert a qualified customer into pipeline value."
+              />
             )}
           </Stack>
         </SurfaceCard>
@@ -383,9 +414,9 @@ export default async function SalesPage({ searchParams }: PageProps) {
             </div>
             <form action={addSalesActivity} className="identity-form">
               <div className="identity-form-grid">
-                <Field name="customerId" label="CRM customer ID" required />
-                <Field name="opportunityId" label="Opportunity ID" />
-                <Field name="leadId" label="Lead ID" />
+                <Field scope="activity" name="customerId" label="CRM customer ID" required />
+                <Field scope="activity" name="opportunityId" label="Opportunity ID" />
+                <Field scope="activity" name="leadId" label="Lead ID" />
                 <div className="identity-field">
                   <label htmlFor="sales-activity-type">Type</label>
                   <select id="sales-activity-type" name="type" defaultValue="TASK">
@@ -396,8 +427,8 @@ export default async function SalesPage({ searchParams }: PageProps) {
                     <option value="NOTE">Note</option>
                   </select>
                 </div>
-                <Field name="subject" label="Subject" required />
-                <Field name="dueAt" label="Due at" type="datetime-local" />
+                <Field scope="activity" name="subject" label="Subject" required />
+                <Field scope="activity" name="dueAt" label="Due at" type="datetime-local" />
               </div>
               <div className="identity-field">
                 <label htmlFor="sales-activity-body">Details</label>
@@ -436,7 +467,10 @@ export default async function SalesPage({ searchParams }: PageProps) {
                 ))}
               </div>
             ) : (
-              <EmptyState title="No activities yet" description="Schedule the next sales touchpoint or task." />
+              <EmptyState
+                title="No activities yet"
+                description="Schedule the next sales touchpoint or task."
+              />
             )}
           </Stack>
         </SurfaceCard>
@@ -463,7 +497,11 @@ function OpportunityControls({
           <input type="hidden" name="opportunityId" value={opportunity.id} />
           <div className="identity-field">
             <label htmlFor={`sales-move-${opportunity.id}`}>Open stage</label>
-            <select id={`sales-move-${opportunity.id}`} name="stageId" defaultValue={opportunity.stageId}>
+            <select
+              id={`sales-move-${opportunity.id}`}
+              name="stageId"
+              defaultValue={opportunity.stageId}
+            >
               {openStages.map((stage) => (
                 <option key={stage.id} value={stage.id}>
                   {stage.name} · {String(Math.round(stage.probabilityBps / 100))}%
@@ -480,7 +518,11 @@ function OpportunityControls({
           </button>
         </form>
         {terminalStages.map((stage) => (
-          <form action={closeSalesOpportunity} className="identity-form identity-form--compact" key={stage.id}>
+          <form
+            action={closeSalesOpportunity}
+            className="identity-form identity-form--compact"
+            key={stage.id}
+          >
             <input type="hidden" name="opportunityId" value={opportunity.id} />
             <input type="hidden" name="stageId" value={stage.id} />
             <input type="hidden" name="status" value={stage.terminalKind} />
@@ -496,7 +538,11 @@ function OpportunityControls({
               </div>
             )}
             <button
-              className={stage.terminalKind === 'LOST' ? 'ds-button ds-button--danger' : 'ds-button ds-button--primary'}
+              className={
+                stage.terminalKind === 'LOST'
+                  ? 'ds-button ds-button--danger'
+                  : 'ds-button ds-button--primary'
+              }
               type="submit"
             >
               Mark {stage.terminalKind.toLowerCase()}
@@ -509,6 +555,7 @@ function OpportunityControls({
 }
 
 function Field({
+  scope,
   name,
   label,
   required: isRequired = false,
@@ -516,6 +563,7 @@ function Field({
   value,
   maxLength,
 }: {
+  scope: string;
   name: string;
   label: string;
   required?: boolean;
@@ -525,9 +573,9 @@ function Field({
 }) {
   return (
     <div className="identity-field">
-      <label htmlFor={`sales-${name}`}>{label}</label>
+      <label htmlFor={`sales-${scope}-${name}`}>{label}</label>
       <input
-        id={`sales-${name}`}
+        id={`sales-${scope}-${name}`}
         name={name}
         type={type}
         required={isRequired}
@@ -581,5 +629,7 @@ function formatCurrency(minor: number, currency: string): string {
 }
 
 function formatDate(value: string): string {
-  return new Intl.DateTimeFormat('en', { dateStyle: 'medium', timeStyle: 'short' }).format(new Date(value));
+  return new Intl.DateTimeFormat('en', { dateStyle: 'medium', timeStyle: 'short' }).format(
+    new Date(value),
+  );
 }

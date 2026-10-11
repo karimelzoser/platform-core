@@ -23,11 +23,7 @@ const salesPermissions = [
   'sales.opportunities.manage',
 ] as const;
 
-function context(
-  tenantId: string,
-  actorId: string,
-  subject: string,
-): TenantRequestContext {
+function context(tenantId: string, actorId: string, subject: string): TenantRequestContext {
   return {
     tenantId,
     actorId,
@@ -52,8 +48,9 @@ async function main(): Promise<void> {
       await withTenantTransaction(database, ctx, async (transaction) => {
         await sql`insert into crm.customers (id, tenant_id, display_name)
           values (${customerId}::uuid, ${ctx.tenantId}::uuid, ${name})
-          on conflict (id) do update set display_name = excluded.display_name, updated_at = now()`
-          .execute(transaction);
+          on conflict (id) do update set display_name = excluded.display_name, updated_at = now()`.execute(
+          transaction,
+        );
       });
     }
 

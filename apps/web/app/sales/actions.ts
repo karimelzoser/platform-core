@@ -66,9 +66,7 @@ export async function createSalesLead(formData: FormData): Promise<void> {
   });
   redirect(
     `/sales?message=${encodeURIComponent(
-      result.kind === 'success'
-        ? 'Sales lead created from the CRM customer.'
-        : apiMessage(result),
+      result.kind === 'success' ? 'Sales lead created from the CRM customer.' : apiMessage(result),
     )}`,
   );
 }

@@ -66,18 +66,20 @@ const closeInputSchema = z.discriminatedUnion('status', [
     reason: z.string().trim().min(1).max(1000),
   }),
 ]);
-const activityInputSchema = z.object({
-  customerId: uuidSchema,
-  leadId: uuidSchema.optional(),
-  opportunityId: uuidSchema.optional(),
-  assignedMembershipId: uuidSchema.optional(),
-  type: z.enum(['CALL', 'EMAIL', 'MEETING', 'NOTE', 'TASK']),
-  subject: z.string().trim().min(1).max(240),
-  body: z.string().trim().max(8000).optional(),
-  dueAt: z.string().datetime().optional(),
-}).refine((input) => input.leadId || input.opportunityId, {
-  message: 'Sales activity requires a lead or opportunity',
-});
+const activityInputSchema = z
+  .object({
+    customerId: uuidSchema,
+    leadId: uuidSchema.optional(),
+    opportunityId: uuidSchema.optional(),
+    assignedMembershipId: uuidSchema.optional(),
+    type: z.enum(['CALL', 'EMAIL', 'MEETING', 'NOTE', 'TASK']),
+    subject: z.string().trim().min(1).max(240),
+    body: z.string().trim().max(8000).optional(),
+    dueAt: z.string().datetime().optional(),
+  })
+  .refine((input) => input.leadId || input.opportunityId, {
+    message: 'Sales activity requires a lead or opportunity',
+  });
 
 export type SalesPipelineInput = z.input<typeof pipelineInputSchema>;
 export type SalesLeadInput = z.input<typeof leadInputSchema>;
@@ -264,7 +266,9 @@ export class SalesService {
           data: () => ({ pipelineId, stageCount: stageIds.length }),
           dedupeKey: () => `sales:pipeline:create:${idempotencyKey}`,
         },
-        audit: { afterState: () => ({ pipelineId, name: validated.name, stageCount: stageIds.length }) },
+        audit: {
+          afterState: () => ({ pipelineId, name: validated.name, stageCount: stageIds.length }),
+        },
         execute: async (transaction) => {
           if (validated.isDefault) {
             await sql`update sales.pipelines set is_default = false, updated_at = now()
@@ -356,7 +360,7 @@ export class SalesService {
                 qualification_grade = ${validated.grade},
                 status = ${validated.status},
                 qualification_notes = ${validated.notes ?? null},
-                disqualification_reason = ${validated.status === 'DISQUALIFIED' ? validated.disqualificationReason ?? null : null},
+                disqualification_reason = ${validated.status === 'DISQUALIFIED' ? (validated.disqualificationReason ?? null) : null},
                 qualified_at = ${validated.status === 'QUALIFIED' ? new Date() : null},
                 updated_at = now()
             where id = ${id}::uuid and status <> 'CONVERTED'
@@ -384,7 +388,11 @@ export class SalesService {
         resource: () => ({ type: 'sales.opportunity', id: opportunityId }),
         event: {
           type: 'sales.opportunity.created',
-          data: () => ({ opportunityId, customerId: validated.customerId, pipelineId: validated.pipelineId }),
+          data: () => ({
+            opportunityId,
+            customerId: validated.customerId,
+            pipelineId: validated.pipelineId,
+          }),
           dedupeKey: () => `sales:opportunity:create:${idempotencyKey}`,
         },
         audit: { afterState: () => ({ opportunityId, ...validated }) },
@@ -393,13 +401,19 @@ export class SalesService {
           if (validated.ownerMembershipId)
             await this.assertActiveMembership(transaction, validated.ownerMembershipId);
           if (validated.leadId) {
-            const lead = await sql<{ customer_id: string; status: string }>`select customer_id, status
-              from sales.leads where id = ${validated.leadId}::uuid for update`.execute(transaction);
+            const lead = await sql<{
+              customer_id: string;
+              status: string;
+            }>`select customer_id, status
+              from sales.leads where id = ${validated.leadId}::uuid for update`.execute(
+              transaction,
+            );
             const row = lead.rows[0];
             if (!row) throw new Error('Sales lead was not found');
             if (row.customer_id !== validated.customerId)
               throw new Error('Sales lead and opportunity must reference the same customer');
-            if (row.status === 'DISQUALIFIED') throw new Error('Disqualified lead cannot be converted');
+            if (row.status === 'DISQUALIFIED')
+              throw new Error('Disqualified lead cannot be converted');
           }
           const stage = await sql<{ default_probability_bps: number; terminal_kind: string }>`
             select default_probability_bps, terminal_kind from sales.pipeline_stages
@@ -463,7 +477,8 @@ export class SalesService {
             select pipeline_id, stage_id, status from sales.opportunities
             where id = ${id}::uuid for update`.execute(transaction);
           const row = current.rows[0];
-          if (!row || row.status !== 'OPEN') throw new Error('Open sales opportunity was not found');
+          if (!row || row.status !== 'OPEN')
+            throw new Error('Open sales opportunity was not found');
           const next = await sql<{ default_probability_bps: number; terminal_kind: string }>`
             select default_probability_bps, terminal_kind from sales.pipeline_stages
             where id = ${validated.stageId}::uuid and pipeline_id = ${row.pipeline_id}::uuid
@@ -493,7 +508,9 @@ export class SalesService {
     idempotencyKey: string,
     opportunityId: string,
     input: SalesCloseInput,
-  ): Promise<CommandResult<{ opportunityId: string; status: 'WON' | 'LOST'; orderId: string | null }>> {
+  ): Promise<
+    CommandResult<{ opportunityId: string; status: 'WON' | 'LOST'; orderId: string | null }>
+  > {
     const id = uuidSchema.parse(opportunityId);
     const validated = closeInputSchema.parse(input);
     return this.commands.execute(
@@ -509,19 +526,31 @@ export class SalesService {
         },
         audit: { afterState: (_input, result) => result },
         execute: async (transaction) => {
-          const current = await sql<{ customer_id: string; pipeline_id: string; stage_id: string; status: string }>`
+          const current = await sql<{
+            customer_id: string;
+            pipeline_id: string;
+            stage_id: string;
+            status: string;
+          }>`
             select customer_id, pipeline_id, stage_id, status from sales.opportunities
             where id = ${id}::uuid for update`.execute(transaction);
           const row = current.rows[0];
-          if (!row || row.status !== 'OPEN') throw new Error('Open sales opportunity was not found');
+          if (!row || row.status !== 'OPEN')
+            throw new Error('Open sales opportunity was not found');
           const stage = await sql<{ terminal_kind: string }>`select terminal_kind
             from sales.pipeline_stages where id = ${validated.stageId}::uuid
-              and pipeline_id = ${row.pipeline_id}::uuid and status = 'ACTIVE'`.execute(transaction);
+              and pipeline_id = ${row.pipeline_id}::uuid and status = 'ACTIVE'`.execute(
+            transaction,
+          );
           if (stage.rows[0]?.terminal_kind !== validated.status)
-            throw new Error(`Closing ${validated.status} requires a matching terminal pipeline stage`);
+            throw new Error(
+              `Closing ${validated.status} requires a matching terminal pipeline stage`,
+            );
           let orderId: string | null = null;
           if (validated.status === 'WON' && validated.orderId) {
-            const order = await sql<{ customer_id: string | null }>`select customer_id from commerce.orders
+            const order = await sql<{
+              customer_id: string | null;
+            }>`select customer_id from commerce.orders
               where id = ${validated.orderId}::uuid`.execute(transaction);
             const orderRow = order.rows[0];
             if (!orderRow) throw new Error('Won order was not found');
@@ -581,7 +610,9 @@ export class SalesService {
           }
           if (validated.opportunityId) {
             const opportunity = await sql<{ customer_id: string }>`select customer_id
-              from sales.opportunities where id = ${validated.opportunityId}::uuid`.execute(transaction);
+              from sales.opportunities where id = ${validated.opportunityId}::uuid`.execute(
+              transaction,
+            );
             if (opportunity.rows[0]?.customer_id !== validated.customerId)
               throw new Error('Sales activity opportunity does not belong to the customer');
           }
