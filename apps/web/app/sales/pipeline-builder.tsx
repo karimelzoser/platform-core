@@ -22,7 +22,9 @@ export function PipelineBuilder() {
   const [nextKey, setNextKey] = useState(5);
 
   function updateStage(key: number, patch: Partial<StageDraft>) {
-    setStages((current) => current.map((stage) => (stage.key === key ? { ...stage, ...patch } : stage)));
+    setStages((current) =>
+      current.map((stage) => (stage.key === key ? { ...stage, ...patch } : stage)),
+    );
   }
 
   function addStage() {
@@ -34,7 +36,9 @@ export function PipelineBuilder() {
   }
 
   function removeStage(key: number) {
-    setStages((current) => (current.length > 1 ? current.filter((stage) => stage.key !== key) : current));
+    setStages((current) =>
+      current.length > 1 ? current.filter((stage) => stage.key !== key) : current,
+    );
   }
 
   return (
@@ -42,7 +46,13 @@ export function PipelineBuilder() {
       <div className="identity-form-grid">
         <div className="identity-field">
           <label htmlFor="sales-pipeline-name">Pipeline name</label>
-          <input id="sales-pipeline-name" name="name" required maxLength={200} placeholder="Direct sales" />
+          <input
+            id="sales-pipeline-name"
+            name="name"
+            required
+            maxLength={200}
+            placeholder="Direct sales"
+          />
         </div>
         <div className="identity-field">
           <label htmlFor="sales-pipeline-description">Description</label>
@@ -73,17 +83,19 @@ export function PipelineBuilder() {
               <tr key={stage.key}>
                 <td data-label="Stage">
                   <input
-                    aria-label={`Stage ${stage.key} name`}
+                    aria-label={`Stage ${String(stage.key)} name`}
                     name="stageName"
                     required
                     maxLength={120}
                     value={stage.name}
-                    onChange={(event) => updateStage(stage.key, { name: event.target.value })}
+                    onChange={(event) => {
+                      updateStage(stage.key, { name: event.target.value });
+                    }}
                   />
                 </td>
                 <td data-label="Probability %">
                   <input
-                    aria-label={`Stage ${stage.key} probability`}
+                    aria-label={`Stage ${String(stage.key)} probability`}
                     name="stageProbabilityPercent"
                     type="number"
                     min={0}
@@ -91,23 +103,23 @@ export function PipelineBuilder() {
                     step={1}
                     required
                     value={stage.probabilityBps / 100}
-                    onChange={(event) =>
+                    onChange={(event) => {
                       updateStage(stage.key, {
                         probabilityBps: Math.round(Number(event.target.value) * 100),
-                      })
-                    }
+                      });
+                    }}
                   />
                 </td>
                 <td data-label="Outcome">
                   <select
-                    aria-label={`Stage ${stage.key} outcome`}
+                    aria-label={`Stage ${String(stage.key)} outcome`}
                     name="stageTerminalKind"
                     value={stage.terminalKind}
-                    onChange={(event) =>
+                    onChange={(event) => {
                       updateStage(stage.key, {
                         terminalKind: event.target.value as StageDraft['terminalKind'],
-                      })
-                    }
+                      });
+                    }}
                   >
                     <option value="OPEN">Open</option>
                     <option value="WON">Won</option>
@@ -118,7 +130,9 @@ export function PipelineBuilder() {
                   <button
                     className="ds-button ds-button--secondary"
                     type="button"
-                    onClick={() => removeStage(stage.key)}
+                    onClick={() => {
+                      removeStage(stage.key);
+                    }}
                     disabled={stages.length === 1}
                   >
                     Remove
@@ -130,7 +144,13 @@ export function PipelineBuilder() {
         </table>
       </div>
       <div className="identity-action-row">
-        <button className="ds-button ds-button--secondary" type="button" onClick={addStage}>
+        <button
+          className="ds-button ds-button--secondary"
+          type="button"
+          onClick={() => {
+            addStage();
+          }}
+        >
           Add stage
         </button>
         <button className="ds-button ds-button--primary" type="submit">
