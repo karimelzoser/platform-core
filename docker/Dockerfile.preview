@@ -15,7 +15,8 @@ RUN apt-get update \
   && apt-get install -y --no-install-recommends postgresql-client curl ca-certificates \
   && rm -rf /var/lib/apt/lists/* \
   && rm -rf /usr/local/lib/node_modules/npm /opt/yarn* \
-  && corepack enable
+  && rm -f /usr/local/bin/npm /usr/local/bin/npx /usr/local/bin/yarn /usr/local/bin/yarnpkg \
+  && corepack enable pnpm
 COPY --from=opa /opa /usr/local/bin/opa
 COPY --from=build /workspace /workspace
 RUN rm -rf node_modules apps/*/node_modules packages/*/node_modules tests/node_modules \

@@ -24,13 +24,14 @@ ENV NODE_ENV=production
 RUN apt-get update \
   && apt-get upgrade -y \
   && rm -rf /var/lib/apt/lists/* \
-  && rm -rf /usr/local/lib/node_modules/npm /opt/yarn*
+  && rm -rf /usr/local/lib/node_modules/npm /opt/yarn* \
+  && rm -f /usr/local/bin/npm /usr/local/bin/npx /usr/local/bin/yarn /usr/local/bin/yarnpkg
 COPY package.json pnpm-lock.yaml pnpm-workspace.yaml ./
 COPY patches patches
 COPY --from=build /workspace/apps/api/package.json ./apps/api/package.json
 COPY --from=build /workspace/apps/api/dist ./apps/api/dist
 COPY --from=build /workspace/packages ./packages
-RUN corepack enable \
+RUN corepack enable pnpm \
   && pnpm install --prod --frozen-lockfile --ignore-scripts
 RUN mkdir -p /srv/platform/media && chown node:node /srv/platform/media
 USER node
