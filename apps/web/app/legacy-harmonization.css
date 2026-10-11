@@ -1,0 +1,120 @@
+:root {
+  --ink: var(--ds-text);
+  --muted: var(--ds-text-muted);
+  --line: var(--ds-border);
+  --paper: var(--ds-bg);
+  --accent: var(--ds-focus);
+}
+
+body {
+  background: var(--ds-bg);
+  color: var(--ds-text);
+  font-family:
+    Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  text-rendering: optimizeLegibility;
+}
+
+.landing,
+.workspace,
+.customers-page {
+  inline-size: min(100% - 2rem, 1440px);
+}
+
+.state-panel,
+.customer-card,
+.customer-form,
+.customer-table-wrap {
+  border-color: var(--ds-border);
+  background: var(--ds-surface);
+  box-shadow: 0 8px 24px rgb(17 24 39 / 5%);
+}
+
+.state-panel,
+.customer-card,
+.customer-form,
+.customer-table-wrap,
+.surface-link,
+.action,
+.customer-search input,
+.customer-search button,
+.customer-form input,
+.customer-form select,
+.customer-form textarea {
+  border-radius: var(--ds-radius-sm);
+}
+
+.state-panel,
+.customer-card,
+.customer-form,
+.customer-table-wrap {
+  border-radius: var(--ds-radius-md);
+}
+
+.surface-link {
+  background: var(--ds-surface);
+  box-shadow: 0 6px 18px rgb(17 24 39 / 4%);
+}
+
+.surface-link:hover,
+.surface-link:focus-visible {
+  border-color: #9fb1ce;
+  box-shadow: var(--ds-shadow);
+}
+
+.action,
+.customer-search button {
+  border-color: var(--ds-text);
+  background: var(--ds-text);
+  color: var(--ds-surface);
+}
+
+.action:hover,
+.customer-search button:hover {
+  opacity: 0.9;
+}
+
+.customer-table th {
+  background: var(--ds-surface-subtle);
+  color: var(--ds-text-muted);
+}
+
+.customer-table tr:last-child td {
+  border-block-end: 0;
+}
+
+.status-pill {
+  background: var(--ds-positive-bg);
+  color: var(--ds-positive);
+}
+
+.form-error {
+  color: var(--ds-danger);
+}
+
+.merge-success {
+  color: var(--ds-positive);
+}
+
+.approval-actions button {
+  background: var(--ds-surface);
+  color: var(--ds-text);
+}
+
+.customer-skeleton {
+  background: linear-gradient(90deg, #e8ebef 25%, #f6f7f9 37%, #e8ebef 63%);
+  background-size: 400% 100%;
+}
+
+[dir='rtl'] .eyebrow,
+[dir='rtl'] .customer-table th,
+[dir='rtl'] .ds-eyebrow {
+  letter-spacing: 0;
+}
+
+@media (max-width: 720px) {
+  .landing,
+  .workspace,
+  .customers-page {
+    inline-size: min(100% - 1.25rem, 1440px);
+  }
+}
