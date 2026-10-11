@@ -6,14 +6,8 @@ import {
   platformPreviewSurfaces,
 } from '../preview-platform-surfaces';
 import { isPreviewSurface, previewSurfaces, type PreviewSurface } from '../preview-surfaces';
-import {
-  MetricCard,
-  PageHeader,
-  PageShell,
-  Stack,
-  StatusBadge,
-  SurfaceCard,
-} from '../ui-primitives';
+import { PreviewWorkspaceClient } from '../preview-workspace-client';
+import { PageHeader, PageShell, Stack, StatusBadge, SurfaceCard } from '../ui-primitives';
 
 const surfaceLabels = {
   inbox: ['Unified inbox', 'صندوق الوارد الموحد'],
@@ -136,150 +130,7 @@ export default async function SurfacePage({ params }: { params: Promise<{ surfac
           </StatusBadge>
         </div>
 
-        <div className="ds-metric-grid preview-metrics">
-          {config.metrics.map((metric) => (
-            <MetricCard
-              key={metric.label}
-              label={metric.label}
-              value={metric.value}
-              detail={metric.detail}
-            />
-          ))}
-        </div>
-
-        <section className="preview-grid preview-grid--main" aria-label={`${config.label} workflow`}>
-          <SurfaceCard className="preview-board-card">
-            <div className="preview-section-heading">
-              <div>
-                <p className="ds-eyebrow">
-                  <LocalizedText en="WORKFLOW" ar="سير العمل" />
-                </p>
-                <h2>
-                  <LocalizedText en="Operational board" ar="لوحة العمليات" />
-                </h2>
-              </div>
-              <StatusBadge tone="neutral">
-                <LocalizedText en="Sample state" ar="حالة تجريبية" />
-              </StatusBadge>
-            </div>
-            <div className="preview-board">
-              {config.lanes.map((lane) => (
-                <section className="preview-lane" key={lane.title}>
-                  <div className="preview-lane__heading">
-                    <h3>{lane.title}</h3>
-                    <StatusBadge tone={lane.tone}>{lane.items.length}</StatusBadge>
-                  </div>
-                  <ul>
-                    {lane.items.map((item) => (
-                      <li key={item}>{item}</li>
-                    ))}
-                  </ul>
-                </section>
-              ))}
-            </div>
-          </SurfaceCard>
-
-          <SurfaceCard className="preview-insight-card">
-            <div className="preview-section-heading">
-              <div>
-                <p className="ds-eyebrow">
-                  <LocalizedText en="SIGNALS" ar="المؤشرات" />
-                </p>
-                <h2>{config.insightTitle}</h2>
-              </div>
-            </div>
-            <ul className="preview-insight-list">
-              {config.insights.map((insight) => (
-                <li key={insight}>{insight}</li>
-              ))}
-            </ul>
-          </SurfaceCard>
-        </section>
-
-        <SurfaceCard>
-          <div className="preview-section-heading">
-            <div>
-              <p className="ds-eyebrow">
-                <LocalizedText en="WORK QUEUE" ar="قائمة العمل" />
-              </p>
-              <h2>
-                <LocalizedText en="Current items" ar="العناصر الحالية" />
-              </h2>
-            </div>
-            <span className="preview-muted">
-              <LocalizedText en="Representative data only" ar="بيانات تمثيلية فقط" />
-            </span>
-          </div>
-          <div className="preview-table-wrap">
-            <table className="preview-table">
-              <thead>
-                <tr>
-                  <th>
-                    <LocalizedText en="Item" ar="العنصر" />
-                  </th>
-                  <th>
-                    <LocalizedText en="Context" ar="السياق" />
-                  </th>
-                  <th>
-                    <LocalizedText en="Status" ar="الحالة" />
-                  </th>
-                  <th>
-                    <LocalizedText en="Details" ar="التفاصيل" />
-                  </th>
-                </tr>
-              </thead>
-              <tbody>
-                {config.rows.map((row) => (
-                  <tr key={`${row.primary}-${row.secondary}`}>
-                    <td data-label="Item / العنصر">
-                      <strong>{row.primary}</strong>
-                    </td>
-                    <td data-label="Context / السياق">{row.secondary}</td>
-                    <td data-label="Status / الحالة">
-                      <StatusBadge tone={row.tone}>{row.status}</StatusBadge>
-                    </td>
-                    <td data-label="Details / التفاصيل" className="preview-muted">
-                      {row.meta}
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        </SurfaceCard>
-
-        <SurfaceCard>
-          <div className="preview-section-heading">
-            <div>
-              <p className="ds-eyebrow">
-                <LocalizedText en="NEXT ACTIONS" ar="الإجراءات التالية" />
-              </p>
-              <h2>
-                <LocalizedText en="Product controls" ar="أدوات المنتج" />
-              </h2>
-            </div>
-          </div>
-          <div className="preview-actions-grid">
-            {config.nextActions.map((action, index) => (
-              <button
-                className={
-                  index === 0 ? 'ds-button ds-button--primary' : 'ds-button ds-button--secondary'
-                }
-                disabled
-                key={action}
-                type="button"
-              >
-                {action}
-              </button>
-            ))}
-          </div>
-          <p className="preview-muted preview-footnote">
-            <LocalizedText
-              en="Controls are intentionally disabled in backend-independent preview mode. Their visual and interaction states are present now; live actions will bind to canonical typed commands as each backend workstream is completed."
-              ar="تم تعطيل الأزرار عمداً في وضع المعاينة المستقل عن الخلفية. حالات العرض والتفاعل موجودة الآن، وسترتبط الإجراءات الحية بالأوامر القياسية عند اكتمال كل مسار خلفي."
-            />
-          </p>
-        </SurfaceCard>
+        <PreviewWorkspaceClient config={config} />
       </Stack>
     </PageShell>
   );
