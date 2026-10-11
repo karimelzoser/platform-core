@@ -4,13 +4,15 @@
 
 **Overall release state:** IN PROGRESS — engineering alpha, not a production release candidate.
 
-**Reviewed `main`:** `01b48010b749bc780bfbd21afb464e91553b26d5` — Returns / Exchanges / Refunds merged.
+**Reviewed `main`:** `a99053e9cc207546b23fd887e6f4e8eb60530f76` — security/preview stabilization merged.
 
-**Main CI evidence:** Continuous integration run #528 (`38096257407`) completed successfully on that exact main SHA.
+**Main CI evidence:** Continuous integration run #536 (`38102502376`) passed
+all seven required jobs on that exact SHA, including dependency and image scans.
 
-**Immediate engineering activity:** bounded dependency-security and development-preview stabilization.
+**Current product workstream:** Recovery.
 
-**Next product workstream after stabilization:** Recovery.
+**Bounded follow-up:** supported build-tool version and OPA build-policy checks;
+exact branch-head verification remains pending.
 
 ## Evidence hierarchy
 
@@ -47,7 +49,7 @@ Repository scope includes tenant-scoped policies/requests/lines/refunds/exchange
 - Usage/metering, telemetry/error and shared direction-safe UI contracts.
 - Early AI Gateway routing substrate only; not a production AI execution platform.
 
-## Bounded stabilization in progress
+## Bounded stabilization — verified repository and preview baseline
 
 The Railway project `preneura-platform-preview` is confirmed as the isolated development preview. It is not the production VPS and does not represent customer/provider production state.
 
@@ -60,6 +62,19 @@ Fresh inspection on 2026-10-11 reconfirmed:
 - Postgres/pgvector, Keycloak, Temporal and NATS dependencies are isolated Railway services in this preview project.
 
 The domain target has been repaired in place from 3000 to 8080. The next preview deployment must use a tested patched repository SHA; deployment-success alone is insufficient.
+
+That deployment is now verified: Railway deployment
+`166cb1d9-c864-4371-8a95-1f11b5601827` runs main SHA `a99053e`. The public
+`/health` returned HTTP 200 and the same full SHA, with environment
+`development`. CI #536 passed all required repository/image/browser gates.
+This closes the bounded stabilization checkpoint, not production acceptance.
+
+A fresh hosted browser check additionally found that the development login
+redirect used the container listener URL (`0.0.0.0:8080`) behind Railway's proxy.
+The follow-up branch resolves redirects from trusted deployment configuration,
+rejects off-origin browser credential posts, and sets HTTPS cookies from that
+public origin. Proxy/Codespaces/loopback regressions pass locally; deployed
+protected login verification is pending that branch's promotion.
 
 A dedicated security stabilization branch is upgrading Web/Admin from vulnerable Next.js 15.1.0 / React 19.0.0 to the previously regression-tested patched 15.x/19.0.x baseline, carrying forward corresponding Nest/Fastify/Kysely/transitive fixes, adding dependency and image vulnerability gates, pruning development dependencies from the hosted image, exposing safe build provenance from `/health`, keeping the hosted Keycloak application-readiness probe, and adding hourly external `/health` monitoring.
 

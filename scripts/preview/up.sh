@@ -15,6 +15,13 @@ sh scripts/preview/seed-returns-fixtures.sh
 sh scripts/preview/seed-recovery-fixtures.sh
 mkdir -p .preview
 mkdir -p .preview/media
+# Local Next.js may reconstruct request URLs using its wildcard listener. Use
+# the documented browser origin explicitly; Codespaces resolves its own trusted
+# forwarded domain in the login route instead of inheriting a loopback default.
+if [ -z "${APP_PUBLIC_URL:-}" ] && [ -z "${CODESPACE_NAME:-}" ]; then
+  APP_PUBLIC_URL=http://127.0.0.1:3000
+  export APP_PUBLIC_URL
+fi
 API_PORT=4000 ENABLE_DEVELOPMENT_CONNECTOR_FIXTURES=true MEDIA_LOCAL_ROOT="$(pwd)/.preview/media" DATABASE_URL=postgres://platform_app:platform-test-app-password@localhost:5432/platform OPA_URL=http://localhost:8181 KEYCLOAK_ISSUER=http://localhost:8080/realms/platform KEYCLOAK_JWKS_URL=http://localhost:8080/realms/platform/protocol/openid-connect/certs KEYCLOAK_CLIENT_ID=platform-web nohup corepack pnpm --filter @platform/api start > .preview/api.log 2>&1 &
 ENABLE_DEVELOPMENT_CONNECTOR_FIXTURES=true DATABASE_URL=postgres://platform_app:platform-test-app-password@localhost:5432/platform NATS_URL=nats://localhost:4222 TEMPORAL_ADDRESS=127.0.0.1:7233 TEMPORAL_NAMESPACE=platform OPA_URL=http://127.0.0.1:8181 nohup corepack pnpm --filter @platform/worker start > .preview/worker.log 2>&1 &
 nohup python -m uvicorn apps.ai-gateway.app.main:app --host 0.0.0.0 --port 8000 > .preview/ai-gateway.log 2>&1 &

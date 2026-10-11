@@ -4,11 +4,11 @@ This matrix distinguishes repository implementation from deployment and final pr
 
 **Overall release state:** IN PROGRESS
 
-**Reviewed `main`:** `01b48010b749bc780bfbd21afb464e91553b26d5`
+**Reviewed `main`:** `a99053e9cc207546b23fd887e6f4e8eb60530f76`
 
-**Immediate bounded work:** dependency-security + development-preview stabilization
+**Bounded follow-up:** supported build-tool version and deployed OPA policy checks
 
-**Next product workstream:** Recovery
+**Current product workstream:** Recovery
 
 ## Status vocabulary
 
@@ -84,7 +84,10 @@ This matrix distinguishes repository implementation from deployment and final pr
 - **English / Arabic UX — FOUNDATION:** complete translation/localization/bidi/responsive/a11y/error-state closure remains.
 - **Production browser authentication — INCOMPLETE:** authorization-code/PKCE, refresh/expiry/logout, CSRF/origin, MFA enrollment/recovery and invitation delivery remain.
 - **Adversarial application security — FOUNDATION:** formal BOLA/IDOR, approval concurrency, webhook forgery/replay, SSRF/injection/upload/API-key, AI-tool/prompt/RAG/admin misuse closure remains.
-- **Development Railway preview — IN PROGRESS stabilization:** port mismatch repaired; stale deployed revision must be replaced by a tested patched SHA and externally verified.
+- **Development Railway preview — VERIFIED development checkpoint:** deployment
+  `166cb1d9-c864-4371-8a95-1f11b5601827` runs main `a99053e`; the public
+  health endpoint returned 200 with matching full SHA and development environment.
+  This is not production acceptance.
 - **Production observability — FOUNDATION.**
 - **Performance / SLO / capacity — NOT STARTED as release benchmark.**
 - **Backup / restore / rollback — NOT STARTED as release drill.**
@@ -97,6 +100,8 @@ This matrix distinguishes repository implementation from deployment and final pr
 - Onboarding merged baseline: `9728098275ff42cf7397ea153a6b5a5026bf1a66`; main CI #505 green.
 - Returns PR #12 exact head: `17a05bf3fc9ceba8b8b6304202bfd922459d897b`; CI #527 green.
 - Current main after Returns: `01b48010b749bc780bfbd21afb464e91553b26d5`; CI #528 green.
+- Security/preview baseline: `a99053e9cc207546b23fd887e6f4e8eb60530f76`;
+  CI #536 passed all seven jobs including dependency/image scans.
 
 ## Release blockers
 

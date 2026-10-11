@@ -65,6 +65,13 @@ development.
 
 ## Reset and troubleshooting
 
+Preview login redirects use trusted deployment configuration. Railway uses
+`RAILWAY_PUBLIC_DOMAIN`; Codespaces uses its name and forwarding domain.
+`APP_PUBLIC_URL` may explicitly configure a custom HTTPS origin.
+Forwarded request headers are not redirect authority. Local loopback HTTP
+remains supported; public HTTP or unconfigured internal listener origins fail
+closed instead of sending a browser to `0.0.0.0`.
+
 ```sh
 corepack pnpm preview:down
 corepack pnpm preview:reset
