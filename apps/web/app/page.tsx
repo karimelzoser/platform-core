@@ -90,8 +90,8 @@ export default function HomePage() {
           </h1>
           <p className="intro">
             <LocalizedText
-              en="Review the complete product structure now. Backend-independent preview modules use deterministic sample data, while implemented modules continue to use their real tenant routes and security boundaries."
-              ar="راجع هيكل المنتج بالكامل الآن. تستخدم وحدات المعاينة بيانات تجريبية ثابتة بدون اعتماد على الخلفية، بينما تستمر الوحدات المنفذة في استخدام مساراتها الحقيقية وحدود الأمان الخاصة بكل مؤسسة."
+              en="Review the complete product structure now. Every card opens a backend-independent review workspace; implemented modules keep their real tenant routes separately in the global navigation."
+              ar="راجع هيكل المنتج بالكامل الآن. تفتح كل بطاقة مساحة مراجعة مستقلة عن الخلفية، بينما تحتفظ الوحدات المنفذة بمساراتها الحقيقية بشكل منفصل في شريط التنقل العام."
             />
           </p>
         </div>
@@ -130,14 +130,14 @@ export default function HomePage() {
           </strong>
           <span>
             <LocalizedText
-              en="live modules retain canonical auth/RLS"
-              ar="الوحدات الحية تحتفظ بالمصادقة وعزل البيانات الحقيقي"
+              en="real routes retain canonical auth/RLS"
+              ar="المسارات الحقيقية تحتفظ بالمصادقة وعزل البيانات الحقيقي"
             />
           </span>
         </div>
         <div>
           <strong>
-            <LocalizedText en="Preview-safe" ar="معاينة واضحة" />
+            <LocalizedText en="Review-safe" ar="مراجعة آمنة" />
           </strong>
           <span>
             <LocalizedText
@@ -166,21 +166,21 @@ export default function HomePage() {
             </div>
             <nav aria-label={group.title[0]} className="platform-module-grid">
               {group.modules.map(([slug, labelEn, labelAr, status]) => (
-                <Link className="platform-module-card" href={`/${slug}`} key={slug}>
+                <Link className="platform-module-card" href={`/review/${slug}`} key={slug}>
                   <span
                     className="platform-module-card__status"
                     data-preview={status === 'preview'}
                   >
                     <LocalizedText
-                      en={status === 'preview' ? 'Preview' : 'Live surface'}
-                      ar={status === 'preview' ? 'معاينة' : 'واجهة مباشرة'}
+                      en={status === 'preview' ? 'Frontend preview' : 'Implemented module'}
+                      ar={status === 'preview' ? 'معاينة واجهة' : 'وحدة منفذة'}
                     />
                   </span>
                   <strong>
                     <LocalizedText en={labelEn} ar={labelAr} />
                   </strong>
                   <span>
-                    <LocalizedText en="Open workspace" ar="فتح مساحة العمل" />
+                    <LocalizedText en="Open safe review" ar="فتح المراجعة الآمنة" />
                   </span>
                 </Link>
               ))}
