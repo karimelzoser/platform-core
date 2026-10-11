@@ -5,6 +5,12 @@ images. Runtime images install production dependencies only and remove bundled
 package managers that the application does not use. Debian packages are updated
 when the images are built.
 
+The workspace uses pnpm 10.34.6 with an explicit install-script allowlist.
+The package-manager distribution/cache is removed after the production install,
+and application processes start with Node directly. The hosted OPA binary is
+rebuilt from v1.21.1 with Go 1.27.2 and x/net v0.60.0; the image build verifies
+that the deployed binary accepts the canonical policy and defaults to deny.
+
 ## Braces depth guard — CVE-2026-93687
 
 Upstream braces 3.0.3 has no published patched release as of 2026-10-11.

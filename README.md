@@ -4,7 +4,7 @@ Multi-tenant operations platform for commerce, customer support, sales, automati
 
 ## Development
 
-Use Node 24 and pnpm 9.15.5. Copy `.env.example` to an untracked local `.env` and supply non-production values. Production secrets, VPS credentials, and database dumps are deliberately ignored.
+Use Node 24 and pnpm 10.34.6. Copy `.env.example` to an untracked local `.env` and supply non-production values. Production secrets, VPS credentials, and database dumps are deliberately ignored.
 
 ```sh
 corepack pnpm install
