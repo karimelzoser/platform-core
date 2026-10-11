@@ -3,6 +3,7 @@
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { LocalizedText, useDisplayLocale } from './display-locale';
+import { PlatformCommandMenu } from './platform-command-menu';
 import { navigationModules, type ProductModule } from './product-catalog';
 
 const compactLabels: Record<string, readonly [string, string]> = {
@@ -64,6 +65,7 @@ export function PlatformNavigation() {
             />
           ))}
         </nav>
+        <PlatformCommandMenu />
         <div className="platform-chrome__locale" aria-label="Display language and direction">
           <button
             aria-pressed={locale === 'en'}
