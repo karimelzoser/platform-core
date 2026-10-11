@@ -1,0 +1,50 @@
+name: Sales format preview
+
+on:
+  push:
+    branches:
+      - codex/sales-production-closure-20261012
+    paths:
+      - .github/workflows/sales-format-preview.yml
+
+permissions:
+  contents: read
+
+jobs:
+  format-preview:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+        with: { version: 10.34.6 }
+      - uses: actions/setup-node@v4
+        with: { node-version: 22, cache: pnpm }
+      - run: pnpm install --frozen-lockfile
+      - name: Format Sales closure files without writing repository state
+        run: |
+          pnpm exec prettier --write \
+            apps/api/src/sales.service.ts \
+            apps/web/app/sales/actions.ts \
+            apps/web/app/sales/page.tsx \
+            apps/web/app/sales/pipeline-builder.tsx \
+            apps/web/e2e/sales-preview.spec.ts \
+            docs/CAPABILITY_EVIDENCE_MATRIX.md \
+            docs/PRODUCTION_READINESS_MATRIX.md \
+            tests/integration/sales-lifecycle.ts
+      - name: Emit exact formatted contents
+        run: |
+          for file in \
+            apps/api/src/sales.service.ts \
+            apps/web/app/sales/actions.ts \
+            apps/web/app/sales/page.tsx \
+            apps/web/app/sales/pipeline-builder.tsx \
+            apps/web/e2e/sales-preview.spec.ts \
+            docs/CAPABILITY_EVIDENCE_MATRIX.md \
+            docs/PRODUCTION_READINESS_MATRIX.md \
+            tests/integration/sales-lifecycle.ts
+          do
+            echo "FORMAT_FILE_BEGIN:${file}"
+            base64 -w 0 "${file}"
+            echo
+            echo "FORMAT_FILE_END:${file}"
+          done
