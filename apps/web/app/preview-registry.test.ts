@@ -1,40 +1,18 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
+import { productModules } from './product-catalog';
 import { allPreviewSurfaces } from './preview-registry';
 
-const expectedSurfaces = [
-  'inbox',
-  'customers',
-  'tickets',
-  'orders',
-  'confirmation',
-  'shipping',
-  'recovery',
-  'returns',
-  'sales',
-  'campaigns',
-  'automation',
-  'operators',
-  'approvals',
-  'integrations',
-  'knowledge',
-  'analytics',
-  'billing',
-  'developer',
-  'team',
-  'settings',
-  'onboarding',
-  'organizations',
-  'configuration',
-  'simulation',
-  'custom-data',
-  'admin',
-  'runtime',
-] as const;
+test('backend-independent review mode covers the full typed product catalog', () => {
+  const catalogSlugs = productModules.map((module) => module.slug).sort();
+  const reviewSlugs = Object.keys(allPreviewSurfaces).sort();
+  assert.equal(reviewSlugs.length, productModules.length);
+  assert.deepEqual(reviewSlugs, catalogSlugs);
+});
 
-test('backend-independent review mode covers the full mapped product', () => {
-  assert.equal(Object.keys(allPreviewSurfaces).length, 27);
-  assert.deepEqual(Object.keys(allPreviewSurfaces).sort(), [...expectedSurfaces].sort());
+test('product catalog has no duplicate route slugs', () => {
+  const slugs = productModules.map((module) => module.slug);
+  assert.equal(new Set(slugs).size, slugs.length);
 });
 
 test('every review surface explicitly marks all metrics as preview data', () => {
