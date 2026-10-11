@@ -1,0 +1,37 @@
+name: Development preview availability
+
+on:
+  workflow_dispatch:
+  schedule:
+    - cron: '17 * * * *'
+
+permissions:
+  contents: read
+
+concurrency:
+  group: development-preview-availability
+  cancel-in-progress: true
+
+jobs:
+  health:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    steps:
+      - name: Verify public preview health
+        env:
+          PREVIEW_HEALTH_URL: https://platform-preview-production-94b2.up.railway.app/health
+        run: |
+          set -Eeuo pipefail
+          response="$(curl --fail --silent --show-error --location \
+            --connect-timeout 10 --max-time 30 --retry 2 --retry-all-errors \
+            "$PREVIEW_HEALTH_URL")"
+          HEALTH_RESPONSE="$response" node <<'NODE'
+          const body = JSON.parse(process.env.HEALTH_RESPONSE ?? '{}');
+          if (body.status !== 'ok' || body.service !== 'web') {
+            throw new Error(`Unexpected preview health payload: ${JSON.stringify(body)}`);
+          }
+          if (typeof body.buildSha !== 'string' || body.buildSha.length < 7) {
+            throw new Error('Preview health response is missing build provenance.');
+          }
+          console.log(`Preview healthy at build ${body.buildSha}`);
+          NODE

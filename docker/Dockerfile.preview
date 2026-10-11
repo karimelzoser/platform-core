@@ -1,4 +1,9 @@
-FROM openpolicyagent/opa:1.20.2-static AS opa
+FROM golang:1.27.2-bookworm AS opa
+WORKDIR /src/opa
+ADD https://github.com/open-policy-agent/opa/archive/refs/tags/v1.21.1.tar.gz /tmp/opa.tar.gz
+RUN tar -xzf /tmp/opa.tar.gz --strip-components=1 \
+  && go get golang.org/x/net@v0.60.0 \
+  && CGO_ENABLED=0 go build -tags=opa_wasm -trimpath -ldflags="-s -w" -o /opa .
 
 FROM node:24-bookworm-slim AS build
 WORKDIR /workspace
@@ -11,16 +16,24 @@ FROM node:24-bookworm-slim
 WORKDIR /workspace
 ENV NODE_ENV=production
 RUN apt-get update \
+  && apt-get upgrade -y \
   && apt-get install -y --no-install-recommends postgresql-client curl ca-certificates \
   && rm -rf /var/lib/apt/lists/* \
-  && corepack enable
+  && rm -rf /usr/local/lib/node_modules/npm /opt/yarn* \
+  && rm -f /usr/local/bin/npm /usr/local/bin/npx /usr/local/bin/yarn /usr/local/bin/yarnpkg \
+  && corepack enable pnpm
 COPY --from=opa /opa /usr/local/bin/opa
 COPY --from=build /workspace /workspace
+RUN rm -rf node_modules apps/*/node_modules packages/*/node_modules tests/node_modules \
+  && pnpm install --prod --frozen-lockfile --ignore-scripts \
+  && rm -rf /root/.cache/node/corepack /root/.cache/pnpm /root/.local/share/pnpm /root/.pnpm-store \
+  && rm -rf /usr/local/lib/node_modules/corepack \
+  && rm -f /usr/local/bin/corepack /usr/local/bin/pnpm /usr/local/bin/pnpx
 RUN chmod +x \
   scripts/hosted/bootstrap-postgres.sh \
   scripts/hosted/migrate.sh \
   scripts/hosted/bootstrap-keycloak.sh \
   scripts/hosted/seed-preview.sh \
   scripts/hosted/start-preview.sh
-EXPOSE 3000
+EXPOSE 8080
 CMD ["scripts/hosted/start-preview.sh"]

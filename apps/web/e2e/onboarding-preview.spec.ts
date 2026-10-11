@@ -45,8 +45,9 @@ test.describe('Self-service onboarding disposable preview', () => {
     await expect(page.getByRole('heading', { name: 'Workspace setup is ready' })).toBeVisible();
     await expect(page.getByText('READY', { exact: true })).toBeVisible();
 
+    await page.getByLabel('Country code').focus();
     await page.keyboard.press('Tab');
-    await expect(page.locator(':focus')).toBeVisible();
+    await expect(page.getByLabel('Currency code')).toBeFocused();
     await assertResponsiveAndRtl(page, testInfo);
 
     await context.close();
