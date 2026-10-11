@@ -9,9 +9,9 @@
 
 .platform-chrome__inner {
   display: grid;
-  grid-template-columns: auto minmax(0, 1fr) auto;
+  grid-template-columns: auto minmax(0, 1fr) auto auto;
   align-items: center;
-  gap: 1rem;
+  gap: 0.75rem;
   inline-size: min(100% - 1.5rem, 1500px);
   min-block-size: 4.25rem;
   margin-inline: auto;
@@ -53,7 +53,8 @@
 }
 
 .platform-chrome__nav,
-.platform-chrome__utilities {
+.platform-chrome__utilities,
+.platform-chrome__locale {
   display: flex;
   align-items: center;
   gap: 0.15rem;
@@ -93,14 +94,42 @@
 
 .platform-chrome__link:focus-visible,
 .platform-chrome__utility:focus-visible,
-.platform-chrome__brand:focus-visible {
+.platform-chrome__brand:focus-visible,
+.platform-chrome__locale button:focus-visible {
   outline: 3px solid color-mix(in srgb, var(--ds-focus) 35%, transparent);
   outline-offset: 2px;
 }
 
-@media (max-width: 1180px) {
+.platform-chrome__locale {
+  border: 1px solid var(--ds-border);
+  border-radius: 999px;
+  background: var(--ds-surface-subtle);
+  padding: 0.18rem;
+  white-space: nowrap;
+}
+
+.platform-chrome__locale button {
+  min-block-size: 2rem;
+  border: 0;
+  border-radius: 999px;
+  background: transparent;
+  color: var(--ds-text-muted);
+  padding-inline: 0.55rem;
+  font: inherit;
+  font-size: 0.72rem;
+  font-weight: 720;
+  cursor: pointer;
+}
+
+.platform-chrome__locale button[aria-pressed='true'] {
+  background: var(--ds-surface);
+  color: var(--ds-text);
+  box-shadow: 0 1px 4px rgb(17 24 39 / 8%);
+}
+
+@media (max-width: 1280px) {
   .platform-chrome__inner {
-    grid-template-columns: auto minmax(0, 1fr);
+    grid-template-columns: auto minmax(0, 1fr) auto;
   }
 
   .platform-chrome__utilities {
@@ -108,18 +137,40 @@
   }
 }
 
-@media (max-width: 720px) {
+@media (max-width: 760px) {
   .platform-chrome__inner {
-    grid-template-columns: 1fr;
-    gap: 0.45rem;
-    padding-block: 0.65rem;
+    grid-template-columns: minmax(0, 1fr) auto;
+    gap: 0.55rem 0.75rem;
+    padding-block: 0.6rem;
   }
 
   .platform-chrome__brand {
     inline-size: max-content;
   }
 
+  .platform-chrome__locale {
+    justify-self: end;
+  }
+
+  .platform-chrome__locale button {
+    font-size: 0.68rem;
+    padding-inline: 0.45rem;
+  }
+
   .platform-chrome__nav {
+    grid-column: 1 / -1;
     inline-size: 100%;
+    padding-block-end: 0.15rem;
+  }
+}
+
+@media (max-width: 470px) {
+  .platform-chrome__brand small {
+    display: none;
+  }
+
+  .platform-chrome__locale button {
+    min-block-size: 1.8rem;
+    font-size: 0.62rem;
   }
 }
