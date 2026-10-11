@@ -1,61 +1,77 @@
 import Link from 'next/link';
+import { LocalizedText } from './display-locale';
 
 const moduleGroups = [
   {
-    title: 'Customer operations',
-    description: 'Daily customer-facing work and service control.',
+    title: ['Customer operations', 'عمليات العملاء'],
+    description: [
+      'Daily customer-facing work and service control.',
+      'العمل اليومي مع العملاء وإدارة عمليات الخدمة.',
+    ],
     modules: [
-      ['inbox', 'Unified inbox', 'Live surface'],
-      ['customers', 'Customer 360', 'Live surface'],
-      ['tickets', 'Tickets', 'Live surface'],
-      ['confirmation', 'Order confirmation', 'Preview'],
-      ['returns', 'Returns & refunds', 'Live surface'],
-      ['recovery', 'Recovery', 'Live surface'],
+      ['inbox', 'Unified inbox', 'صندوق الوارد الموحد', 'live'],
+      ['customers', 'Customer 360', 'ملف العميل 360', 'live'],
+      ['tickets', 'Tickets', 'التذاكر', 'live'],
+      ['confirmation', 'Order confirmation', 'تأكيد الطلبات', 'preview'],
+      ['returns', 'Returns & refunds', 'المرتجعات والاسترداد', 'live'],
+      ['recovery', 'Recovery', 'استرداد المبيعات', 'live'],
     ],
   },
   {
-    title: 'Commerce & revenue',
-    description: 'Orders, fulfillment, sales motion, campaigns, and business outcomes.',
+    title: ['Commerce & revenue', 'التجارة والإيرادات'],
+    description: [
+      'Orders, fulfillment, sales motion, campaigns, and business outcomes.',
+      'الطلبات والتنفيذ والمبيعات والحملات ونتائج الأعمال.',
+    ],
     modules: [
-      ['orders', 'Orders', 'Live surface'],
-      ['shipping', 'Shipping', 'Live surface'],
-      ['sales', 'Sales', 'Preview'],
-      ['campaigns', 'Campaigns', 'Preview'],
-      ['analytics', 'Analytics & ROI', 'Preview'],
-      ['billing', 'Billing & usage', 'Preview'],
+      ['orders', 'Orders', 'الطلبات', 'live'],
+      ['shipping', 'Shipping', 'الشحن', 'live'],
+      ['sales', 'Sales', 'المبيعات', 'preview'],
+      ['campaigns', 'Campaigns', 'الحملات', 'preview'],
+      ['analytics', 'Analytics & ROI', 'التحليلات والعائد', 'preview'],
+      ['billing', 'Billing & usage', 'الفوترة والاستخدام', 'preview'],
     ],
   },
   {
-    title: 'Automation & intelligence',
-    description: 'Durable workflows, controlled AI, knowledge, and governed actions.',
+    title: ['Automation & intelligence', 'الأتمتة والذكاء'],
+    description: [
+      'Durable workflows, controlled AI, knowledge, and governed actions.',
+      'مسارات عمل موثوقة وذكاء اصطناعي مضبوط ومعرفة وإجراءات محكومة.',
+    ],
     modules: [
-      ['automation', 'Automation studio', 'Preview'],
-      ['operators', 'AI operators', 'Preview'],
-      ['knowledge', 'Knowledge', 'Preview'],
-      ['approvals', 'Approvals', 'Live surface'],
-      ['integrations', 'Integrations', 'Live surface'],
-      ['runtime', 'Workflow runtime', 'Preview'],
+      ['automation', 'Automation studio', 'استوديو الأتمتة', 'preview'],
+      ['operators', 'AI operators', 'مشغلو الذكاء الاصطناعي', 'preview'],
+      ['knowledge', 'Knowledge', 'المعرفة', 'preview'],
+      ['approvals', 'Approvals', 'الموافقات', 'live'],
+      ['integrations', 'Integrations', 'التكاملات', 'live'],
+      ['runtime', 'Workflow runtime', 'تشغيل مسارات العمل', 'preview'],
     ],
   },
   {
-    title: 'Platform engineering',
-    description: 'Versioned configuration, safe simulation, extensibility, APIs, and operational control.',
+    title: ['Platform engineering', 'هندسة المنصة'],
+    description: [
+      'Versioned configuration, safe simulation, extensibility, APIs, and operational control.',
+      'إعدادات بإصدارات ومحاكاة آمنة وقابلية توسع وواجهات برمجية وتحكم تشغيلي.',
+    ],
     modules: [
-      ['configuration', 'Configuration', 'Preview'],
-      ['simulation', 'Configuration simulation', 'Preview'],
-      ['custom-data', 'Custom data', 'Preview'],
-      ['developer', 'Developer platform', 'Preview'],
-      ['admin', 'Admin control center', 'Preview'],
-      ['settings', 'Organization settings', 'Preview'],
+      ['configuration', 'Configuration', 'الإعدادات', 'preview'],
+      ['simulation', 'Configuration simulation', 'محاكاة الإعدادات', 'preview'],
+      ['custom-data', 'Custom data', 'البيانات المخصصة', 'preview'],
+      ['developer', 'Developer platform', 'منصة المطورين', 'preview'],
+      ['admin', 'Admin control center', 'مركز تحكم الإدارة', 'preview'],
+      ['settings', 'Organization settings', 'إعدادات المؤسسة', 'preview'],
     ],
   },
   {
-    title: 'Organization control',
-    description: 'Tenant setup, access control, security, and reusable business configuration.',
+    title: ['Organization control', 'إدارة المؤسسة'],
+    description: [
+      'Tenant setup, access control, security, and reusable business configuration.',
+      'تهيئة مساحة العمل والتحكم في الوصول والأمان وإعدادات الأعمال القابلة لإعادة الاستخدام.',
+    ],
     modules: [
-      ['onboarding', 'Onboarding', 'Live surface'],
-      ['team', 'Team & roles', 'Live surface'],
-      ['organizations', 'Organizations', 'Live surface'],
+      ['onboarding', 'Onboarding', 'الإعداد الأولي', 'live'],
+      ['team', 'Team & roles', 'الفريق والأدوار', 'live'],
+      ['organizations', 'Organizations', 'المؤسسات', 'live'],
     ],
   },
 ] as const;
@@ -66,56 +82,106 @@ export default function HomePage() {
       <header className="platform-hero">
         <div>
           <p className="eyebrow">PRENEURA PLATFORM</p>
-          <h1>One operating system for customer operations and revenue.</h1>
+          <h1>
+            <LocalizedText
+              en="One operating system for customer operations and revenue."
+              ar="نظام تشغيل واحد لعمليات العملاء والإيرادات."
+            />
+          </h1>
           <p className="intro">
-            Review the complete product structure now. Backend-independent preview modules use
-            deterministic sample data, while implemented modules continue to use their real tenant
-            routes and security boundaries.
+            <LocalizedText
+              en="Review the complete product structure now. Backend-independent preview modules use deterministic sample data, while implemented modules continue to use their real tenant routes and security boundaries."
+              ar="راجع هيكل المنتج بالكامل الآن. تستخدم وحدات المعاينة بيانات تجريبية ثابتة بدون اعتماد على الخلفية، بينما تستمر الوحدات المنفذة في استخدام مساراتها الحقيقية وحدود الأمان الخاصة بكل مؤسسة."
+            />
           </p>
         </div>
         <div className="platform-hero__status" role="note">
-          <strong>Product review mode</strong>
-          <span>Frontend work can continue without waiting for the hosted backend.</span>
+          <strong>
+            <LocalizedText en="Product review mode" ar="وضع مراجعة المنتج" />
+          </strong>
+          <span>
+            <LocalizedText
+              en="Frontend work can continue without waiting for the hosted backend."
+              ar="يمكن مواصلة تطوير الواجهة بدون انتظار جاهزية الخلفية المستضافة."
+            />
+          </span>
         </div>
       </header>
 
       <section className="platform-summary" aria-label="Platform implementation summary">
         <div>
           <strong>27</strong>
-          <span>product and platform surfaces mapped</span>
+          <span>
+            <LocalizedText
+              en="product and platform surfaces mapped"
+              ar="واجهة منتج ومنصة تم تخطيطها"
+            />
+          </span>
         </div>
         <div>
           <strong>RTL + LTR</strong>
-          <span>shared interaction direction</span>
+          <span>
+            <LocalizedText en="shared interaction direction" ar="اتجاه موحد للتفاعل" />
+          </span>
         </div>
         <div>
-          <strong>Tenant-safe</strong>
-          <span>live modules retain canonical auth/RLS</span>
+          <strong>
+            <LocalizedText en="Tenant-safe" ar="عزل المؤسسات" />
+          </strong>
+          <span>
+            <LocalizedText
+              en="live modules retain canonical auth/RLS"
+              ar="الوحدات الحية تحتفظ بالمصادقة وعزل البيانات الحقيقي"
+            />
+          </span>
         </div>
         <div>
-          <strong>Preview-safe</strong>
-          <span>sample metrics are explicitly labeled</span>
+          <strong>
+            <LocalizedText en="Preview-safe" ar="معاينة واضحة" />
+          </strong>
+          <span>
+            <LocalizedText
+              en="sample metrics are explicitly labeled"
+              ar="البيانات التجريبية مميزة بوضوح"
+            />
+          </span>
         </div>
       </section>
 
       <div className="platform-module-groups">
         {moduleGroups.map((group) => (
-          <section className="platform-module-group" key={group.title}>
+          <section className="platform-module-group" key={group.title[0]}>
             <div className="platform-module-group__heading">
               <div>
-                <p className="eyebrow">WORKSPACE</p>
-                <h2>{group.title}</h2>
+                <p className="eyebrow">
+                  <LocalizedText en="WORKSPACE" ar="مساحة العمل" />
+                </p>
+                <h2>
+                  <LocalizedText en={group.title[0]} ar={group.title[1]} />
+                </h2>
               </div>
-              <p>{group.description}</p>
+              <p>
+                <LocalizedText en={group.description[0]} ar={group.description[1]} />
+              </p>
             </div>
-            <nav aria-label={group.title} className="platform-module-grid">
-              {group.modules.map(([slug, label, status]) => (
+            <nav aria-label={group.title[0]} className="platform-module-grid">
+              {group.modules.map(([slug, labelEn, labelAr, status]) => (
                 <Link className="platform-module-card" href={`/${slug}`} key={slug}>
-                  <span className="platform-module-card__status" data-preview={status === 'Preview'}>
-                    {status}
+                  <span
+                    className="platform-module-card__status"
+                    data-preview={status === 'preview'}
+                  >
+                    <LocalizedText
+                      en={status === 'preview' ? 'Preview' : 'Live surface'}
+                      ar={status === 'preview' ? 'معاينة' : 'واجهة مباشرة'}
+                    />
                   </span>
-                  <strong>{label}</strong>
-                  <span>Open workspace</span>
+                  <strong>
+                    <LocalizedText en={labelEn} ar={labelAr} />
+                  </strong>
+                  <span>
+                    <LocalizedText en="Open workspace" ar="فتح مساحة العمل" />
+                  </span>
                 </Link>
               ))}
             </nav>
