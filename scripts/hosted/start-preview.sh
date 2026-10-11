@@ -97,4 +97,6 @@ pids+=("$!")
 ) &
 pids+=("$!")
 
+node scripts/preview/seed-recovery-consent.mjs
+
 wait -n "${pids[@]}"

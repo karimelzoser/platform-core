@@ -8,10 +8,8 @@ BEGIN;
 CREATE SCHEMA IF NOT EXISTS recovery;
 GRANT USAGE ON SCHEMA recovery TO platform_app;
 
--- Recovery attempts need a tenant-qualified message relationship. messaging.messages already
--- has a globally unique UUID primary key; this adds the tenant-qualified key used by domain FKs.
-ALTER TABLE messaging.messages
-  ADD CONSTRAINT messaging_messages_tenant_id_id_key UNIQUE (tenant_id, id);
+-- Recovery attempts reuse the tenant-qualified message key introduced by 0018.
+-- Do not recreate that historical constraint or its backing index here.
 
 CREATE TABLE recovery.policies (
   id uuid PRIMARY KEY DEFAULT gen_random_uuid(),

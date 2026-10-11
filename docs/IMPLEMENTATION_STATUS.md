@@ -126,6 +126,12 @@ typechecks, 61 unit/contract tests, lint (27 warnings, zero errors), formatting,
 immutable migration checks, dependency/installed-patch security checks and
 Temporal workflow bundle compilation. Local Docker/PostgreSQL runtime evidence
 is unavailable; the CI runtime tests must not be reported as passed yet.
+Batch CI #547 on `90b0408` passed quality, hosted image/security, AI and secret
+checks but failed the API image's missing Recovery manifest and duplicate
+unreleased migration DDL, also preventing preview startup. The local repair
+adds the manifest and static dependency-graph regression, reuses the existing
+`0018` constraint without touching released history, and replaces direct preview
+opt-in with signed development webhook bootstrap. New repair CI remains pending.
 
 Remaining closure includes dispatch-time consent/suppression rechecks and atomic
 message linkage, delivery reconciliation, bounded incentives with full approval

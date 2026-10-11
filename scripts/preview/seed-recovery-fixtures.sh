@@ -30,14 +30,11 @@ INSERT INTO crm.communication_preferences (
 ) VALUES (
   'cccccccc-cccc-cccc-cccc-cccccccccccc',
   'dddddddd-0000-0000-0000-000000000031',
-  'WHATSAPP', 'OPTED_IN', 'verified-preview-provider', now(), null,
-  'Disposable preview verified consent fixture',
-  '{"previewFixture":true,"verifiedConsentFixture":true}'::jsonb
+  'WHATSAPP', 'UNKNOWN', 'preview-fixture', null, null,
+  'Awaiting signed development consent webhook',
+  '{"previewFixture":true}'::jsonb
 )
-ON CONFLICT (tenant_id, customer_id, channel) DO UPDATE SET
-  status = 'OPTED_IN', source = EXCLUDED.source, captured_at = now(),
-  suppressed_until = null, reason = EXCLUDED.reason, metadata = EXCLUDED.metadata,
-  updated_at = now();
+ON CONFLICT (tenant_id, customer_id, channel) DO NOTHING;
 
 INSERT INTO commerce.orders (
   id, tenant_id, store_id, customer_id, order_number, status, financial_status,

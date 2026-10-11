@@ -13,6 +13,7 @@ COPY packages/contracts/package.json packages/contracts/package.json
 COPY packages/crm/package.json packages/crm/package.json
 COPY packages/database/package.json packages/database/package.json
 COPY packages/media/package.json packages/media/package.json
+COPY packages/recovery/package.json packages/recovery/package.json
 RUN pnpm install --frozen-lockfile
 COPY apps/api apps/api
 COPY packages packages

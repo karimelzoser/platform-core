@@ -66,6 +66,19 @@ need audited operational remediation and complete DLQ visibility. Production
 Temporal transport/auth, remaining business workflows and schema evolution/replay
 compatibility are release-wide gates, not waived by a successful fixture test.
 
-No SQL migration is changed by this orchestration slice. Rollback requires
+The orchestration itself needs no new SQL migration. Its first CI run exposed
+invalid duplicate DDL in the unreleased, PR-only `0043` migration: `0018` already
+created the message tenant/id key. The complete-chain transaction rolled back;
+the draft now reuses that historical key. Released migrations, including
+immutable `0001`–`0003` and `0018`, are unchanged. This is a pre-release correction,
+not rewriting an applied migration history.
+
+Preview bootstrap creates UNKNOWN consent, then submits a signed development
+API fixture webhook through normal ingress and waits for the canonical worker
+and protected customer API to observe opt-in. It never fabricates consent rows
+or impersonates a webhook worker. Existing operator opt-out is preserved.
+The emulated fixture is not real Meta/provider consent evidence for launch.
+
+Rollback requires
 draining/versioning active `platform-recovery-v1` histories; do not remove or
 rename workflow/activity definitions while existing histories can replay.
