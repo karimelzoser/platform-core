@@ -23,6 +23,16 @@ ON CONFLICT (id) DO UPDATE SET
   display_name = EXCLUDED.display_name,
   status = 'ACTIVE', metadata = EXCLUDED.metadata, updated_at = now();
 
+-- Hosted preview data is intentionally re-runnable. Clear any other active
+-- default before promoting the deterministic preview pipeline so the partial
+-- unique default index remains authoritative on long-lived preview databases.
+UPDATE sales.pipelines
+SET is_default = false, updated_at = now()
+WHERE tenant_id = 'cccccccc-cccc-cccc-cccc-cccccccccccc'
+  AND status = 'ACTIVE'
+  AND is_default = true
+  AND id <> 'dddddddd-0000-0000-0000-000000000852';
+
 INSERT INTO sales.pipelines (id, tenant_id, name, status, is_default)
 VALUES (
   'dddddddd-0000-0000-0000-000000000852',
