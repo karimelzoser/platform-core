@@ -32,6 +32,8 @@ import { RecoveryController } from './recovery.controller.js';
 import { RecoveryService } from './recovery.service.js';
 import { ReturnsController } from './returns.controller.js';
 import { ReturnsService } from './returns.service.js';
+import { SalesController } from './sales.controller.js';
+import { SalesService } from './sales.service.js';
 import { SessionController } from './session.controller.js';
 import { WebhookController } from './webhook.controller.js';
 import { WebhookIngressService } from './webhook-ingress.service.js';
@@ -91,6 +93,7 @@ function createRuntimeConnectorRegistry(): ConnectorRegistry {
     ShippingRoutingController,
     ReturnsController,
     RecoveryController,
+    SalesController,
   ],
   providers: [
     ApiDatabaseService,
@@ -159,6 +162,12 @@ function createRuntimeConnectorRegistry(): ConnectorRegistry {
         messaging: MessagingService,
       ) => new RecoveryService(database.database, commands, messaging),
       inject: [ApiDatabaseService, CommandExecutor, MessagingService],
+    },
+    {
+      provide: SalesService,
+      useFactory: (database: ApiDatabaseService, commands: CommandExecutor) =>
+        new SalesService(database.database, commands),
+      inject: [ApiDatabaseService, CommandExecutor],
     },
     {
       provide: LocalMediaStore,
