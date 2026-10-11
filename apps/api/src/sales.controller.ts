@@ -41,7 +41,6 @@ export class SalesController {
       'sales.leads.read',
       'sales.pipelines.read',
       'sales.opportunities.read',
-      'sales.activities.read',
     ]);
     return this.sales.dashboard(context);
   }
@@ -175,7 +174,7 @@ export class SalesController {
     @Headers('idempotency-key') idempotencyKey: string | undefined,
   ) {
     const context = await this.context(authorization, tenantId, correlationId);
-    this.require(context.permissions, 'sales.activities.manage');
+    this.require(context.permissions, 'sales.leads.update');
     return this.execute(() =>
       this.sales.addActivity(
         context,
@@ -194,7 +193,7 @@ export class SalesController {
     @Headers('idempotency-key') idempotencyKey: string | undefined,
   ) {
     const context = await this.context(authorization, tenantId, correlationId);
-    this.require(context.permissions, 'sales.activities.manage');
+    this.require(context.permissions, 'sales.leads.update');
     return this.execute(() =>
       this.sales.completeActivity(context, requireIdempotency(idempotencyKey), activityId),
     );
