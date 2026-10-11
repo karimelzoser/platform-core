@@ -65,6 +65,24 @@ A dedicated security stabilization branch is upgrading Web/Admin from vulnerable
 
 No production data, production provider account, VPS or n8n state is used for this repair.
 
+### Stabilization repair batch — local evidence, remote verification pending
+
+The repair batch removes development build tools and bundled unused package
+managers from runtime images, updates Debian runtime packages, preserves typed
+Returns redirects, and tests keyboard focus on actual application controls.
+Tooling updates close the available ESLint/esbuild/YAML advisories.
+
+Braces has no upstream patched release for CVE-2026-93687 at this review date.
+A checked-in pnpm source patch bounds parsing and every recursive AST entry
+point; the mandatory security command tests deep strings, caller-supplied ASTs
+and cycles before auditing. The narrowly scoped metadata exception is explained
+in `DEPENDENCY_SECURITY.md`; it is not a waiver for unpatched source.
+
+Local production Web/Admin/API/worker builds, workspace typechecks, unit tests,
+immutable migration checks and the installed-patch regressions have passed.
+Runtime container scanning, PostgreSQL/RLS and protected browser evidence still
+require the published repair head's CI result.
+
 ## Production boundaries still open
 
 ### Business domains

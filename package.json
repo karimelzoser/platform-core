@@ -14,6 +14,7 @@
     "test": "corepack pnpm -r --if-present test",
     "format:check": "prettier --check .",
     "migration:verify": "tsx scripts/verify-migrations.ts",
+    "security:dependencies": "node --test scripts/security/braces-regression.test.mjs && corepack pnpm audit --audit-level high",
     "preview:up": "sh scripts/preview/up.sh",
     "preview:down": "sh scripts/preview/down.sh",
     "preview:reset": "sh scripts/preview/reset.sh",
@@ -22,20 +23,30 @@
   },
   "devDependencies": {
     "@types/node": "22.10.2",
-    "eslint": "9.17.0",
+    "braces": "3.0.3",
+    "eslint": "9.39.5",
     "eslint-config-prettier": "9.1.0",
     "eslint-plugin-security": "3.0.1",
     "husky": "9.1.7",
     "lint-staged": "15.2.11",
     "prettier": "3.4.2",
-    "tsx": "4.19.2",
+    "tsx": "4.23.15",
     "typescript": "5.7.2",
     "typescript-eslint": "8.18.0"
   },
   "pnpm": {
+    "auditConfig": {
+      "ignoreCves": [
+        "CVE-2026-93687"
+      ]
+    },
     "overrides": {
       "fastify": "5.12.5",
-      "postcss": "8.5.29"
+      "postcss": "8.5.29",
+      "yaml": "2.8.3"
+    },
+    "patchedDependencies": {
+      "braces@3.0.3": "patches/braces@3.0.3.patch"
     }
   },
   "lint-staged": {

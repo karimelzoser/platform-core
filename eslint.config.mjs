@@ -13,6 +13,7 @@ export default tseslint.config(
       'migrations/**',
       '**/*.mjs',
       'pages-preview/**',
+      '.patch-work/**',
     ],
   },
   eslint.configs.recommended,

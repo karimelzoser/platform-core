@@ -20,31 +20,31 @@ This matrix distinguishes repository implementation from deployment and final pr
 
 ## Core platform
 
-| Capability | Repository state | Deployment/production boundary |
-| --- | --- | --- |
-| PostgreSQL / migrations / tenant RLS | FOUNDATION | Previous-release upgrade, backup/restore/PITR and production capacity evidence remain |
-| RBAC / OPA / approvals | FOUNDATION | Product-wide adversarial authorization and privileged admin closure remain |
-| Idempotency / audit / outbox | FOUNDATION | Operational remediation, concurrency and ambiguous-provider closure remain |
-| Temporal | FOUNDATION | Real business workflow/activity workers and complete retry/cancel/replay evidence remain |
-| Usage / metering source ledger | FOUNDATION | Commercial plans/quotas/invoicing/enforcement remain |
-| Observability contracts | FOUNDATION | Real dashboards/alerts/SLO ownership/runbooks remain |
-| Shared design system | FOUNDATION | Complete product adoption, translation and accessibility remain |
-| Dependency / image security | IN PROGRESS | Patched branch, dependency audit and image scans must pass before preview promotion |
+| Capability                           | Repository state | Deployment/production boundary                                                           |
+| ------------------------------------ | ---------------- | ---------------------------------------------------------------------------------------- |
+| PostgreSQL / migrations / tenant RLS | FOUNDATION       | Previous-release upgrade, backup/restore/PITR and production capacity evidence remain    |
+| RBAC / OPA / approvals               | FOUNDATION       | Product-wide adversarial authorization and privileged admin closure remain               |
+| Idempotency / audit / outbox         | FOUNDATION       | Operational remediation, concurrency and ambiguous-provider closure remain               |
+| Temporal                             | FOUNDATION       | Real business workflow/activity workers and complete retry/cancel/replay evidence remain |
+| Usage / metering source ledger       | FOUNDATION       | Commercial plans/quotas/invoicing/enforcement remain                                     |
+| Observability contracts              | FOUNDATION       | Real dashboards/alerts/SLO ownership/runbooks remain                                     |
+| Shared design system                 | FOUNDATION       | Complete product adoption, translation and accessibility remain                          |
+| Dependency / image security          | IN PROGRESS      | Patched branch, dependency audit and image scans must pass before preview promotion      |
 
 ## Business capabilities
 
-| Capability | Repository state | Remaining boundary |
-| --- | --- | --- |
-| CRM / Customer 360 | FOUNDATION | Final maintenance/identity-resolution/search/bulk/UX/governance closure |
-| Inbox / Messaging / Tickets / SLA | FOUNDATION | Real provider channels, final support/SLA behavior and dedicated browser closure |
-| Commerce / Orders | COMPLETE repository gate | Real Shopify/WooCommerce/payment/provider execution and commercial edge cases |
-| Shipping | COMPLETE repository gate | Real carriers/labels/tracking/address data and durable production workflow closure |
-| Identity / Team / Organization | COMPLETE repository gate | Production browser session/MFA/invitation-delivery and product-wide identity UX |
-| Self-service onboarding | COMPLETE repository gate | Config compiler/simulation, final AR copy and production acquisition-to-activation journey |
-| Returns / Exchanges / Refunds | COMPLETE repository gate | Real payment/provider transports and actual durable Temporal orchestration |
-| Recovery | NOT STARTED — NEXT | Full domain closure required |
-| Sales | NOT STARTED | After Recovery |
-| Campaigns | NOT STARTED | After Sales |
+| Capability                        | Repository state         | Remaining boundary                                                                         |
+| --------------------------------- | ------------------------ | ------------------------------------------------------------------------------------------ |
+| CRM / Customer 360                | FOUNDATION               | Final maintenance/identity-resolution/search/bulk/UX/governance closure                    |
+| Inbox / Messaging / Tickets / SLA | FOUNDATION               | Real provider channels, final support/SLA behavior and dedicated browser closure           |
+| Commerce / Orders                 | COMPLETE repository gate | Real Shopify/WooCommerce/payment/provider execution and commercial edge cases              |
+| Shipping                          | COMPLETE repository gate | Real carriers/labels/tracking/address data and durable production workflow closure         |
+| Identity / Team / Organization    | COMPLETE repository gate | Production browser session/MFA/invitation-delivery and product-wide identity UX            |
+| Self-service onboarding           | COMPLETE repository gate | Config compiler/simulation, final AR copy and production acquisition-to-activation journey |
+| Returns / Exchanges / Refunds     | COMPLETE repository gate | Real payment/provider transports and actual durable Temporal orchestration                 |
+| Recovery                          | NOT STARTED — NEXT       | Full domain closure required                                                               |
+| Sales                             | NOT STARTED              | After Recovery                                                                             |
+| Campaigns                         | NOT STARTED              | After Sales                                                                                |
 
 ## Orchestration and configuration
 

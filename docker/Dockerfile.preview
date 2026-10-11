@@ -11,8 +11,10 @@ FROM node:24-bookworm-slim
 WORKDIR /workspace
 ENV NODE_ENV=production
 RUN apt-get update \
+  && apt-get upgrade -y \
   && apt-get install -y --no-install-recommends postgresql-client curl ca-certificates \
   && rm -rf /var/lib/apt/lists/* \
+  && rm -rf /usr/local/lib/node_modules/npm /opt/yarn* \
   && corepack enable
 COPY --from=opa /opa /usr/local/bin/opa
 COPY --from=build /workspace /workspace

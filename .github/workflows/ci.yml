@@ -20,7 +20,7 @@ jobs:
         with: { node-version: 22, cache: pnpm }
       - run: pnpm install --frozen-lockfile
       - name: Audit JavaScript dependencies
-        run: pnpm audit --audit-level high
+        run: pnpm security:dependencies
       - run: pnpm format:check
       - run: pnpm migration:verify
       - run: pnpm -r --if-present build

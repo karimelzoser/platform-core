@@ -1,0 +1,82 @@
+diff --git a/lib/compile.js b/lib/compile.js
+index dce69beb90ece5c3b0ca234a949418f9f34eedbc..e9e836f22cca434abb318816afdd72563df75c46 100644
+--- a/lib/compile.js
++++ b/lib/compile.js
+@@ -4,6 +4,7 @@ const fill = require('fill-range');
+ const utils = require('./utils');
+ 
+ const compile = (ast, options = {}) => {
++  require('./validate-ast')(ast);
+   const walk = (node, parent = {}) => {
+     const invalidBlock = utils.isInvalidBrace(parent);
+     const invalidNode = node.invalid === true && options.escapeInvalid === true;
+diff --git a/lib/expand.js b/lib/expand.js
+index 35b2c41d6afdb8f0197959e26079f266e48370d3..e5771a595136c919c0043947e887cd1afb7593a1 100644
+--- a/lib/expand.js
++++ b/lib/expand.js
+@@ -31,6 +31,7 @@ const append = (queue = '', stash = '', enclose = false) => {
+ };
+ 
+ const expand = (ast, options = {}) => {
++  require('./validate-ast')(ast);
+   const rangeLimit = options.rangeLimit === undefined ? 1000 : options.rangeLimit;
+ 
+   const walk = (node, parent = {}) => {
+diff --git a/lib/parse.js b/lib/parse.js
+index 3a6988e629f52aee6609dc5ec290a5e9ff47cecb..5bdc9067b7c9afea3f2b67795dc483a14d85bd9d 100644
+--- a/lib/parse.js
++++ b/lib/parse.js
+@@ -143,6 +143,7 @@ const parse = (input, options = {}) => {
+      */
+ 
+     if (value === CHAR_LEFT_PARENTHESES) {
++      if (stack.length >= 128) throw new SyntaxError('Brace AST exceeds maximum depth (128)');
+       block = push({ type: 'paren', nodes: [] });
+       stack.push(block);
+       push({ type: 'text', value });
+@@ -195,6 +196,7 @@ const parse = (input, options = {}) => {
+      */
+ 
+     if (value === CHAR_LEFT_CURLY_BRACE) {
++      if (stack.length >= 128) throw new SyntaxError('Brace AST exceeds maximum depth (128)');
+       depth++;
+ 
+       const dollar = prev.value && prev.value.slice(-1) === '$' || block.dollar === true;
+diff --git a/lib/stringify.js b/lib/stringify.js
+index 8bcf872c31894f81a8c64d9202fd607e4fd7ea2b..76140e7ab8bb99cadfc5bb478be5a9f118a95f4a 100644
+--- a/lib/stringify.js
++++ b/lib/stringify.js
+@@ -3,6 +3,7 @@
+ const utils = require('./utils');
+ 
+ module.exports = (ast, options = {}) => {
++  require('./validate-ast')(ast);
+   const stringify = (node, parent = {}) => {
+     const invalidBlock = options.escapeInvalid && utils.isInvalidBrace(parent);
+     const invalidNode = node.invalid === true && options.escapeInvalid === true;
+diff --git a/lib/validate-ast.js b/lib/validate-ast.js
+new file mode 100644
+index 0000000000000000000000000000000000000000..1c8f932e5bf243a7830cb9096aa1a4a69bfb0671
+--- /dev/null
++++ b/lib/validate-ast.js
+@@ -0,0 +1,20 @@
++'use strict';
++
++// Iterative validation keeps every public AST walker below a fixed recursion
++// bound, including callers that supply their own tree instead of parsing text.
++module.exports = ast => {
++  const pending = [{ node: ast, depth: 0 }];
++  const visited = new Set();
++  while (pending.length > 0) {
++    const { node, depth } = pending.pop();
++    if (!node || typeof node !== 'object') throw new TypeError('Invalid brace AST node');
++    if (depth >= 128) throw new SyntaxError('Brace AST exceeds maximum depth (128)');
++    if (visited.has(node)) throw new SyntaxError('Brace AST must be an acyclic tree');
++    visited.add(node);
++    if (visited.size > 65536) throw new SyntaxError('Brace AST exceeds maximum node count');
++    if (node.nodes !== undefined) {
++      if (!Array.isArray(node.nodes)) throw new TypeError('Invalid brace AST children');
++      for (const child of node.nodes) pending.push({ node: child, depth: depth + 1 });
++    }
++  }
++};
