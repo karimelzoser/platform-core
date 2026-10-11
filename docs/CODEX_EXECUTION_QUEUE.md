@@ -1,187 +1,98 @@
 # Codex Execution Queue
 
-This is the authoritative implementation queue for PRENEURA. `COMPLETE` means the repository
-closure gate for that workstream has objective evidence on the exact code being evaluated. It
-does not mean the overall platform is production-ready.
-
-The full architecture and release order remain defined by `WORK_PLAN.md`,
-`PLATFORM_EXECUTION_BLUEPRINT.md`, ADR 0004, and `TESTING_AND_ACCEPTANCE.md`.
+This is the authoritative dependency-ordered implementation queue for PRENEURA. A repository gate marked **COMPLETE** means its defined code/test evidence passed on an exact revision; it does **not** mean the full platform is production-ready.
 
 ## Execution discipline
 
-- Keep exactly one product workstream current unless the only remaining work is externally
-  blocked.
-- Finish the complete branch before updating its Git ref. Do not use GitHub Actions as an
-  iterative development shell.
-- After the complete branch is published, the exact head must pass every mandatory CI gate
-  before merge.
-- Do not mix later domains into the current workstream merely because schema or service
-  scaffolding already exists.
-- A schema, endpoint, page, fixture, or partial test is not module completion.
-- Production provider fixtures never count as production network adapters.
-- Automated tests and preview infrastructure must never modify the production VPS or the
-  existing n8n installation.
+- Keep one dependency-ready product workstream current. Bounded release/security repairs may temporarily precede it when they protect every later workstream.
+- PostgreSQL remains canonical business state. Tenant relationships stay tenant-qualified and RLS-protected.
+- All humans, APIs, workers, Temporal workflows, Automation, Configuration and AI use the same typed command / RBAC / OPA / approval / idempotency / audit / outbox path.
+- Provider calls happen after canonical commit. Development fixtures never count as real provider adapters.
+- Long-running business coordination belongs in Temporal, not polling loops or a second business database.
+- Do not mark a schema, endpoint, page, fixture, preview deployment or green old-SHA CI as completion.
+- Production VPS, customer databases/provider accounts and the existing n8n installation are outside automated repository/preview testing.
 
-## Always-on requirements
+## Immediate bounded stabilization — CURRENT
 
-Every domain must be built with the following rather than retrofitting them later:
+Current reviewed `main`: `01b48010b749bc780bfbd21afb464e91553b26d5` (merged Returns / Exchanges / Refunds), with main CI run #528 green.
 
-- tenant-qualified relationships and PostgreSQL RLS;
-- authenticated tenant context, RBAC/OPA, and approval policy where required;
-- typed canonical domain commands;
-- idempotency, immutable audit evidence, and transactional outbox events;
-- post-commit provider execution through typed connector boundaries;
-- Temporal durability for long-running processes where applicable;
-- structured logs, correlation/trace context, and bounded operational metrics;
-- canonical analytics/usage/cost instrumentation where applicable;
-- shared design-system primitives and direction-safe UI behavior;
-- unit, integration, RLS, authorization, contract, and browser evidence as applicable.
+Before the next domain branch is promoted:
 
-Humans, APIs, automations, Temporal workflows, configuration compilation, and AI must converge
-on the same canonical business-command and security path. No subsystem may create a second
-business backend.
+1. close the known Web/Admin dependency advisories using supported patched Next.js/React versions and current transitive fixes;
+2. keep dependency and container-image vulnerability scans in CI;
+3. repair and externally verify the isolated Railway development preview, including listener/domain/health agreement and exact deployed SHA provenance;
+4. keep the preview isolated from real production/customer/provider state;
+5. reconcile this queue, implementation status and readiness/evidence matrices with exact repository/deployment evidence.
 
-## Current
+This stabilization is not a substitute for product implementation and must remain bounded.
 
-### Self-service onboarding — IMPLEMENTED, VERIFICATION PENDING
+## Next product workstream — Recovery
 
-The clean onboarding closure branch is limited to onboarding and its direct integration points.
-It must prove all of the following on its exact head before merge:
+Recovery is the next dependency-ready domain after merged Returns. Closure requires:
 
-- canonical reusable organization business profile;
-- country, currency, timezone, locale, industry, customer model, commerce model, volume bands,
-  and business goals;
-- resumable setup state without duplicating Team or Integration domain state;
-- Team status derived from active memberships and pending invitations;
-- Integration status derived from canonical connection state;
-- explicit defer/reopen dispositions for Team and first Integration;
-- typed, authorized, idempotent commands with audit and outbox evidence;
-- tenant RLS and two-tenant application isolation;
-- invalid-input rollback and idempotency-conflict evidence;
-- protected responsive onboarding browser acceptance with LTR/RTL direction behavior;
-- migration verification, build, lint, typecheck, unit/integration tests, images, secret scan,
-  and every other required CI job green on the exact head.
+- recovery opportunities derived from canonical abandoned/lost commercial state rather than duplicate order/customer state;
+- eligibility, suppression, consent and expiration rules;
+- bounded attempts/offers and approval thresholds for incentives/discounts;
+- deterministic recipient/send identities so retries never duplicate successful sends;
+- Messaging integration through canonical outbound commands;
+- recovered-order linkage and deterministic attribution/confidence;
+- recovered value, channel/provider cost and later ROI source events;
+- tenant-qualified schema/RLS/relationship guards, permissions, OPA, approval, idempotency, audit and outbox;
+- durable Temporal coordination for waits/retries/expiry where applicable;
+- operator API/UI with truthful pending/suppressed/expired/recovered states;
+- two-tenant, retry/idempotency, authorization and protected browser evidence.
 
-A pending invitation is `INVITED`, not completed Team setup. Integration setup distinguishes
-`CONNECTED`, `DEGRADED`, `ACTION_REQUIRED`, `SKIPPED`, and `PENDING`. Workspace readiness is
-reached only after the business profile is complete and the remaining setup steps are either
-operationally usable or explicitly deferred.
+Delivery rescue remains a Shipping responsibility and must not be duplicated in Recovery.
 
-The current onboarding branch must not include Returns, Recovery, Sales, or Campaigns domain
-implementation. Those are separate closure branches below.
+## Completed repository gates
 
-## Verification pending outside the current branch
+- Tenant / migration / RLS foundation — FOUNDATION COMPLETE.
+- RBAC / OPA / approvals — FOUNDATION COMPLETE.
+- Idempotency / immutable audit / transactional outbox — FOUNDATION COMPLETE.
+- Connector / webhook / sync / provider-action infrastructure with deterministic development fixtures — FOUNDATION COMPLETE.
+- CRM / Customer 360 — STRONG FOUNDATION; final closure remains later.
+- Unified Messaging / Tickets / SLA — STRONG FOUNDATION; final closure remains later.
+- Commerce / Orders — COMPLETE repository gate.
+- Shipping — COMPLETE repository gate.
+- Usage / metering / telemetry / shared UI contracts — FOUNDATION COMPLETE.
+- Identity / Team / Organization — COMPLETE repository gate.
+- Self-service onboarding — COMPLETE repository gate; merged as `9728098275ff42cf7397ea153a6b5a5026bf1a66`, main CI #505 green.
+- Returns / Exchanges / Refunds — COMPLETE repository gate; PR #12 head `17a05bf3fc9ceba8b8b6304202bfd922459d897b` passed CI #527 and merged as `01b48010b749bc780bfbd21afb464e91553b26d5`; main CI #528 green.
 
-- Full product-wide EN/AR translation, responsive/accessibility closure, and all error/empty
-  states remain part of the later full-product UX gate.
-- Production provider network verification remains part of Production Connector Closure.
-- Complete Temporal retry/replay/cancellation/versioning standardization remains a dedicated
-  platform-wide gate after release-critical domain workflows exist.
+Repository completion for those domains does not waive later real-provider, real-Temporal, full EN/AR UX, security, performance, governance or release gates.
 
-## Next workstreams
+## Remaining dependency order
 
-1. **Returns / Exchanges / Refunds** — distinct aggregates; eligibility; authorization;
-   inspection; resolution; restock; approval-sensitive financial commands; payment/carrier
-   hooks; workflow durability; API/UI; RLS; audit; outbox; usage/analytics; tests.
-2. **Recovery** — commercial recovery opportunities; suppression/eligibility; attempts and
-   offers; channel execution; expiry; recovered-order linkage; attribution/value; Temporal;
-   ROI events; UI; tenant isolation.
-3. **Sales** — CRM-referenced leads; qualification; pipelines/stages; opportunities;
-   activities/tasks; expected value/probability; typed commands; structured AI-ready signals;
-   UI and tests without duplicating CRM identity.
-4. **Campaigns** — consent/suppression; immutable audience snapshots; deterministic recipients
-   and sends; scheduling/timezones; batching; retries; delivery/read receipts; cost/metering;
-   conversion/attribution; approvals; Temporal; UI and isolation tests.
-5. **CRM / Customer 360 / Unified Inbox / Tickets / SLA final closure** — close remaining
-   product behavior and UX on the existing strong foundation before higher-level orchestration
-   depends on it.
-6. **Temporal platform closure** — standard workflow IDs/task queues/search attributes,
-   activity contracts, retry taxonomy, timeouts, heartbeats, cancellation, signals/updates,
-   external-state handling, replay/versioning, worker restart, and server restart evidence.
-7. **Automation Studio** — declarative triggers, conditions, branches, waits, approvals,
-   versions, durable runs, typed canonical actions, telemetry/metering, and a safe builder. No
-   arbitrary SQL, unrestricted HTTP, JavaScript, Python, or untrusted code execution.
-8. **Configuration model/compiler** — versioned declarative tenant configuration; profile and
-   policy inputs; compile; validate; diff; approval; idempotent publish/apply; version history;
-   rollback.
-9. **Configuration simulation** — synthetic non-mutating dry run showing policy decisions,
-   automation/tool plans, approvals, provider intents, expected state, warnings, traces, and
-   estimated cost without production mutation or provider calls.
-10. **Production Connector Closure** — real Shopify, WooCommerce, WhatsApp Cloud, Instagram,
-    Messenger, Email, Web Chat/API ingress, launch shipping carriers, payment providers, and
-    generic REST/webhook adapters as applicable; secrets, OAuth/token lifecycle, webhooks,
-    sync/reconcile, typed actions, rate limits, health, disconnect, and uninstall.
-11. **AI typed-tool platform** — stable/versioned tools mapped only to canonical platform
-    commands with schemas, permission/risk/approval policy, idempotency, sensitivity,
-    timeout/retry, audit, and usage contracts.
-12. **AI Gateway production foundation** — provider/model adapters and capability catalog;
-    deterministic/local/economical/strong/human routing; language/risk/latency/cost/context
-    policy; fallback; embeddings/reranker boundaries; telemetry and cost attribution.
-13. **AI evaluation + Knowledge/RAG** — tenant/access-scoped sources, documents, versions,
-    chunks, pgvector retrieval, citations/freshness, optional reranking, and repeatable safety,
-    quality, latency, and cost evaluations for English, Arabic, and target dialects.
-14. **AI Operators** — Support, Sales Assistant, Lead Qualification, Order, Confirmation,
-    Recovery, Shipping, Returns, Campaign Assistant, and Moderator with versioned prompts,
-    knowledge scope, tool allowlists, evaluation thresholds, budgets, escalation, and
-    OFF/COPILOT/APPROVAL/AUTONOMOUS modes. Mode never bypasses risk policy.
-15. **Custom Data** — tenant tables/fields/records, typed validation, permissions,
-    import/export, indexes, API/UI, events, automation hooks, safe AI tools, RLS, and
-    two-tenant tests; no arbitrary SQL or unmanaged tenant schemas.
-16. **Analytics / ROI** — event-driven aggregates and reporting for executive, support,
-    commerce, shipping, recovery, sales, campaigns, automation, AI, provider cost, and
-    operations with measured dashboard performance.
-17. **Billing / Metering commercial closure** — plans, subscriptions, entitlements, quotas,
-    periods, overages, trials, provider-cost allocation, invoice references, and suspension
-    hooks consuming the existing canonical usage ledger.
-18. **Developer Platform** — scoped hashed API keys, expiry/rotation/revocation, rate limits,
-    canonical-event outbound webhooks, signing, retries/dead letters, logs, docs/UI, and audit.
-19. **Admin Control Center** — tenant/integration/workflow/webhook/outbox/dead-letter health,
-    AI/usage/spend/billing visibility, and safe audited operational remediation commands.
-20. **Data Governance** — retention, export, deletion/anonymization, consent evidence, media
-    cleanup, AI trace/raw-webhook retention, secret rotation, suspension, and tenant deletion.
-21. **Full product UX closure** — every release-critical surface through one design system with
-    complete English LTR and Arabic RTL product copy, desktop/laptop/tablet/mobile layouts,
-    keyboard support, practical WCAG 2.2 AA, and complete loading/empty/forbidden/recoverable/
-    fatal states.
-22. **Security hardening** — formal BOLA/IDOR and tenant-escape tests; privilege escalation;
-    approval replay/substitution; forged/replayed webhooks; SSRF; injection; upload/API-key
-    abuse; prompt injection; AI-tool abuse; cross-tenant RAG; dependency/image/SBOM closure.
-23. **Observability operations** — production logs, metrics, traces, dashboards, alerts, SLO
-    signals, workflow/provider/queue/outbox/AI visibility, and actionable runbooks.
-24. **Performance / SLO / capacity** — normal, peak, burst, provider slowdown/failure, database
-    restart, worker restart, Temporal restart, and Valkey restart scenarios with backpressure
-    and retry-storm protection.
-25. **Production deployment / disaster recovery** — dev/staging/prod isolation, immutable
-    images, production Compose overlay, controlled migrations, health/readiness, backup,
-    restore/PITR where applicable, rollback, smoke, deploy verification, and operational
-    runbooks.
-26. **Immutable full release acceptance** — clean install, migration chain, seed/base config,
-    two-tenant isolation, API contracts, Temporal durability, provider emulators, real staging
-    providers, browser E2E, EN/AR, responsive/accessibility, adversarial security, load/soak,
-    failure injection, backup/restore, previous-release upgrade, rollback, UAT, release
-    candidate, and production verification.
+1. **Recovery** — commercial recovery eligibility/suppression/attempts/offers/sends/expiry/attribution/value/Temporal/UI/isolation.
+2. **Sales** — CRM-referenced leads, qualification, pipelines/stages, opportunities, activities/tasks, value/probability, win/loss and order/customer linkage without duplicating CRM identity.
+3. **Campaigns** — consent/suppression, immutable audiences/recipients, scheduling/timezones/send windows, batching/rate limits, receipts, pause/cancel, cost/metering, conversion attribution and approvals.
+4. **CRM / Customer 360 / Unified Inbox / Tickets / SLA final closure** — complete remaining maintenance, identity-resolution, search/filter/bulk, inbox/media/read, templates, ticket task/category/link, business-hours/escalation/notification and dedicated browser gaps.
+5. **Business durability / Temporal closure** — real registered workers and workflow/activity definitions for integration reconciliation, order confirmation, shipping/rescue, returns/refunds, recovery, campaigns, support/operator and later automation; prove retries, timeouts, heartbeats, cancellation, signals/updates, duplicate starts, replay/evolution and restarts.
+6. **Automation Studio** — declarative versioned triggers/conditions/branches/waits/actions, immutable publish, durable runs and safe builder; no unrestricted code/SQL/network.
+7. **Configuration compiler** — versioned blueprints/bundles, normalize/compile/validate/diff/approve/apply/publish/history/rollback.
+8. **Configuration simulation** — synthetic side-effect-free traces of rules/policy/approvals/proposed commands/provider intents/waits/warnings/cost.
+9. **Production Connector Closure** — real protected secrets plus Meta/WhatsApp/Instagram/Messenger/Email/Web Chat/API, Shopify, WooCommerce and selected launch carrier/payment transports; OAuth/token/signature/rate-limit/reconcile/uninstall evidence.
+10. **AI typed-tool platform** — versioned allowlisted tools mapped only to canonical commands with actor/tenant/resource, permissions/risk/approval, schemas, idempotency, sensitivity, timeout/retry, audit and usage.
+11. **AI Gateway production closure** — authenticated internal model/provider routing, capability catalog, policy, budgets/fallback, embeddings/reranker interfaces, telemetry and cost.
+12. **Knowledge/RAG + AI evaluation** — access-scoped ingestion/retrieval/citations/freshness/deletion and repeatable EN/AR/dialect security/quality/latency/cost tests.
+13. **AI Operators** — Support, Sales, Lead Qualification, Order, Confirmation, Recovery, Shipping, Returns, Campaign Assistant and Moderator with versioned instructions, knowledge/tool scope, budgets, thresholds, escalation and controlled modes.
+14. **Custom Data** — typed tenant tables/fields/records, permissions, import/export, safe evolution/indexes, API/UI/events/automation/AI tools; no arbitrary SQL.
+15. **Analytics / ROI** — idempotent projections/rebuilds and attribution/cost dashboards across operational domains with measured lag/query performance.
+16. **Billing / Metering commercial closure** — plans/subscriptions/entitlements/quotas/trials/periods/overages/provider-cost allocation/invoice references/suspension consuming canonical usage.
+17. **Developer Platform** — scoped hashed API keys, show-once secret, expiry/revoke/rotate, rate limits and signed outbound canonical-event webhooks with retries/DLQ/logs/docs/UI/audit.
+18. **Admin Control Center** — explicit privileged identity, tenant/integration/workflow/provider/outbox/webhook/DLQ/usage/spend/billing visibility and audited remediation.
+19. **Data Governance** — retention/export/deletion/anonymization/consent evidence, media/raw-webhook/AI-trace cleanup, secret rotation, suspension/deletion and derived-data propagation.
+20. **Full product UX closure** — one real design system, complete EN LTR + AR RTL translations/formatting/bidi, desktop/tablet/mobile, keyboard/focus/reduced-motion, practical WCAG 2.2 AA and complete loading/empty/forbidden/pending/recoverable/fatal states.
+21. **Security hardening** — BOLA/IDOR/tenant escape, privilege escalation, approval replay/substitution/concurrency, webhook forgery/replay, SSRF/injection/upload/API-key abuse, prompt injection/tool abuse, cross-tenant RAG/admin misuse, dependency/image/SBOM closure.
+22. **Observability operations** — production logs/metrics/traces, dashboards/alerts/runbooks for API, DB, outbox, webhooks, providers, workers, workflows, AI, projections and billing.
+23. **Performance / SLO / capacity** — measurable normal/peak/burst/provider-slowdown/restart/saturation/backpressure/soak evidence against representative tenant/data sizes.
+24. **Production deployment / disaster recovery** — explicit dev/staging/prod topology, immutable Web/Admin/API/AI/worker images, migration job, private infrastructure, durable media/secrets, backup/restore/PITR, upgrade/rollback drills and deploy provenance.
+25. **Immutable full release acceptance** — one release candidate passes clean install, full migration chain, two-tenant/adversarial tests, actual business workflows, authorized real staging-provider proof, EN/AR/responsive/a11y, load/failure evidence, backup/restore/upgrade/rollback, UAT and launch verification.
 
-## Blocked external inputs
+## External prerequisites
 
-Repository engineering is not blocked. Production credentials, provider approval/certification,
-and launch access are external inputs and must never be fabricated. Contract-faithful fixtures
-may be used for deterministic CI, but fixtures cannot be represented as production adapters.
-
-## Completed repository foundations
-
-- canonical PostgreSQL tenant/RLS foundation;
-- authentication, membership, RBAC/OPA, approval, and organization security foundation;
-- idempotency, immutable audit, and transactional outbox;
-- connector/webhook/sync/provider-action repository foundation and deterministic fixtures;
-- CRM Customer 360 foundation;
-- unified Messaging/Tickets/SLA foundation;
-- Commerce and Order workflow repository gates;
-- Shipping repository gate;
-- cross-cutting usage/metering, telemetry, analytics-dimension, and shared UI contracts;
-- Identity / Team / Organization repository closure.
+Repository engineering continues while production provider credentials/certification, launch geography/provider selection, payment/carrier commercial access, jurisdiction-specific review and final production deployment authority are pending. These inputs must remain explicit and may never be fabricated with fixtures.
 
 ## Release evidence rule
 
-No item becomes `COMPLETE` because prose says so. Record objective exact-head evidence in
-`IMPLEMENTATION_STATUS.md`. The platform remains **IN PROGRESS** until this queue drains and the
-complete acceptance requirements pass on one immutable release candidate.
+PRENEURA remains **IN PROGRESS** until every mandatory workstream above is closed and the complete release gate passes on one immutable candidate. Update `IMPLEMENTATION_STATUS.md`, `PRODUCTION_READINESS_MATRIX.md` and `CAPABILITY_EVIDENCE_MATRIX.md` whenever a workstream is promoted.
