@@ -1,17 +1,19 @@
 import type { Metadata } from 'next';
 import { DirectionControl } from './direction-control';
+import { PlatformNavigation } from './platform-navigation';
 import './styles.css';
 import './design-system.css';
 
 export const metadata: Metadata = {
-  title: 'Platform',
-  description: 'Operations platform for commerce and customer teams',
+  title: 'PRENEURA Platform',
+  description: 'Operations platform for commerce, customer teams, automation, and controlled AI',
 };
 
 export default function RootLayout({ children }: Readonly<{ children: React.ReactNode }>) {
   return (
     <html lang="en" dir="ltr">
       <body>
+        <PlatformNavigation />
         <DirectionControl />
         {children}
       </body>
