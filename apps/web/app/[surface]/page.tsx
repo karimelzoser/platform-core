@@ -1,5 +1,11 @@
 import Link from 'next/link';
 import { notFound } from 'next/navigation';
+import { LocalizedText } from '../display-locale';
+import {
+  isPlatformPreviewSurface,
+  platformPreviewSurfaces,
+} from '../preview-platform-surfaces';
+import { isPreviewSurface, previewSurfaces, type PreviewSurface } from '../preview-surfaces';
 import {
   MetricCard,
   PageHeader,
@@ -8,39 +14,34 @@ import {
   StatusBadge,
   SurfaceCard,
 } from '../ui-primitives';
-import {
-  isPlatformPreviewSurface,
-  platformPreviewSurfaces,
-} from '../preview-platform-surfaces';
-import { isPreviewSurface, previewSurfaces, type PreviewSurface } from '../preview-surfaces';
 
 const surfaceLabels = {
-  inbox: 'Unified inbox',
-  customers: 'Customer 360',
-  tickets: 'Tickets',
-  orders: 'Orders',
-  confirmation: 'Order confirmation',
-  shipping: 'Shipping',
-  recovery: 'Recovery',
-  returns: 'Returns & refunds',
-  sales: 'Sales',
-  campaigns: 'Campaigns',
-  automation: 'Automation studio',
-  operators: 'AI operators',
-  approvals: 'Approvals',
-  integrations: 'Integrations',
-  knowledge: 'Knowledge',
-  analytics: 'Analytics & ROI',
-  billing: 'Billing & usage',
-  developer: 'Developer platform',
-  team: 'Team & roles',
-  settings: 'Organization settings',
-  onboarding: 'Onboarding',
-  configuration: 'Configuration',
-  simulation: 'Configuration simulation',
-  'custom-data': 'Custom data',
-  admin: 'Admin control center',
-  runtime: 'Workflow runtime',
+  inbox: ['Unified inbox', 'صندوق الوارد الموحد'],
+  customers: ['Customer 360', 'ملف العميل 360'],
+  tickets: ['Tickets', 'التذاكر'],
+  orders: ['Orders', 'الطلبات'],
+  confirmation: ['Order confirmation', 'تأكيد الطلبات'],
+  shipping: ['Shipping', 'الشحن'],
+  recovery: ['Recovery', 'استرداد المبيعات'],
+  returns: ['Returns & refunds', 'المرتجعات والاسترداد'],
+  sales: ['Sales', 'المبيعات'],
+  campaigns: ['Campaigns', 'الحملات'],
+  automation: ['Automation studio', 'استوديو الأتمتة'],
+  operators: ['AI operators', 'مشغلو الذكاء الاصطناعي'],
+  approvals: ['Approvals', 'الموافقات'],
+  integrations: ['Integrations', 'التكاملات'],
+  knowledge: ['Knowledge', 'المعرفة'],
+  analytics: ['Analytics & ROI', 'التحليلات والعائد'],
+  billing: ['Billing & usage', 'الفوترة والاستخدام'],
+  developer: ['Developer platform', 'منصة المطورين'],
+  team: ['Team & roles', 'الفريق والأدوار'],
+  settings: ['Organization settings', 'إعدادات المؤسسة'],
+  onboarding: ['Onboarding', 'الإعداد الأولي'],
+  configuration: ['Configuration', 'الإعدادات'],
+  simulation: ['Configuration simulation', 'محاكاة الإعدادات'],
+  'custom-data': ['Custom data', 'البيانات المخصصة'],
+  admin: ['Admin control center', 'مركز تحكم الإدارة'],
+  runtime: ['Workflow runtime', 'تشغيل مسارات العمل'],
 } as const;
 
 type Surface = keyof typeof surfaceLabels;
@@ -65,19 +66,30 @@ export default async function SurfacePage({ params }: { params: Promise<{ surfac
       <PageShell aria-labelledby="surface-title">
         <Stack gap="spacious">
           <PageHeader
-            eyebrow="TENANT WORKSPACE"
-            title={<span id="surface-title">{surfaceLabels[surface]}</span>}
-            description="This module is backed by a dedicated application route when its implementation is available."
+            eyebrow={<LocalizedText en="TENANT WORKSPACE" ar="مساحة عمل المؤسسة" />}
+            title={
+              <span id="surface-title">
+                <LocalizedText en={surfaceLabels[surface][0]} ar={surfaceLabels[surface][1]} />
+              </span>
+            }
+            description={
+              <LocalizedText
+                en="This module is backed by a dedicated application route when its implementation is available."
+                ar="تستخدم هذه الوحدة مسار تطبيق مخصص عند اكتمال تنفيذها."
+              />
+            }
             actions={
               <Link className="ds-button ds-button--secondary" href="/">
-                Platform home
+                <LocalizedText en="Platform home" ar="الرئيسية" />
               </Link>
             }
           />
           <SurfaceCard>
             <p className="preview-muted">
-              Use the main navigation to open the implemented operational surface. Backend-independent
-              preview data is available only for modules still under implementation.
+              <LocalizedText
+                en="Use the main navigation to open the implemented operational surface. Backend-independent preview data is available only for modules still under implementation."
+                ar="استخدم شريط التنقل لفتح الواجهات المنفذة. تظهر البيانات التجريبية المستقلة عن الخلفية فقط في الوحدات التي ما زالت قيد التنفيذ."
+              />
             </p>
           </SurfaceCard>
         </Stack>
@@ -95,10 +107,10 @@ export default async function SurfacePage({ params }: { params: Promise<{ surfac
           actions={
             <>
               <Link className="ds-button ds-button--secondary" href="/">
-                Platform home
+                <LocalizedText en="Platform home" ar="الرئيسية" />
               </Link>
               <Link className="ds-button ds-button--primary" href="/onboarding">
-                Organization setup
+                <LocalizedText en="Organization setup" ar="إعداد المؤسسة" />
               </Link>
             </>
           }
@@ -106,13 +118,22 @@ export default async function SurfacePage({ params }: { params: Promise<{ surfac
 
         <div className="preview-mode-banner" role="note">
           <div>
-            <strong>Backend-independent product preview</strong>
+            <strong>
+              <LocalizedText
+                en="Backend-independent product preview"
+                ar="معاينة المنتج بدون اعتماد على الخلفية"
+              />
+            </strong>
             <span>
-              This screen uses deterministic sample data so product structure, workflows, responsive
-              behavior, and RTL can be reviewed before the live backend is connected.
+              <LocalizedText
+                en="This screen uses deterministic sample data so product structure, workflows, responsive behavior, and RTL can be reviewed before the live backend is connected."
+                ar="تستخدم هذه الشاشة بيانات تجريبية ثابتة لمراجعة هيكل المنتج ومسارات العمل والاستجابة للشاشات واتجاه RTL قبل توصيل الخلفية الحية."
+              />
             </span>
           </div>
-          <StatusBadge tone="info">Preview data</StatusBadge>
+          <StatusBadge tone="info">
+            <LocalizedText en="Preview data" ar="بيانات تجريبية" />
+          </StatusBadge>
         </div>
 
         <div className="ds-metric-grid preview-metrics">
@@ -130,10 +151,16 @@ export default async function SurfacePage({ params }: { params: Promise<{ surfac
           <SurfaceCard className="preview-board-card">
             <div className="preview-section-heading">
               <div>
-                <p className="ds-eyebrow">WORKFLOW</p>
-                <h2>Operational board</h2>
+                <p className="ds-eyebrow">
+                  <LocalizedText en="WORKFLOW" ar="سير العمل" />
+                </p>
+                <h2>
+                  <LocalizedText en="Operational board" ar="لوحة العمليات" />
+                </h2>
               </div>
-              <StatusBadge tone="neutral">Sample state</StatusBadge>
+              <StatusBadge tone="neutral">
+                <LocalizedText en="Sample state" ar="حالة تجريبية" />
+              </StatusBadge>
             </div>
             <div className="preview-board">
               {config.lanes.map((lane) => (
@@ -155,7 +182,9 @@ export default async function SurfacePage({ params }: { params: Promise<{ surfac
           <SurfaceCard className="preview-insight-card">
             <div className="preview-section-heading">
               <div>
-                <p className="ds-eyebrow">SIGNALS</p>
+                <p className="ds-eyebrow">
+                  <LocalizedText en="SIGNALS" ar="المؤشرات" />
+                </p>
                 <h2>{config.insightTitle}</h2>
               </div>
             </div>
@@ -170,32 +199,46 @@ export default async function SurfacePage({ params }: { params: Promise<{ surfac
         <SurfaceCard>
           <div className="preview-section-heading">
             <div>
-              <p className="ds-eyebrow">WORK QUEUE</p>
-              <h2>Current items</h2>
+              <p className="ds-eyebrow">
+                <LocalizedText en="WORK QUEUE" ar="قائمة العمل" />
+              </p>
+              <h2>
+                <LocalizedText en="Current items" ar="العناصر الحالية" />
+              </h2>
             </div>
-            <span className="preview-muted">Representative data only</span>
+            <span className="preview-muted">
+              <LocalizedText en="Representative data only" ar="بيانات تمثيلية فقط" />
+            </span>
           </div>
           <div className="preview-table-wrap">
             <table className="preview-table">
               <thead>
                 <tr>
-                  <th>Item</th>
-                  <th>Context</th>
-                  <th>Status</th>
-                  <th>Details</th>
+                  <th>
+                    <LocalizedText en="Item" ar="العنصر" />
+                  </th>
+                  <th>
+                    <LocalizedText en="Context" ar="السياق" />
+                  </th>
+                  <th>
+                    <LocalizedText en="Status" ar="الحالة" />
+                  </th>
+                  <th>
+                    <LocalizedText en="Details" ar="التفاصيل" />
+                  </th>
                 </tr>
               </thead>
               <tbody>
                 {config.rows.map((row) => (
                   <tr key={`${row.primary}-${row.secondary}`}>
-                    <td data-label="Item">
+                    <td data-label="Item / العنصر">
                       <strong>{row.primary}</strong>
                     </td>
-                    <td data-label="Context">{row.secondary}</td>
-                    <td data-label="Status">
+                    <td data-label="Context / السياق">{row.secondary}</td>
+                    <td data-label="Status / الحالة">
                       <StatusBadge tone={row.tone}>{row.status}</StatusBadge>
                     </td>
-                    <td data-label="Details" className="preview-muted">
+                    <td data-label="Details / التفاصيل" className="preview-muted">
                       {row.meta}
                     </td>
                   </tr>
@@ -208,8 +251,12 @@ export default async function SurfacePage({ params }: { params: Promise<{ surfac
         <SurfaceCard>
           <div className="preview-section-heading">
             <div>
-              <p className="ds-eyebrow">NEXT ACTIONS</p>
-              <h2>Product controls</h2>
+              <p className="ds-eyebrow">
+                <LocalizedText en="NEXT ACTIONS" ar="الإجراءات التالية" />
+              </p>
+              <h2>
+                <LocalizedText en="Product controls" ar="أدوات المنتج" />
+              </h2>
             </div>
           </div>
           <div className="preview-actions-grid">
@@ -227,9 +274,10 @@ export default async function SurfacePage({ params }: { params: Promise<{ surfac
             ))}
           </div>
           <p className="preview-muted preview-footnote">
-            Controls are intentionally disabled in backend-independent preview mode. Their visual and
-            interaction states are present now; live actions will bind to canonical typed commands as
-            each backend workstream is completed.
+            <LocalizedText
+              en="Controls are intentionally disabled in backend-independent preview mode. Their visual and interaction states are present now; live actions will bind to canonical typed commands as each backend workstream is completed."
+              ar="تم تعطيل الأزرار عمداً في وضع المعاينة المستقل عن الخلفية. حالات العرض والتفاعل موجودة الآن، وسترتبط الإجراءات الحية بالأوامر القياسية عند اكتمال كل مسار خلفي."
+            />
           </p>
         </SurfaceCard>
       </Stack>
