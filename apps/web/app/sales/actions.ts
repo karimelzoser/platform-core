@@ -7,21 +7,36 @@ export async function createSalesPipeline(formData: FormData): Promise<void> {
   const names = strings(formData, 'stageName');
   const probabilities = strings(formData, 'stageProbabilityPercent');
   const terminals = strings(formData, 'stageTerminalKind');
-  if (names.length === 0 || names.length !== probabilities.length || names.length !== terminals.length)
+  if (
+    names.length === 0 ||
+    names.length !== probabilities.length ||
+    names.length !== terminals.length
+  ) {
     throw new Error('Pipeline stage fields are incomplete');
+  }
+
   const stages = names.map((name, index) => {
-    const probability = Number(probabilities[index]);
-    if (!Number.isFinite(probability) || probability < 0 || probability > 100)
+    const probabilityText = probabilities.at(index);
+    const terminalKind = terminals.at(index);
+    if (probabilityText === undefined || terminalKind === undefined) {
+      throw new Error('Pipeline stage fields are incomplete');
+    }
+    const probability = Number(probabilityText);
+    if (!Number.isFinite(probability) || probability < 0 || probability > 100) {
       throw new Error('Stage probability must be between 0 and 100');
-    const terminalKind = terminals[index];
-    if (terminalKind !== 'OPEN' && terminalKind !== 'WON' && terminalKind !== 'LOST')
+    }
+    if (terminalKind !== 'OPEN' && terminalKind !== 'WON' && terminalKind !== 'LOST') {
       throw new Error('Stage outcome is invalid');
+    }
     return { name, probabilityBps: Math.round(probability * 100), terminalKind };
   });
-  if (!stages.some((stage) => stage.terminalKind === 'WON'))
+
+  if (!stages.some((stage) => stage.terminalKind === 'WON')) {
     throw new Error('Pipeline requires a Won terminal stage');
-  if (!stages.some((stage) => stage.terminalKind === 'LOST'))
+  }
+  if (!stages.some((stage) => stage.terminalKind === 'LOST')) {
     throw new Error('Pipeline requires a Lost terminal stage');
+  }
 
   const result = await platformRequest('/v1/sales/pipelines', {
     method: 'POST',
@@ -33,7 +48,11 @@ export async function createSalesPipeline(formData: FormData): Promise<void> {
       stages,
     },
   });
-  redirect(`/sales?message=${encodeURIComponent(result.kind === 'success' ? 'Sales pipeline created.' : apiMessage(result))}`);
+  redirect(
+    `/sales?message=${encodeURIComponent(
+      result.kind === 'success' ? 'Sales pipeline created.' : apiMessage(result),
+    )}`,
+  );
 }
 
 export async function createSalesLead(formData: FormData): Promise<void> {
@@ -45,24 +64,38 @@ export async function createSalesLead(formData: FormData): Promise<void> {
       source: required(formData, 'source'),
     },
   });
-  redirect(`/sales?message=${encodeURIComponent(result.kind === 'success' ? 'Sales lead created from the CRM customer.' : apiMessage(result))}`);
+  redirect(
+    `/sales?message=${encodeURIComponent(
+      result.kind === 'success'
+        ? 'Sales lead created from the CRM customer.'
+        : apiMessage(result),
+    )}`,
+  );
 }
 
 export async function qualifySalesLead(formData: FormData): Promise<void> {
   const leadId = required(formData, 'leadId');
   const status = required(formData, 'status');
-  const result = await platformRequest(`/v1/sales/leads/${encodeURIComponent(leadId)}/qualification`, {
-    method: 'POST',
-    idempotent: true,
-    body: {
-      score: integer(formData, 'score', 0, 100),
-      grade: required(formData, 'grade'),
-      status,
-      notes: optional(formData, 'notes'),
-      disqualificationReason: status === 'DISQUALIFIED' ? required(formData, 'reason') : undefined,
+  const result = await platformRequest(
+    `/v1/sales/leads/${encodeURIComponent(leadId)}/qualification`,
+    {
+      method: 'POST',
+      idempotent: true,
+      body: {
+        score: integer(formData, 'score', 0, 100),
+        grade: required(formData, 'grade'),
+        status,
+        notes: optional(formData, 'notes'),
+        disqualificationReason:
+          status === 'DISQUALIFIED' ? required(formData, 'reason') : undefined,
+      },
     },
-  });
-  redirect(`/sales?message=${encodeURIComponent(result.kind === 'success' ? 'Lead qualification updated.' : apiMessage(result))}`);
+  );
+  redirect(
+    `/sales?message=${encodeURIComponent(
+      result.kind === 'success' ? 'Lead qualification updated.' : apiMessage(result),
+    )}`,
+  );
 }
 
 export async function createSalesOpportunity(formData: FormData): Promise<void> {
@@ -81,39 +114,64 @@ export async function createSalesOpportunity(formData: FormData): Promise<void> 
       expectedCloseDate: optional(formData, 'expectedCloseDate'),
     },
   });
-  redirect(`/sales?message=${encodeURIComponent(result.kind === 'success' ? 'Sales opportunity created.' : apiMessage(result))}`);
+  redirect(
+    `/sales?message=${encodeURIComponent(
+      result.kind === 'success' ? 'Sales opportunity created.' : apiMessage(result),
+    )}`,
+  );
 }
 
 export async function moveSalesOpportunity(formData: FormData): Promise<void> {
   const opportunityId = required(formData, 'opportunityId');
-  const result = await platformRequest(`/v1/sales/opportunities/${encodeURIComponent(opportunityId)}/stage`, {
-    method: 'POST',
-    idempotent: true,
-    body: {
-      stageId: required(formData, 'stageId'),
-      reason: optional(formData, 'reason'),
+  const result = await platformRequest(
+    `/v1/sales/opportunities/${encodeURIComponent(opportunityId)}/stage`,
+    {
+      method: 'POST',
+      idempotent: true,
+      body: {
+        stageId: required(formData, 'stageId'),
+        reason: optional(formData, 'reason'),
+      },
     },
-  });
-  redirect(`/sales?message=${encodeURIComponent(result.kind === 'success' ? 'Opportunity stage updated.' : apiMessage(result))}`);
+  );
+  redirect(
+    `/sales?message=${encodeURIComponent(
+      result.kind === 'success' ? 'Opportunity stage updated.' : apiMessage(result),
+    )}`,
+  );
 }
 
 export async function closeSalesOpportunity(formData: FormData): Promise<void> {
   const opportunityId = required(formData, 'opportunityId');
   const status = required(formData, 'status');
-  if (status !== 'WON' && status !== 'LOST') throw new Error('Opportunity outcome is invalid');
-  const body: Record<string, unknown> = {
-    status,
-    stageId: required(formData, 'stageId'),
-    reason: optional(formData, 'reason'),
-  };
-  if (status === 'WON') body.orderId = optional(formData, 'orderId');
-  if (status === 'LOST' && !body.reason) throw new Error('Lost opportunity requires a reason');
-  const result = await platformRequest(`/v1/sales/opportunities/${encodeURIComponent(opportunityId)}/close`, {
-    method: 'POST',
-    idempotent: true,
-    body,
-  });
-  redirect(`/sales?message=${encodeURIComponent(result.kind === 'success' ? `Opportunity marked ${status.toLowerCase()}.` : apiMessage(result))}`);
+  if (status !== 'WON' && status !== 'LOST') {
+    throw new Error('Opportunity outcome is invalid');
+  }
+
+  const reason = optional(formData, 'reason');
+  const orderId = status === 'WON' ? optional(formData, 'orderId') : undefined;
+  if (status === 'LOST' && !reason) throw new Error('Lost opportunity requires a reason');
+
+  const result = await platformRequest(
+    `/v1/sales/opportunities/${encodeURIComponent(opportunityId)}/close`,
+    {
+      method: 'POST',
+      idempotent: true,
+      body: {
+        status,
+        stageId: required(formData, 'stageId'),
+        reason,
+        ...(orderId ? { orderId } : {}),
+      },
+    },
+  );
+  redirect(
+    `/sales?message=${encodeURIComponent(
+      result.kind === 'success'
+        ? `Opportunity marked ${status.toLowerCase()}.`
+        : apiMessage(result),
+    )}`,
+  );
 }
 
 export async function addSalesActivity(formData: FormData): Promise<void> {
@@ -130,16 +188,27 @@ export async function addSalesActivity(formData: FormData): Promise<void> {
       dueAt: optionalDateTime(formData, 'dueAt'),
     },
   });
-  redirect(`/sales?message=${encodeURIComponent(result.kind === 'success' ? 'Sales activity created.' : apiMessage(result))}`);
+  redirect(
+    `/sales?message=${encodeURIComponent(
+      result.kind === 'success' ? 'Sales activity created.' : apiMessage(result),
+    )}`,
+  );
 }
 
 export async function completeSalesActivity(formData: FormData): Promise<void> {
   const activityId = required(formData, 'activityId');
-  const result = await platformRequest(`/v1/sales/activities/${encodeURIComponent(activityId)}/complete`, {
-    method: 'POST',
-    idempotent: true,
-  });
-  redirect(`/sales?message=${encodeURIComponent(result.kind === 'success' ? 'Sales activity completed.' : apiMessage(result))}`);
+  const result = await platformRequest(
+    `/v1/sales/activities/${encodeURIComponent(activityId)}/complete`,
+    {
+      method: 'POST',
+      idempotent: true,
+    },
+  );
+  redirect(
+    `/sales?message=${encodeURIComponent(
+      result.kind === 'success' ? 'Sales activity completed.' : apiMessage(result),
+    )}`,
+  );
 }
 
 function required(formData: FormData, key: string): string {
@@ -160,10 +229,16 @@ function strings(formData: FormData, key: string): string[] {
     .map((value) => value.trim());
 }
 
-function integer(formData: FormData, key: string, min: number, max = Number.MAX_SAFE_INTEGER): number {
+function integer(
+  formData: FormData,
+  key: string,
+  min: number,
+  max = Number.MAX_SAFE_INTEGER,
+): number {
   const value = Number(required(formData, key));
-  if (!Number.isSafeInteger(value) || value < min || value > max)
+  if (!Number.isSafeInteger(value) || value < min || value > max) {
     throw new Error(`${key} must be an integer between ${String(min)} and ${String(max)}`);
+  }
   return value;
 }
 
