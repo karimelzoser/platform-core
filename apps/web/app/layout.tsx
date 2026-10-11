@@ -1,5 +1,6 @@
 import type { Metadata } from 'next';
 import { DirectionControl } from './direction-control';
+import { DisplayLocaleProvider } from './display-locale';
 import { PlatformNavigation } from './platform-navigation';
 import './styles.css';
 import './design-system.css';
@@ -14,9 +15,11 @@ export default function RootLayout({ children }: Readonly<{ children: React.Reac
   return (
     <html lang="en" dir="ltr">
       <body>
-        <PlatformNavigation />
-        <DirectionControl />
-        {children}
+        <DisplayLocaleProvider>
+          <PlatformNavigation />
+          <DirectionControl />
+          {children}
+        </DisplayLocaleProvider>
       </body>
     </html>
   );
