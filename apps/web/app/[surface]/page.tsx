@@ -8,7 +8,11 @@ import {
   StatusBadge,
   SurfaceCard,
 } from '../ui-primitives';
-import { isPreviewSurface, previewSurfaces } from '../preview-surfaces';
+import {
+  isPlatformPreviewSurface,
+  platformPreviewSurfaces,
+} from '../preview-platform-surfaces';
+import { isPreviewSurface, previewSurfaces, type PreviewSurface } from '../preview-surfaces';
 
 const surfaceLabels = {
   inbox: 'Unified inbox',
@@ -32,6 +36,11 @@ const surfaceLabels = {
   team: 'Team & roles',
   settings: 'Organization settings',
   onboarding: 'Onboarding',
+  configuration: 'Configuration',
+  simulation: 'Configuration simulation',
+  'custom-data': 'Custom data',
+  admin: 'Admin control center',
+  runtime: 'Workflow runtime',
 } as const;
 
 type Surface = keyof typeof surfaceLabels;
@@ -40,11 +49,18 @@ function isSurface(value: string): value is Surface {
   return value in surfaceLabels;
 }
 
+function previewFor(surface: string): PreviewSurface | undefined {
+  if (isPreviewSurface(surface)) return previewSurfaces[surface];
+  if (isPlatformPreviewSurface(surface)) return platformPreviewSurfaces[surface];
+  return undefined;
+}
+
 export default async function SurfacePage({ params }: { params: Promise<{ surface: string }> }) {
   const { surface } = await params;
   if (!isSurface(surface)) notFound();
 
-  if (!isPreviewSurface(surface)) {
+  const config = previewFor(surface);
+  if (!config) {
     return (
       <PageShell aria-labelledby="surface-title">
         <Stack gap="spacious">
@@ -68,8 +84,6 @@ export default async function SurfacePage({ params }: { params: Promise<{ surfac
       </PageShell>
     );
   }
-
-  const config = previewSurfaces[surface];
 
   return (
     <PageShell aria-labelledby="surface-title" className="preview-workspace">
@@ -201,7 +215,9 @@ export default async function SurfacePage({ params }: { params: Promise<{ surfac
           <div className="preview-actions-grid">
             {config.nextActions.map((action, index) => (
               <button
-                className={index === 0 ? 'ds-button ds-button--primary' : 'ds-button ds-button--secondary'}
+                className={
+                  index === 0 ? 'ds-button ds-button--primary' : 'ds-button ds-button--secondary'
+                }
                 disabled
                 key={action}
                 type="button"
