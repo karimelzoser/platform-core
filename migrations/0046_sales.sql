@@ -2,6 +2,30 @@ BEGIN;
 
 CREATE SCHEMA IF NOT EXISTS sales;
 
+-- Activities/tasks need an explicit permission boundary rather than borrowing
+-- lead mutation rights. Keep the original catalog immutable and extend it here.
+INSERT INTO identity.permissions (code, category, description, default_risk)
+VALUES
+  ('sales.activities.read', 'sales', 'View sales activities and tasks', 'LOW'),
+  ('sales.activities.manage', 'sales', 'Create and complete sales activities and tasks', 'MEDIUM')
+ON CONFLICT (code) DO UPDATE SET
+  category = EXCLUDED.category,
+  description = EXCLUDED.description,
+  default_risk = EXCLUDED.default_risk;
+
+INSERT INTO identity.role_template_permissions (template_code, permission_code)
+VALUES
+  ('owner', 'sales.activities.read'),
+  ('owner', 'sales.activities.manage'),
+  ('admin', 'sales.activities.read'),
+  ('admin', 'sales.activities.manage'),
+  ('manager', 'sales.activities.read'),
+  ('manager', 'sales.activities.manage'),
+  ('agent', 'sales.activities.read'),
+  ('agent', 'sales.activities.manage'),
+  ('viewer', 'sales.activities.read')
+ON CONFLICT DO NOTHING;
+
 CREATE TABLE sales.pipelines (
   id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
   tenant_id uuid NOT NULL REFERENCES identity.organizations(id),
@@ -61,7 +85,7 @@ CREATE TABLE sales.leads (
   FOREIGN KEY (tenant_id, customer_id)
     REFERENCES crm.customers(tenant_id, id) ON DELETE RESTRICT,
   FOREIGN KEY (tenant_id, owner_membership_id)
-    REFERENCES identity.memberships(tenant_id, id) ON DELETE SET NULL,
+    REFERENCES identity.memberships(tenant_id, id) ON DELETE SET NULL (owner_membership_id),
   CHECK ((status = 'QUALIFIED') = (qualified_at IS NOT NULL) OR status IN ('CONVERTED')),
   CHECK ((status = 'DISQUALIFIED') = (disqualification_reason IS NOT NULL))
 );
@@ -90,15 +114,15 @@ CREATE TABLE sales.opportunities (
   FOREIGN KEY (tenant_id, customer_id)
     REFERENCES crm.customers(tenant_id, id) ON DELETE RESTRICT,
   FOREIGN KEY (tenant_id, lead_id)
-    REFERENCES sales.leads(tenant_id, id) ON DELETE SET NULL,
+    REFERENCES sales.leads(tenant_id, id) ON DELETE SET NULL (lead_id),
   FOREIGN KEY (tenant_id, pipeline_id)
     REFERENCES sales.pipelines(tenant_id, id) ON DELETE RESTRICT,
   FOREIGN KEY (tenant_id, stage_id)
     REFERENCES sales.pipeline_stages(tenant_id, id) ON DELETE RESTRICT,
   FOREIGN KEY (tenant_id, owner_membership_id)
-    REFERENCES identity.memberships(tenant_id, id) ON DELETE SET NULL,
+    REFERENCES identity.memberships(tenant_id, id) ON DELETE SET NULL (owner_membership_id),
   FOREIGN KEY (tenant_id, won_order_id)
-    REFERENCES commerce.orders(tenant_id, id) ON DELETE SET NULL,
+    REFERENCES commerce.orders(tenant_id, id) ON DELETE SET NULL (won_order_id),
   CHECK (
     (status = 'OPEN' AND closed_at IS NULL AND won_order_id IS NULL AND loss_reason IS NULL)
     OR (status = 'WON' AND closed_at IS NOT NULL AND loss_reason IS NULL)
@@ -130,7 +154,7 @@ CREATE TABLE sales.activities (
   FOREIGN KEY (tenant_id, customer_id)
     REFERENCES crm.customers(tenant_id, id) ON DELETE RESTRICT,
   FOREIGN KEY (tenant_id, assigned_membership_id)
-    REFERENCES identity.memberships(tenant_id, id) ON DELETE SET NULL,
+    REFERENCES identity.memberships(tenant_id, id) ON DELETE SET NULL (assigned_membership_id),
   CHECK (lead_id IS NOT NULL OR opportunity_id IS NOT NULL),
   CHECK ((status = 'DONE') = (completed_at IS NOT NULL))
 );
