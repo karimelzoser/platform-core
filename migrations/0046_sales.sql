@@ -114,6 +114,8 @@ CREATE INDEX sales_opportunities_worklist_idx
   ON sales.opportunities (tenant_id, status, pipeline_id, stage_id, owner_membership_id, updated_at DESC);
 CREATE INDEX sales_opportunities_customer_idx
   ON sales.opportunities (tenant_id, customer_id, created_at DESC);
+CREATE UNIQUE INDEX sales_opportunity_one_per_lead_idx
+  ON sales.opportunities (tenant_id, lead_id) WHERE lead_id IS NOT NULL;
 CREATE TRIGGER sales_opportunities_touch_updated_at
   BEFORE UPDATE ON sales.opportunities FOR EACH ROW EXECUTE FUNCTION platform.touch_updated_at();
 
