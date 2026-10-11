@@ -276,6 +276,24 @@ calculate:
 Projection consumers must be idempotent and should retain enough source event/
 correlation identity to prevent double counting.
 
+## Recovery expiry coordination v1
+
+`recovery.opportunity.created` retains canonical `opportunityId`, `workflowId`
+and status. Its dedupe identity is the opportunity, not a new HTTP request key;
+repeat detection cannot create another lifecycle. The worker verifies a matching
+committed tenant outbox row before starting `recoveryExpiryWorkflow`.
+
+`recovery.opportunity.recovered` refreshes the workflow through a verified
+canonical event reference. `recovery.opportunity.expiry_checked` records the
+protected per-opportunity command result, including an already-terminal state;
+it must not be interpreted as an unconditional expiry or additional conversion.
+Existing bulk `recovery.opportunities.expired` remains compatible.
+
+These are provider-neutral lifecycle signals. They do not establish causal
+recovered-revenue confidence or known provider cost by themselves. Analytics
+must wait for the attribution/cost contract and deduplicate canonical conversion
+identities; a queued message is not a delivered intervention.
+
 ## Compatibility
 
 Consumers use event ID/dedupe keys and retain tenant, correlation and causation.

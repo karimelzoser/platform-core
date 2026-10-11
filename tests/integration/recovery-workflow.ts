@@ -151,7 +151,7 @@ try {
     assert.equal(states.get(cancellation.workflowId)?.expiryCalls, 0);
   });
 
-  const restart = reference(1_000);
+  const restart = reference(5_000);
   const first = await worker();
   await first.runUntil(async () => {
     await client.workflow.start('recoveryExpiryWorkflow', {

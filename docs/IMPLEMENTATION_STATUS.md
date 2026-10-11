@@ -4,15 +4,17 @@
 
 **Overall release state:** IN PROGRESS — engineering alpha, not a production release candidate.
 
-**Reviewed `main`:** `a99053e9cc207546b23fd887e6f4e8eb60530f76` — security/preview stabilization merged.
+**Reviewed `main`:** `86facdbfe89b69d6859cabed9c670f9471bdf62a` — preview/tooling and approval-expiry security fixes merged.
 
-**Main CI evidence:** Continuous integration run #536 (`38102502376`) passed
+**Main CI evidence:** Continuous integration run #546 (`38105976105`) passed
 all seven required jobs on that exact SHA, including dependency and image scans.
 
 **Current product workstream:** Recovery.
 
-**Bounded follow-up:** supported build-tool version and OPA build-policy checks;
-exact branch-head verification remains pending.
+**Verified preview:** Railway deployment `451a935c-7ee7-4519-83ed-0907917801f2`
+reports this SHA and development environment. Real Keycloak login now redirects
+to the public `/customers` page; protected customer/order reads and the order
+page's LTR/RTL direction were inspected. Full Arabic translation remains open.
 
 ## Evidence hierarchy
 
@@ -61,26 +63,31 @@ Fresh inspection on 2026-10-11 reconfirmed:
 - the live service healthcheck path is `/health`;
 - Postgres/pgvector, Keycloak, Temporal and NATS dependencies are isolated Railway services in this preview project.
 
-The domain target has been repaired in place from 3000 to 8080. The next preview deployment must use a tested patched repository SHA; deployment-success alone is insufficient.
+The domain target was repaired in place from 3000 to 8080. Subsequent preview
+promotion used exact-SHA CI and public runtime provenance, not deployment-success alone.
 
-That deployment is now verified: Railway deployment
-`166cb1d9-c864-4371-8a95-1f11b5601827` runs main SHA `a99053e`. The public
-`/health` returned HTTP 200 and the same full SHA, with environment
-`development`. CI #536 passed all required repository/image/browser gates.
+The latest verified deployment is `451a935c-7ee7-4519-83ed-0907917801f2`,
+running main SHA `86facdb`. Public `/health` returned HTTP 200 with matching
+full SHA and `development`. Main CI #546 passed all seven required gates.
 This closes the bounded stabilization checkpoint, not production acceptance.
 
 A fresh hosted browser check additionally found that the development login
 redirect used the container listener URL (`0.0.0.0:8080`) behind Railway's proxy.
-The follow-up branch resolves redirects from trusted deployment configuration,
+The merged follow-up resolves redirects from trusted deployment configuration,
 rejects off-origin browser credential posts, and sets HTTPS cookies from that
-public origin. Proxy/Codespaces/loopback regressions pass locally; deployed
-protected login verification is pending that branch's promotion.
+public origin. Proxy/Codespaces/loopback and request-level regressions pass;
+PR #16 exact-head CI #545 and main #546 are green. Deployed protected login
+and real tenant API reads now pass without manual redirect correction.
 
-A dedicated security stabilization branch is upgrading Web/Admin from vulnerable Next.js 15.1.0 / React 19.0.0 to the previously regression-tested patched 15.x/19.0.x baseline, carrying forward corresponding Nest/Fastify/Kysely/transitive fixes, adding dependency and image vulnerability gates, pruning development dependencies from the hosted image, exposing safe build provenance from `/health`, keeping the hosted Keycloak application-readiness probe, and adding hourly external `/health` monitoring.
+Merged stabilization upgrades Web/Admin to patched Next.js/React and carries
+Nest/Fastify/Kysely/transitive fixes, dependency/image vulnerability gates,
+pruned runtime images, `/health` provenance, application-readiness probes and
+external health monitoring. pnpm is pinned to 10.34.6 with explicit build-script
+allowlisting. OPA build-time policy/default-deny checks are mandatory.
 
 No production data, production provider account, VPS or n8n state is used for this repair.
 
-### Stabilization repair batch — local evidence, remote verification pending
+### Stabilization repair batch — exact-head remote evidence verified
 
 The repair batch removes development build tools and bundled unused package
 managers from runtime images, updates Debian runtime packages, preserves typed
@@ -95,14 +102,41 @@ in `DEPENDENCY_SECURITY.md`; it is not a waiver for unpatched source.
 
 Local production Web/Admin/API/worker builds, workspace typechecks, unit tests,
 immutable migration checks and the installed-patch regressions have passed.
-Runtime container scanning, PostgreSQL/RLS and protected browser evidence still
-require the published repair head's CI result.
+Runtime container scans, PostgreSQL/RLS and protected browser evidence passed
+on the published repair head and merged main. PR #17 CI #543 additionally
+verified Date/ISO expiry binding in approvals and idempotency before merging;
+historically ambiguous Date-object approvals intentionally fail closed.
+
+## Recovery — IN PROGRESS, not a completed repository gate
+
+The Recovery branch contains migrations `0043`/`0044`, policies/opportunities/
+offers/attempts/timeline, consent guards, API/UI and tenant lifecycle/browser
+tests. Local continuation adds safe ambiguous-message retries, monotonic attempt
+sequences, canonical repeated-detection status/event dedupe, and expiry-substitution
+negative evidence.
+
+`@platform/recovery` shares protected per-opportunity expiry between API and
+Temporal. A registered worker and durable NATS consumer verify committed event
+origins, schedule expiry, refresh on conversion and reuse canonical commands.
+Workflow history contains IDs only, not contact bodies/credentials. Runtime
+retry/duplicate-start/signal/cancel/replay/restart tests and new DB negatives are
+added to CI; their exact-head result remains pending until this batch is pushed.
+The locally available suite passed: production workspace builds, all workspace
+typechecks, 61 unit/contract tests, lint (27 warnings, zero errors), formatting,
+immutable migration checks, dependency/installed-patch security checks and
+Temporal workflow bundle compilation. Local Docker/PostgreSQL runtime evidence
+is unavailable; the CI runtime tests must not be reported as passed yet.
+
+Remaining closure includes dispatch-time consent/suppression rechecks and atomic
+message linkage, delivery reconciliation, bounded incentives with full approval
+UX, deterministic conversion attribution/deduplication/cost semantics, durable
+failure/DLQ operations, complete EN/AR UI and protected browser acceptance.
 
 ## Production boundaries still open
 
 ### Business domains
 
-- Recovery — next.
+- Recovery — CURRENT, partially implemented on its continuation branch.
 - Sales.
 - Campaigns.
 - Final CRM / Inbox / Tickets / SLA closure.
@@ -110,7 +144,10 @@ require the published repair head's CI result.
 
 ### Durable processes
 
-Temporal infrastructure and restart persistence exist, but actual business workflow/activity workers and complete retry/timeout/heartbeat/cancel/signal/update/replay/versioning evidence remain open.
+Temporal infrastructure and restart persistence are verified. Recovery expiry
+workflow/activities are now implemented on the continuation branch; exact-head
+runtime evidence is pending. The remaining business workflow family and full
+retry/timeout/heartbeat/cancel/signal/update/replay/versioning closure remain open.
 
 ### Automation and configuration
 
@@ -134,6 +171,10 @@ Complete EN/AR UX, production authentication/session journeys, adversarial secur
 
 ## Next promotion rule
 
-After the security/preview repair is validated and merged, `Recovery` becomes CURRENT. A workstream is promoted only when its schema/domain/service/API/worker/UI responsibilities, tenant/authorization/approval/idempotency/audit/outbox evidence, required durable orchestration and applicable browser/security gates pass on the exact revision being merged.
+`Recovery` remains CURRENT after verified security/preview stabilization. A
+workstream is promoted only when its schema/domain/service/API/worker/UI
+responsibilities, tenant/authorization/approval/idempotency/audit/outbox evidence,
+required durable orchestration and applicable browser/security gates pass on the
+exact revision being merged.
 
 The platform must not be called production-ready until one immutable release candidate satisfies the complete acceptance specification.

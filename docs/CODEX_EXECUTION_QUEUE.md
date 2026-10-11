@@ -14,11 +14,13 @@ This is the authoritative dependency-ordered implementation queue for PRENEURA. 
 
 ## Bounded stabilization — VERIFIED BASELINE
 
-Current reviewed `main`: `a99053e9cc207546b23fd887e6f4e8eb60530f76`
-(merged security/preview stabilization). Main CI #536 passed all seven jobs,
+Current reviewed `main`: `86facdbfe89b69d6859cabed9c670f9471bdf62a`
+(merged security/preview/tooling and approval-expiry stabilization). Main CI #546 passed all seven jobs,
 including dependency/image security. Railway deployment
-`166cb1d9-c864-4371-8a95-1f11b5601827` reports this SHA, and its public health
+`451a935c-7ee7-4519-83ed-0907917801f2` reports this SHA, and its public health
 endpoint returned HTTP 200 with matching provenance and development environment.
+Real Keycloak login, public redirects, protected customer/order reads and visible
+LTR/RTL order layout were also verified. Full Arabic translation is not complete.
 
 The merged stabilization closed:
 
@@ -47,6 +49,13 @@ Recovery is the next dependency-ready domain after merged Returns. Closure requi
 - two-tenant, retry/idempotency, authorization and protected browser evidence.
 
 Delivery rescue remains a Shipping responsibility and must not be duplicated in Recovery.
+
+The continuation branch now implements protected expiry commands, a registered
+Temporal expiry workflow and a durable committed-event bridge. Contract/build
+checks pass locally; new runtime/tenant/browser evidence remains pending the
+substantial batch's CI. CURRENT stays Recovery until dispatch consent/linkage,
+delivery state, attribution/cost, approval UX and complete applicable acceptance
+are closed. Do not promote Sales from workflow IDs or infrastructure alone.
 
 ## Completed repository gates
 

@@ -4,9 +4,10 @@ This matrix distinguishes repository implementation from deployment and final pr
 
 **Overall release state:** IN PROGRESS
 
-**Reviewed `main`:** `a99053e9cc207546b23fd887e6f4e8eb60530f76`
+**Reviewed `main`:** `86facdbfe89b69d6859cabed9c670f9471bdf62a` — all seven jobs passed CI #546.
 
-**Bounded follow-up:** supported build-tool version and deployed OPA policy checks
+**Verified development preview:** deployment `451a935c-7ee7-4519-83ed-0907917801f2`,
+matching `/health` SHA, real Keycloak login/public redirects and protected reads.
 
 **Current product workstream:** Recovery
 
@@ -29,22 +30,22 @@ This matrix distinguishes repository implementation from deployment and final pr
 | Usage / metering source ledger       | FOUNDATION       | Commercial plans/quotas/invoicing/enforcement remain                                     |
 | Observability contracts              | FOUNDATION       | Real dashboards/alerts/SLO ownership/runbooks remain                                     |
 | Shared design system                 | FOUNDATION       | Complete product adoption, translation and accessibility remain                          |
-| Dependency / image security          | IN PROGRESS      | Patched branch, dependency audit and image scans must pass before preview promotion      |
+| Dependency / image security          | FOUNDATION       | Main CI #546 audit/image gates pass; every later candidate must repeat them              |
 
 ## Business capabilities
 
-| Capability                        | Repository state         | Remaining boundary                                                                         |
-| --------------------------------- | ------------------------ | ------------------------------------------------------------------------------------------ |
-| CRM / Customer 360                | FOUNDATION               | Final maintenance/identity-resolution/search/bulk/UX/governance closure                    |
-| Inbox / Messaging / Tickets / SLA | FOUNDATION               | Real provider channels, final support/SLA behavior and dedicated browser closure           |
-| Commerce / Orders                 | COMPLETE repository gate | Real Shopify/WooCommerce/payment/provider execution and commercial edge cases              |
-| Shipping                          | COMPLETE repository gate | Real carriers/labels/tracking/address data and durable production workflow closure         |
-| Identity / Team / Organization    | COMPLETE repository gate | Production browser session/MFA/invitation-delivery and product-wide identity UX            |
-| Self-service onboarding           | COMPLETE repository gate | Config compiler/simulation, final AR copy and production acquisition-to-activation journey |
-| Returns / Exchanges / Refunds     | COMPLETE repository gate | Real payment/provider transports and actual durable Temporal orchestration                 |
-| Recovery                          | NOT STARTED — NEXT       | Full domain closure required                                                               |
-| Sales                             | NOT STARTED              | After Recovery                                                                             |
-| Campaigns                         | NOT STARTED              | After Sales                                                                                |
+| Capability                        | Repository state         | Remaining boundary                                                                                                     |
+| --------------------------------- | ------------------------ | ---------------------------------------------------------------------------------------------------------------------- |
+| CRM / Customer 360                | FOUNDATION               | Final maintenance/identity-resolution/search/bulk/UX/governance closure                                                |
+| Inbox / Messaging / Tickets / SLA | FOUNDATION               | Real provider channels, final support/SLA behavior and dedicated browser closure                                       |
+| Commerce / Orders                 | COMPLETE repository gate | Real Shopify/WooCommerce/payment/provider execution and commercial edge cases                                          |
+| Shipping                          | COMPLETE repository gate | Real carriers/labels/tracking/address data and durable production workflow closure                                     |
+| Identity / Team / Organization    | COMPLETE repository gate | Production browser session/MFA/invitation-delivery and product-wide identity UX                                        |
+| Self-service onboarding           | COMPLETE repository gate | Config compiler/simulation, final AR copy and production acquisition-to-activation journey                             |
+| Returns / Exchanges / Refunds     | COMPLETE repository gate | Real payment/provider transports and actual durable Temporal orchestration                                             |
+| Recovery                          | IN PROGRESS — CURRENT    | Branch API/UI/schema and expiry orchestration; exact-head runtime/tenant and remaining delivery/attribution gates open |
+| Sales                             | NOT STARTED              | After Recovery                                                                                                         |
+| Campaigns                         | NOT STARTED              | After Sales                                                                                                            |
 
 ## Orchestration and configuration
 

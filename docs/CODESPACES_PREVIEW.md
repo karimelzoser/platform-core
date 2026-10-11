@@ -36,9 +36,10 @@ It owns `Preview Tenant` and uses normal Keycloak JWT, membership, effective
 permission, OPA, and PostgreSQL RLS paths. There is no authentication bypass.
 The development-only `/preview-login` page exchanges these credentials with
 Keycloak and writes HTTP-only, same-site session cookies for the selected
-tenant. The route is unavailable outside development. Its cookies are
-intentionally non-Secure only because the preview runs over loopback HTTP
-inside the Codespace; the forwarded Codespaces edge remains HTTPS.
+tenant. The route is unavailable outside development. Cookies are Secure for
+trusted HTTPS Codespaces/Railway origins; only local loopback HTTP uses
+non-Secure development cookies. Local startup defaults to
+`http://127.0.0.1:3000`; use that origin or explicitly set `APP_PUBLIC_URL`.
 You can also inspect a real token from the terminal:
 
 ```sh

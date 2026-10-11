@@ -37,6 +37,7 @@
   },
   "pnpm": {
     "onlyBuiltDependencies": [
+      "@swc/core",
       "esbuild",
       "protobufjs"
     ],
