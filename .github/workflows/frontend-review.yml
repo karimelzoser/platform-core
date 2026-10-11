@@ -1,0 +1,62 @@
+name: Frontend review acceptance
+
+on:
+  push:
+    branches: [codex/frontend-product-closure-20261012]
+    paths:
+      - .github/workflows/frontend-review.yml
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  frontend-review:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+        with: { version: 9.15.5 }
+      - uses: actions/setup-node@v4
+        with: { node-version: 22, cache: pnpm }
+      - run: pnpm install --frozen-lockfile
+      - name: Check frontend formatting
+        run: pnpm exec prettier --check apps/web/app apps/web/e2e/review-mode.spec.ts
+      - name: Typecheck frontend
+        run: pnpm --filter @platform/web typecheck
+      - name: Run frontend unit and contract tests
+        run: pnpm --filter @platform/web test
+      - name: Build frontend
+        run: pnpm --filter @platform/web build
+      - name: Install browser
+        run: pnpm --filter @platform/web exec playwright install --with-deps chromium
+      - name: Start frontend only
+        run: |
+          nohup pnpm --filter @platform/web exec next start --hostname 127.0.0.1 --port 3000 > frontend-review.log 2>&1 &
+          echo $! > frontend-review.pid
+          for attempt in $(seq 1 60); do
+            if curl --fail --silent --show-error http://127.0.0.1:3000/ > /dev/null; then
+              exit 0
+            fi
+            sleep 1
+          done
+          cat frontend-review.log
+          exit 1
+      - name: Run backend-independent browser acceptance
+        env:
+          E2E_BASE_URL: http://127.0.0.1:3000
+        run: pnpm --filter @platform/web exec playwright test e2e/review-mode.spec.ts
+      - name: Upload frontend review evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: preneura-frontend-review-${{ github.sha }}
+          path: |
+            frontend-review.log
+            apps/web/test-results
+            apps/web/playwright-report
+          if-no-files-found: warn
+      - name: Stop frontend
+        if: always()
+        run: |
+          if [ -f frontend-review.pid ]; then kill "$(cat frontend-review.pid)" 2>/dev/null || true; fi
