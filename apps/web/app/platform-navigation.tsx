@@ -3,28 +3,15 @@
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { LocalizedText, useDisplayLocale } from './display-locale';
+import { navigationModules, type ProductModule } from './product-catalog';
 
-const links = [
-  ['/', 'Home', 'الرئيسية'],
-  ['/inbox', 'Inbox', 'صندوق الوارد'],
-  ['/customers', 'Customers', 'العملاء'],
-  ['/orders', 'Orders', 'الطلبات'],
-  ['/shipping', 'Shipping', 'الشحن'],
-  ['/returns', 'Returns', 'المرتجعات'],
-  ['/recovery', 'Recovery', 'الاسترداد'],
-  ['/sales', 'Sales', 'المبيعات'],
-  ['/campaigns', 'Campaigns', 'الحملات'],
-  ['/automation', 'Automation', 'الأتمتة'],
-  ['/operators', 'AI', 'الذكاء الاصطناعي'],
-  ['/analytics', 'Analytics', 'التحليلات'],
-] as const;
-
-const secondaryLinks = [
-  ['/approvals', 'Approvals', 'الموافقات'],
-  ['/integrations', 'Integrations', 'التكاملات'],
-  ['/team', 'Team', 'الفريق'],
-  ['/settings', 'Settings', 'الإعدادات'],
-] as const;
+const compactLabels: Record<string, readonly [string, string]> = {
+  customers: ['Customers', 'العملاء'],
+  operators: ['AI', 'الذكاء الاصطناعي'],
+  analytics: ['Analytics', 'التحليلات'],
+  team: ['Team', 'الفريق'],
+  settings: ['Settings', 'الإعدادات'],
+};
 
 export function PlatformNavigation() {
   const pathname = usePathname();
@@ -51,34 +38,31 @@ export function PlatformNavigation() {
           </span>
         </Link>
         <nav className="platform-chrome__nav" aria-label="Platform modules">
-          {links.map(([href, en, ar]) => {
-            const target = navigationHref(href, reviewMode);
-            return (
-              <Link
-                className="platform-chrome__link"
-                data-active={isActive(pathname, target)}
-                href={target}
-                key={href}
-              >
-                <LocalizedText en={en} ar={ar} />
-              </Link>
-            );
-          })}
+          <NavigationLink
+            active={pathname === '/'}
+            href="/"
+            labelAr="الرئيسية"
+            labelEn="Home"
+          />
+          {navigationModules('primary').map((module) => (
+            <ModuleNavigationLink
+              key={module.slug}
+              module={module}
+              pathname={pathname}
+              reviewMode={reviewMode}
+            />
+          ))}
         </nav>
         <nav className="platform-chrome__utilities" aria-label="Platform administration">
-          {secondaryLinks.map(([href, en, ar]) => {
-            const target = navigationHref(href, reviewMode);
-            return (
-              <Link
-                className="platform-chrome__utility"
-                data-active={isActive(pathname, target)}
-                href={target}
-                key={href}
-              >
-                <LocalizedText en={en} ar={ar} />
-              </Link>
-            );
-          })}
+          {navigationModules('secondary').map((module) => (
+            <ModuleNavigationLink
+              key={module.slug}
+              module={module}
+              pathname={pathname}
+              reviewMode={reviewMode}
+              utility
+            />
+          ))}
         </nav>
         <div className="platform-chrome__locale" aria-label="Display language and direction">
           <button
@@ -105,12 +89,54 @@ export function PlatformNavigation() {
   );
 }
 
-function navigationHref(href: string, reviewMode: boolean): string {
-  if (href === '/') return '/';
-  return reviewMode ? `/review${href}` : href;
+function ModuleNavigationLink({
+  module,
+  pathname,
+  reviewMode,
+  utility = false,
+}: {
+  module: ProductModule;
+  pathname: string;
+  reviewMode: boolean;
+  utility?: boolean;
+}) {
+  const href = reviewMode ? `/review/${module.slug}` : `/${module.slug}`;
+  const compact = compactLabels[module.slug];
+  return (
+    <NavigationLink
+      active={isActive(pathname, href)}
+      href={href}
+      labelEn={compact?.[0] ?? module.labelEn}
+      labelAr={compact?.[1] ?? module.labelAr}
+      utility={utility}
+    />
+  );
+}
+
+function NavigationLink({
+  href,
+  labelEn,
+  labelAr,
+  active,
+  utility = false,
+}: {
+  href: string;
+  labelEn: string;
+  labelAr: string;
+  active: boolean;
+  utility?: boolean;
+}) {
+  return (
+    <Link
+      className={utility ? 'platform-chrome__utility' : 'platform-chrome__link'}
+      data-active={active}
+      href={href}
+    >
+      <LocalizedText en={labelEn} ar={labelAr} />
+    </Link>
+  );
 }
 
 function isActive(pathname: string, href: string): boolean {
-  if (href === '/') return pathname === '/';
   return pathname === href || pathname.startsWith(`${href}/`);
 }
