@@ -26,8 +26,9 @@ test.describe('CRM disposable development preview', () => {
     await login(ownerPage, owner, ownerPassword);
     await expect(ownerPage.getByRole('heading', { name: 'Customers', exact: true })).toBeVisible();
     await expect(ownerPage.getByRole('link', { name: 'Create customer' })).toBeVisible();
+    await ownerPage.getByLabel('Search customers').focus();
     await ownerPage.keyboard.press('Tab');
-    await expect(ownerPage.locator(':focus')).toBeVisible();
+    await expect(ownerPage.getByRole('button', { name: 'Search', exact: true })).toBeFocused();
 
     const stamp = Date.now().toString(36);
     const sourceId = await createCustomer(

@@ -2,6 +2,7 @@ FROM node:24-bookworm-slim AS build
 WORKDIR /workspace
 RUN corepack enable
 COPY package.json pnpm-lock.yaml pnpm-workspace.yaml tsconfig.base.json ./
+COPY patches patches
 COPY apps/api/package.json apps/api/package.json
 COPY packages/auth/package.json packages/auth/package.json
 COPY packages/authorization/package.json packages/authorization/package.json
@@ -20,11 +21,18 @@ RUN pnpm --filter @platform/api... build
 FROM node:24-bookworm-slim
 WORKDIR /workspace
 ENV NODE_ENV=production
-COPY --from=build /workspace/node_modules ./node_modules
+RUN apt-get update \
+  && apt-get upgrade -y \
+  && rm -rf /var/lib/apt/lists/* \
+  && rm -rf /usr/local/lib/node_modules/npm /opt/yarn* \
+  && rm -f /usr/local/bin/npm /usr/local/bin/npx /usr/local/bin/yarn /usr/local/bin/yarnpkg
+COPY package.json pnpm-lock.yaml pnpm-workspace.yaml ./
+COPY patches patches
 COPY --from=build /workspace/apps/api/package.json ./apps/api/package.json
 COPY --from=build /workspace/apps/api/dist ./apps/api/dist
-COPY --from=build /workspace/apps/api/node_modules ./apps/api/node_modules
 COPY --from=build /workspace/packages ./packages
+RUN corepack enable pnpm \
+  && pnpm install --prod --frozen-lockfile --ignore-scripts
 RUN mkdir -p /srv/platform/media && chown node:node /srv/platform/media
 USER node
 EXPOSE 3001

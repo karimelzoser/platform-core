@@ -195,7 +195,7 @@ export async function resolveReturnRequest(formData: FormData): Promise<void> {
 }
 
 function back(requestId: string, message: string) {
-  return `/returns/${encodeURIComponent(requestId)}?message=${encodeURIComponent(message)}`;
+  return `/returns/${encodeURIComponent(requestId)}?message=${encodeURIComponent(message)}` as const;
 }
 
 function required(formData: FormData, key: string): string {

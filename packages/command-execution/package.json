@@ -18,6 +18,6 @@
     "@platform/authorization": "workspace:*",
     "@platform/contracts": "workspace:*",
     "@platform/database": "workspace:*",
-    "kysely": "0.27.5"
+    "kysely": "0.28.17"
   }
 }

@@ -4,3 +4,6 @@ migrations/0001_foundation.sql -text
 migrations/0002_authorization.sql -text
 migrations/0003_crm_customer360.sql -text
 migrations/SHA256SUMS -text
+
+# Unified patch context lines intentionally contain a single space.
+patches/*.patch whitespace=-blank-at-eol

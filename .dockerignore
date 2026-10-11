@@ -13,6 +13,7 @@ docs.zip
 **/.next
 **/__pycache__
 .preview
+.patch-work
 .venv
 coverage
 secrets
