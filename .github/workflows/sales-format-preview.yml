@@ -20,6 +20,34 @@ jobs:
       - uses: actions/setup-node@v4
         with: { node-version: 22, cache: pnpm }
       - run: pnpm install --frozen-lockfile
+      - name: Apply reviewed Sales field-id patch in disposable checkout
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+          path = Path('apps/web/app/sales/page.tsx')
+          text = path.read_text()
+          replacements = {
+              '<Field name="customerId" label="CRM customer ID" required />': '<Field scope="opportunity" name="customerId" label="CRM customer ID" required />',
+              '<Field name="leadId" label="Lead ID (optional)" />': '<Field scope="opportunity" name="leadId" label="Lead ID (optional)" />',
+              '<Field name="name" label="Opportunity name" required />': '<Field scope="opportunity" name="name" label="Opportunity name" required />',
+              '<Field name="currencyCode" label="Currency" value="EGP" required maxLength={3} />': '<Field scope="opportunity" name="currencyCode" label="Currency" value="EGP" required maxLength={3} />',
+              '<Field\n                    name="expectedValueMinor"': '<Field\n                    scope="opportunity"\n                    name="expectedValueMinor"',
+              '<Field name="expectedCloseDate" label="Expected close" type="date" />': '<Field scope="opportunity" name="expectedCloseDate" label="Expected close" type="date" />',
+              '<Field name="customerId" label="CRM customer ID" required />\n                <Field name="opportunityId"': '<Field scope="activity" name="customerId" label="CRM customer ID" required />\n                <Field scope="activity" name="opportunityId"',
+              '<Field name="leadId" label="Lead ID" />': '<Field scope="activity" name="leadId" label="Lead ID" />',
+              '<Field name="subject" label="Subject" required />': '<Field scope="activity" name="subject" label="Subject" required />',
+              '<Field name="dueAt" label="Due at" type="datetime-local" />': '<Field scope="activity" name="dueAt" label="Due at" type="datetime-local" />',
+              'function Field({\n  name,': 'function Field({\n  scope,\n  name,',
+              '}: {\n  name: string;\n  label: string;': '}: {\n  scope: string;\n  name: string;\n  label: string;',
+              '<label htmlFor={`sales-${name}`}>{label}</label>': '<label htmlFor={`sales-${scope}-${name}`}>{label}</label>',
+              'id={`sales-${name}`}': 'id={`sales-${scope}-${name}`}',
+          }
+          for old, new in replacements.items():
+              if old not in text:
+                  raise SystemExit(f'missing reviewed replacement: {old!r}')
+              text = text.replace(old, new, 1)
+          path.write_text(text)
+          PY
       - name: Format Sales closure files without writing repository state
         run: |
           pnpm exec prettier --write \
@@ -31,7 +59,7 @@ jobs:
             docs/CAPABILITY_EVIDENCE_MATRIX.md \
             docs/PRODUCTION_READINESS_MATRIX.md \
             tests/integration/sales-lifecycle.ts
-      - name: Emit exact formatted contents
+      - name: Emit compact exact formatted contents
         run: |
           for file in \
             apps/api/src/sales.service.ts \
@@ -43,8 +71,8 @@ jobs:
             docs/PRODUCTION_READINESS_MATRIX.md \
             tests/integration/sales-lifecycle.ts
           do
-            echo "FORMAT_FILE_BEGIN:${file}"
-            base64 -w 0 "${file}"
+            echo "FORMAT_GZIP_BEGIN:${file}"
+            gzip -c "${file}" | base64 -w 0
             echo
-            echo "FORMAT_FILE_END:${file}"
+            echo "FORMAT_GZIP_END:${file}"
           done
