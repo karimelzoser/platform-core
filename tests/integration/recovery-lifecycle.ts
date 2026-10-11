@@ -18,6 +18,7 @@ const connectionA = 'aaaaaaaa-0000-0000-0000-000000000002';
 const customerA = 'aaaaaaaa-0000-0000-0000-000000000671';
 const sourceOrderA = 'aaaaaaaa-0000-0000-0000-000000000672';
 const conversationA = 'aaaaaaaa-0000-0000-0000-000000000673';
+const consentDeliveryA = 'aaaaaaaa-0000-0000-0000-000000000674';
 
 const permissions = [
   'recovery.read',
@@ -48,6 +49,15 @@ const contextB = context(tenantB, actorB, 'b');
 const approverContext: TenantRequestContext = {
   ...context(tenantA, approverA, 'approver', ['policy.approvals.decide']),
   subject: 'recovery-lifecycle-approver',
+};
+const consentWorkerContext: TenantRequestContext = {
+  tenantId: tenantA,
+  actorId: null,
+  subject: 'worker:webhook:test-connector',
+  requestId: 'recovery-lifecycle-consent-worker',
+  correlationId: 'recovery-lifecycle-consent-worker',
+  actorType: 'SERVICE',
+  permissions: [],
 };
 
 async function approvedEvidence(
@@ -205,13 +215,67 @@ async function main(): Promise<void> {
       /opt-in/i,
     );
 
-    await withTenantTransaction(database, contextA, async (transaction) => {
+    await assert.rejects(
+      withTenantTransaction(database, contextA, async (transaction) =>
+        sql`update crm.communication_preferences
+          set status = 'OPTED_IN', source = 'manual-fixture', captured_at = now(),
+              metadata = '{}'::jsonb, updated_at = now()
+          where customer_id = ${customerA}::uuid and channel = 'EMAIL'`.execute(transaction),
+      ),
+      /OPTED_IN requires verified provider webhook consent evidence/i,
+    );
+
+    await withTenantTransaction(database, consentWorkerContext, async (transaction) => {
+      await sql`insert into integrations.webhook_deliveries (
+          id, tenant_id, connection_id, provider_delivery_id, event_type,
+          signature_valid, replay_valid, headers, payload, dedupe_key, state,
+          attempts, claimed_by, claimed_at, next_attempt_at
+        ) values (
+          ${consentDeliveryA}::uuid, ${tenantA}::uuid, ${connectionA}::uuid,
+          'recovery-consent-provider-delivery', 'consent.updated', true, true,
+          '{}'::jsonb, '{}'::jsonb, 'recovery-consent-evidence', 'PROCESSING',
+          1, 'recovery-consent-worker', now(), now()
+        ) on conflict (id) do update set
+          state = 'PROCESSING', signature_valid = true, replay_valid = true,
+          claimed_by = 'recovery-consent-worker', claimed_at = now(), last_error = null`.execute(
+        transaction,
+      );
+    });
+
+    await assert.rejects(
+      withTenantTransaction(database, contextA, async (transaction) =>
+        sql`insert into crm.communication_consent_evidence (
+            tenant_id, customer_id, channel, webhook_delivery_id,
+            provider_consent_id, occurred_at, metadata
+          ) values (
+            ${tenantA}::uuid, ${customerA}::uuid, 'EMAIL', ${consentDeliveryA}::uuid,
+            'recovery-consent-forged', now(), '{}'::jsonb
+          )`.execute(transaction),
+      ),
+      /may only be recorded by the webhook worker/i,
+    );
+
+    await withTenantTransaction(database, consentWorkerContext, async (transaction) => {
+      await sql`insert into crm.communication_consent_evidence (
+          tenant_id, customer_id, channel, webhook_delivery_id,
+          provider_consent_id, occurred_at, metadata
+        ) values (
+          ${tenantA}::uuid, ${customerA}::uuid, 'EMAIL', ${consentDeliveryA}::uuid,
+          'recovery-consent-verified', now(), '{"connectorKey":"test-connector"}'::jsonb
+        ) on conflict (tenant_id, customer_id, channel, provider_consent_id) do nothing`.execute(
+        transaction,
+      );
       await sql`update crm.communication_preferences
-        set status = 'OPTED_IN', source = 'verified-provider-fixture', captured_at = now(),
+        set status = 'OPTED_IN', source = 'provider_webhook', captured_at = now(),
             suppressed_until = now() + interval '1 hour', reason = 'Temporary lifecycle suppression',
+            metadata = ${JSON.stringify({
+              evidenceType: 'VERIFIED_PROVIDER_WEBHOOK',
+              webhookDeliveryId: consentDeliveryA,
+            })}::jsonb,
             updated_at = now()
         where customer_id = ${customerA}::uuid and channel = 'EMAIL'`.execute(transaction);
     });
+
     await assert.rejects(
       recovery.dispatchAttempt(contextA, 'recovery-attempt-suppressed', {
         opportunityId: detected.result.opportunityId,

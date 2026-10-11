@@ -1,5 +1,6 @@
 'use server';
 
+import type { Route } from 'next';
 import { redirect } from 'next/navigation';
 import { apiMessage, platformRequest } from './platform-api';
 
@@ -39,9 +40,9 @@ export async function detectRecoveryOpportunity(formData: FormData): Promise<voi
     redirect(`/recovery?message=${encodeURIComponent(apiMessage(result))}`);
   const opportunityId = result.data.result?.opportunityId ?? result.data.opportunityId;
   redirect(
-    opportunityId
+    (opportunityId
       ? `/recovery/${encodeURIComponent(opportunityId)}?message=${encodeURIComponent('Recovery opportunity detected.')}`
-      : `/recovery?message=${encodeURIComponent('Recovery opportunity detected.')}`,
+      : `/recovery?message=${encodeURIComponent('Recovery opportunity detected.')}`) as Route,
   );
 }
 
@@ -120,8 +121,8 @@ export async function expireRecoveryOpportunities(): Promise<void> {
   );
 }
 
-function back(opportunityId: string, message: string) {
-  return `/recovery/${encodeURIComponent(opportunityId)}?message=${encodeURIComponent(message)}`;
+function back(opportunityId: string, message: string): Route {
+  return `/recovery/${encodeURIComponent(opportunityId)}?message=${encodeURIComponent(message)}` as Route;
 }
 
 function required(formData: FormData, key: string): string {
