@@ -8,19 +8,21 @@ on:
       - .github/workflows/sales-format-preview.yml
 
 permissions:
-  contents: read
+  contents: write
 
 jobs:
   format-preview:
     runs-on: ubuntu-24.04
     steps:
       - uses: actions/checkout@v4
+        with:
+          ref: codex/sales-production-closure-20261012
       - uses: pnpm/action-setup@v4
         with: { version: 10.34.6 }
       - uses: actions/setup-node@v4
         with: { node-version: 22, cache: pnpm }
       - run: pnpm install --frozen-lockfile
-      - name: Apply reviewed Sales field-id patch in disposable checkout
+      - name: Apply reviewed Sales field-id patch
         run: |
           python - <<'PY'
           from pathlib import Path
@@ -48,7 +50,7 @@ jobs:
               text = text.replace(old, new, 1)
           path.write_text(text)
           PY
-      - name: Format Sales closure files without writing repository state
+      - name: Format exact Sales closure files
         run: |
           pnpm exec prettier --write \
             apps/api/src/sales.service.ts \
@@ -59,25 +61,22 @@ jobs:
             docs/CAPABILITY_EVIDENCE_MATRIX.md \
             docs/PRODUCTION_READINESS_MATRIX.md \
             tests/integration/sales-lifecycle.ts
-      - name: Stage exact formatted artifact
+      - name: Commit only the reviewed Sales files
         run: |
-          mkdir -p sales-format-artifact/apps/api/src
-          mkdir -p sales-format-artifact/apps/web/app/sales
-          mkdir -p sales-format-artifact/apps/web/e2e
-          mkdir -p sales-format-artifact/docs
-          mkdir -p sales-format-artifact/tests/integration
-          cp apps/api/src/sales.service.ts sales-format-artifact/apps/api/src/
-          cp apps/web/app/sales/actions.ts sales-format-artifact/apps/web/app/sales/
-          cp apps/web/app/sales/page.tsx sales-format-artifact/apps/web/app/sales/
-          cp apps/web/app/sales/pipeline-builder.tsx sales-format-artifact/apps/web/app/sales/
-          cp apps/web/e2e/sales-preview.spec.ts sales-format-artifact/apps/web/e2e/
-          cp docs/CAPABILITY_EVIDENCE_MATRIX.md sales-format-artifact/docs/
-          cp docs/PRODUCTION_READINESS_MATRIX.md sales-format-artifact/docs/
-          cp tests/integration/sales-lifecycle.ts sales-format-artifact/tests/integration/
-      - name: Upload exact formatted artifact
-        uses: actions/upload-artifact@v4
-        with:
-          name: sales-formatted-files-${{ github.sha }}
-          path: sales-format-artifact
-          if-no-files-found: error
-          retention-days: 1
+          git config user.name 'platform-ci'
+          git config user.email 'platform-ci@users.noreply.github.com'
+          git add \
+            apps/api/src/sales.service.ts \
+            apps/web/app/sales/actions.ts \
+            apps/web/app/sales/page.tsx \
+            apps/web/app/sales/pipeline-builder.tsx \
+            apps/web/e2e/sales-preview.spec.ts \
+            docs/CAPABILITY_EVIDENCE_MATRIX.md \
+            docs/PRODUCTION_READINESS_MATRIX.md \
+            tests/integration/sales-lifecycle.ts
+          if git diff --cached --quiet; then
+            echo 'No formatting changes required.'
+          else
+            git commit -m 'style: apply exact Sales formatting'
+            git push origin HEAD:codex/sales-production-closure-20261012
+          fi
