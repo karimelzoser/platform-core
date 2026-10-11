@@ -2,30 +2,6 @@ BEGIN;
 
 CREATE SCHEMA IF NOT EXISTS sales;
 
--- Activities/tasks need an explicit permission boundary rather than borrowing
--- lead mutation rights. Keep the original catalog immutable and extend it here.
-INSERT INTO identity.permissions (code, category, description, default_risk)
-VALUES
-  ('sales.activities.read', 'sales', 'View sales activities and tasks', 'LOW'),
-  ('sales.activities.manage', 'sales', 'Create and complete sales activities and tasks', 'MEDIUM')
-ON CONFLICT (code) DO UPDATE SET
-  category = EXCLUDED.category,
-  description = EXCLUDED.description,
-  default_risk = EXCLUDED.default_risk;
-
-INSERT INTO identity.role_template_permissions (template_code, permission_code)
-VALUES
-  ('owner', 'sales.activities.read'),
-  ('owner', 'sales.activities.manage'),
-  ('admin', 'sales.activities.read'),
-  ('admin', 'sales.activities.manage'),
-  ('manager', 'sales.activities.read'),
-  ('manager', 'sales.activities.manage'),
-  ('agent', 'sales.activities.read'),
-  ('agent', 'sales.activities.manage'),
-  ('viewer', 'sales.activities.read')
-ON CONFLICT DO NOTHING;
-
 CREATE TABLE sales.pipelines (
   id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
   tenant_id uuid NOT NULL REFERENCES identity.organizations(id),
