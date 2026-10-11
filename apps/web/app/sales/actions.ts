@@ -159,6 +159,20 @@ export async function closeSalesOpportunity(formData: FormData): Promise<void> {
   const outcome = required(formData, 'outcome');
   const returnTo = safeReturn(formData);
   if (!opportunityId || !outcome) return fail(returnTo, 'Opportunity and outcome are required.');
+
+  const wonOrderRef = optional(formData, 'wonOrderRef');
+  let wonStoreId = optional(formData, 'wonStoreId');
+  let wonOrderId = optional(formData, 'wonOrderId');
+  if (wonOrderRef) {
+    const [selectedStoreId, selectedOrderId] = wonOrderRef.split('|');
+    if (!selectedStoreId || !selectedOrderId)
+      return fail(returnTo, 'Choose a valid canonical Commerce order.');
+    wonStoreId = selectedStoreId;
+    wonOrderId = selectedOrderId;
+  }
+  if (outcome === 'WON' && (!wonStoreId || !wonOrderId))
+    return fail(returnTo, 'A confirmed or closed canonical order is required to mark the opportunity won.');
+
   const result = await platformRequest(
     `/v1/sales/opportunities/${encodeURIComponent(opportunityId)}/close`,
     {
@@ -167,12 +181,8 @@ export async function closeSalesOpportunity(formData: FormData): Promise<void> {
       body: {
         outcome,
         ...(optional(formData, 'stageId') ? { stageId: optional(formData, 'stageId') } : {}),
-        ...(optional(formData, 'wonStoreId')
-          ? { wonStoreId: optional(formData, 'wonStoreId') }
-          : {}),
-        ...(optional(formData, 'wonOrderId')
-          ? { wonOrderId: optional(formData, 'wonOrderId') }
-          : {}),
+        ...(wonStoreId ? { wonStoreId } : {}),
+        ...(wonOrderId ? { wonOrderId } : {}),
         ...(optional(formData, 'lossReason')
           ? { lossReason: optional(formData, 'lossReason') }
           : {}),
