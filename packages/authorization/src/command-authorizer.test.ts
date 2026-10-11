@@ -76,3 +76,25 @@ void test('requires approval for high-risk commands and binds its exact action',
     { kind: 'DENIED', reason: 'approval_expired' },
   );
 });
+
+void test('changing a coerced offer expiry cannot reuse an approved action', async () => {
+  const original = { ...action, input: { expiresAt: new Date('2026-10-12T10:00:00.000Z') } };
+  const approval = {
+    id: 'approval-date-bound',
+    actionDigest: approvalActionDigest(original),
+    status: 'APPROVED' as const,
+    expiresAt: new Date('2026-10-20T00:00:00.000Z'),
+  };
+  assert.deepEqual(await authorizer.authorize(subject, original, approval), {
+    kind: 'ALLOWED',
+    approvalId: approval.id,
+  });
+  assert.deepEqual(
+    await authorizer.authorize(
+      subject,
+      { ...original, input: { expiresAt: new Date('2026-10-13T10:00:00.000Z') } },
+      approval,
+    ),
+    { kind: 'DENIED', reason: 'approval_digest_mismatch' },
+  );
+});
