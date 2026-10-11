@@ -34,7 +34,19 @@ const moduleGroups = [
       ['knowledge', 'Knowledge', 'Preview'],
       ['approvals', 'Approvals', 'Live surface'],
       ['integrations', 'Integrations', 'Live surface'],
+      ['runtime', 'Workflow runtime', 'Preview'],
+    ],
+  },
+  {
+    title: 'Platform engineering',
+    description: 'Versioned configuration, safe simulation, extensibility, APIs, and operational control.',
+    modules: [
+      ['configuration', 'Configuration', 'Preview'],
+      ['simulation', 'Configuration simulation', 'Preview'],
+      ['custom-data', 'Custom data', 'Preview'],
       ['developer', 'Developer platform', 'Preview'],
+      ['admin', 'Admin control center', 'Preview'],
+      ['settings', 'Organization settings', 'Preview'],
     ],
   },
   {
@@ -43,7 +55,6 @@ const moduleGroups = [
     modules: [
       ['onboarding', 'Onboarding', 'Live surface'],
       ['team', 'Team & roles', 'Live surface'],
-      ['settings', 'Organization settings', 'Preview'],
       ['organizations', 'Organizations', 'Live surface'],
     ],
   },
@@ -70,8 +81,8 @@ export default function HomePage() {
 
       <section className="platform-summary" aria-label="Platform implementation summary">
         <div>
-          <strong>22</strong>
-          <span>product surfaces mapped</span>
+          <strong>27</strong>
+          <span>product and platform surfaces mapped</span>
         </div>
         <div>
           <strong>RTL + LTR</strong>
