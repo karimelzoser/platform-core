@@ -5,6 +5,7 @@ import { PlatformNavigation } from './platform-navigation';
 import './styles.css';
 import './design-system.css';
 import './platform-navigation.css';
+import './preview-interactions.css';
 
 export const metadata: Metadata = {
   title: 'PRENEURA Platform',
