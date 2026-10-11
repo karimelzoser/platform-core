@@ -152,7 +152,7 @@ async function main(): Promise<void> {
       maxAttempts: 3,
       cooldownMinutes: 60,
       attributionWindowHours: 168,
-      channels: ['EMAIL'] as const,
+      channels: ['EMAIL' as const],
       maxOfferPercentBasisPoints: 1000,
       maxOfferAmountMinor: 1000,
     };
@@ -197,6 +197,16 @@ async function main(): Promise<void> {
       },
       input: offerInput,
     });
+    await assert.rejects(
+      recovery.createOffer(
+        contextA,
+        'recovery-offer-expiry-substitution',
+        { ...offerInput, expiresAt: new Date(offerExpiresAt.getTime() + 60 * 60 * 1000) },
+        offerApproval,
+      ),
+      /approval_digest_mismatch/i,
+    );
+
     const offer = await recovery.createOffer(
       contextA,
       'recovery-offer-lifecycle',
