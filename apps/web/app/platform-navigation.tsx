@@ -2,27 +2,28 @@
 
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
+import { LocalizedText } from './display-locale';
 
 const links = [
-  ['/', 'Home'],
-  ['/inbox', 'Inbox'],
-  ['/customers', 'Customers'],
-  ['/orders', 'Orders'],
-  ['/shipping', 'Shipping'],
-  ['/returns', 'Returns'],
-  ['/recovery', 'Recovery'],
-  ['/sales', 'Sales'],
-  ['/campaigns', 'Campaigns'],
-  ['/automation', 'Automation'],
-  ['/operators', 'AI'],
-  ['/analytics', 'Analytics'],
+  ['/', 'Home', 'الرئيسية'],
+  ['/inbox', 'Inbox', 'صندوق الوارد'],
+  ['/customers', 'Customers', 'العملاء'],
+  ['/orders', 'Orders', 'الطلبات'],
+  ['/shipping', 'Shipping', 'الشحن'],
+  ['/returns', 'Returns', 'المرتجعات'],
+  ['/recovery', 'Recovery', 'الاسترداد'],
+  ['/sales', 'Sales', 'المبيعات'],
+  ['/campaigns', 'Campaigns', 'الحملات'],
+  ['/automation', 'Automation', 'الأتمتة'],
+  ['/operators', 'AI', 'الذكاء الاصطناعي'],
+  ['/analytics', 'Analytics', 'التحليلات'],
 ] as const;
 
 const secondaryLinks = [
-  ['/approvals', 'Approvals'],
-  ['/integrations', 'Integrations'],
-  ['/team', 'Team'],
-  ['/settings', 'Settings'],
+  ['/approvals', 'Approvals', 'الموافقات'],
+  ['/integrations', 'Integrations', 'التكاملات'],
+  ['/team', 'Team', 'الفريق'],
+  ['/settings', 'Settings', 'الإعدادات'],
 ] as const;
 
 export function PlatformNavigation() {
@@ -38,30 +39,32 @@ export function PlatformNavigation() {
           </span>
           <span>
             <strong>PRENEURA</strong>
-            <small>Platform</small>
+            <small>
+              <LocalizedText en="Platform" ar="المنصة" />
+            </small>
           </span>
         </Link>
         <nav className="platform-chrome__nav" aria-label="Platform modules">
-          {links.map(([href, label]) => (
+          {links.map(([href, en, ar]) => (
             <Link
               className="platform-chrome__link"
               data-active={isActive(pathname, href)}
               href={href}
               key={href}
             >
-              {label}
+              <LocalizedText en={en} ar={ar} />
             </Link>
           ))}
         </nav>
         <nav className="platform-chrome__utilities" aria-label="Platform administration">
-          {secondaryLinks.map(([href, label]) => (
+          {secondaryLinks.map(([href, en, ar]) => (
             <Link
               className="platform-chrome__utility"
               data-active={isActive(pathname, href)}
               href={href}
               key={href}
             >
-              {label}
+              <LocalizedText en={en} ar={ar} />
             </Link>
           ))}
         </nav>
