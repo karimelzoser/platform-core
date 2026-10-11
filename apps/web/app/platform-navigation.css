@@ -1,0 +1,125 @@
+.platform-chrome {
+  position: sticky;
+  inset-block-start: 0;
+  z-index: 40;
+  border-block-end: 1px solid var(--ds-border);
+  background: color-mix(in srgb, var(--ds-surface) 94%, transparent);
+  backdrop-filter: blur(14px);
+}
+
+.platform-chrome__inner {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 1rem;
+  inline-size: min(100% - 1.5rem, 1500px);
+  min-block-size: 4.25rem;
+  margin-inline: auto;
+}
+
+.platform-chrome__brand {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.65rem;
+  min-inline-size: max-content;
+  color: var(--ds-text);
+  text-decoration: none;
+}
+
+.platform-chrome__brand > span:last-child {
+  display: grid;
+  line-height: 1.05;
+}
+
+.platform-chrome__brand small {
+  margin-block-start: 0.2rem;
+  color: var(--ds-text-muted);
+  font-size: 0.68rem;
+  font-weight: 650;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.platform-chrome__mark {
+  display: grid;
+  place-items: center;
+  inline-size: 2rem;
+  block-size: 2rem;
+  border-radius: 0.55rem;
+  background: var(--ds-text);
+  color: var(--ds-surface);
+  font-size: 0.95rem;
+  font-weight: 850;
+}
+
+.platform-chrome__nav,
+.platform-chrome__utilities {
+  display: flex;
+  align-items: center;
+  gap: 0.15rem;
+}
+
+.platform-chrome__nav {
+  min-inline-size: 0;
+  overflow-x: auto;
+  scrollbar-width: none;
+}
+
+.platform-chrome__nav::-webkit-scrollbar {
+  display: none;
+}
+
+.platform-chrome__link,
+.platform-chrome__utility {
+  border-radius: 0.55rem;
+  padding: 0.55rem 0.65rem;
+  color: var(--ds-text-muted);
+  font-size: 0.82rem;
+  font-weight: 680;
+  text-decoration: none;
+  white-space: nowrap;
+}
+
+.platform-chrome__link:hover,
+.platform-chrome__link:focus-visible,
+.platform-chrome__utility:hover,
+.platform-chrome__utility:focus-visible,
+.platform-chrome__link[data-active='true'],
+.platform-chrome__utility[data-active='true'] {
+  background: var(--ds-surface-subtle);
+  color: var(--ds-text);
+  outline: none;
+}
+
+.platform-chrome__link:focus-visible,
+.platform-chrome__utility:focus-visible,
+.platform-chrome__brand:focus-visible {
+  outline: 3px solid color-mix(in srgb, var(--ds-focus) 35%, transparent);
+  outline-offset: 2px;
+}
+
+@media (max-width: 1180px) {
+  .platform-chrome__inner {
+    grid-template-columns: auto minmax(0, 1fr);
+  }
+
+  .platform-chrome__utilities {
+    display: none;
+  }
+}
+
+@media (max-width: 720px) {
+  .platform-chrome__inner {
+    grid-template-columns: 1fr;
+    gap: 0.45rem;
+    padding-block: 0.65rem;
+  }
+
+  .platform-chrome__brand {
+    inline-size: max-content;
+  }
+
+  .platform-chrome__nav {
+    inline-size: 100%;
+  }
+}
