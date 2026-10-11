@@ -324,8 +324,38 @@ async function main(): Promise<void> {
         ) on conflict (tenant_id, customer_id, channel, provider_consent_id) do nothing`.execute(
         transaction,
       );
+    });
+
+    for (const malformedProof of [
+      { source: 'provider_webhook', metadata: { webhookDeliveryId: consentDeliveryA } },
+      {
+        source: null,
+        metadata: {
+          evidenceType: 'VERIFIED_PROVIDER_WEBHOOK',
+          webhookDeliveryId: consentDeliveryA,
+        },
+      },
+    ]) {
+      await assert.rejects(
+        withTenantTransaction(database, consentWorkerContext, async (transaction) => {
+          await sql`update crm.communication_preferences set status = 'OPTED_IN',
+            source = ${malformedProof.source},
+            captured_at = (select occurred_at from crm.communication_consent_evidence
+              where webhook_delivery_id = ${consentDeliveryA}::uuid and customer_id = ${customerA}::uuid
+                and channel = 'EMAIL' limit 1),
+            metadata = ${JSON.stringify(malformedProof.metadata)}::jsonb
+          where customer_id = ${customerA}::uuid and channel = 'EMAIL'`.execute(transaction);
+        }),
+        /OPTED_IN requires verified provider webhook consent evidence/i,
+      );
+    }
+
+    await withTenantTransaction(database, consentWorkerContext, async (transaction) => {
       await sql`update crm.communication_preferences
-        set status = 'OPTED_IN', source = 'provider_webhook', captured_at = now(),
+        set status = 'OPTED_IN', source = 'provider_webhook',
+            captured_at = (select occurred_at from crm.communication_consent_evidence
+              where webhook_delivery_id = ${consentDeliveryA}::uuid and customer_id = ${customerA}::uuid
+                and channel = 'EMAIL' limit 1),
             suppressed_until = now() + interval '1 hour', reason = 'Temporary lifecycle suppression',
             metadata = ${JSON.stringify({
               evidenceType: 'VERIFIED_PROVIDER_WEBHOOK',

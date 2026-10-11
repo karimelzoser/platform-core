@@ -79,6 +79,12 @@ and protected customer API to observe opt-in. It never fabricates consent rows
 or impersonates a webhook worker. Existing operator opt-out is preserved.
 The emulated fixture is not real Meta/provider consent evidence for launch.
 
+CI #548 verified the actual workflow retry/duplicate-start/signal/cancel/replay/
+restart test. Its canonical lifecycle failure is corrected forward in `0045`;
+the already-applied `0044` is not rewritten. Bootstrap authentication uses the
+same issuer as API validation (including hostname), not merely an equivalent
+network address. The combined repair still requires full exact-head CI.
+
 Rollback requires
 draining/versioning active `platform-recovery-v1` histories; do not remove or
 rename workflow/activity definitions while existing histories can replay.

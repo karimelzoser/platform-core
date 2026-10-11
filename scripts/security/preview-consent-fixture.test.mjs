@@ -8,6 +8,7 @@ import {
 test('development consent bootstrap rejects production, disabled fixtures and remote API origins', () => {
   const environment = { APP_ENV: 'development', ENABLE_DEVELOPMENT_CONNECTOR_FIXTURES: 'true' };
   assert.equal(previewConsentConfiguration(environment).api.origin, 'http://127.0.0.1:4000');
+  assert.equal(previewConsentConfiguration(environment).issuer.origin, 'http://localhost:8080');
   assert.throws(() => previewConsentConfiguration({ ...environment, APP_ENV: 'production' }));
   assert.throws(() =>
     previewConsentConfiguration({ ...environment, ENABLE_DEVELOPMENT_CONNECTOR_FIXTURES: 'false' }),

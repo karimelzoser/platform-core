@@ -132,6 +132,14 @@ unreleased migration DDL, also preventing preview startup. The local repair
 adds the manifest and static dependency-graph regression, reuses the existing
 `0018` constraint without touching released history, and replaces direct preview
 opt-in with signed development webhook bootstrap. New repair CI remains pending.
+Repair CI #548 (`2c288d8`) now passes quality, both image/security jobs, AI and
+secret scan. The real Recovery Temporal test passed retry, duplicate-start,
+signal, cancellation, replay and worker restart. Canonical lifecycles revealed
+a PL/pgSQL variable collision in the applied `0044` consent trigger; the forward
+correction is `0045`, with null-safe proof and active signed-delivery checks.
+Preview bootstrap also needs the same Keycloak issuer hostname as the API;
+`127.0.0.1` and `localhost` are not interchangeable JWT issuers. Full integration
+and protected browser gates remain pending the combined repair.
 
 Remaining closure includes dispatch-time consent/suppression rechecks and atomic
 message linkage, delivery reconciliation, bounded incentives with full approval

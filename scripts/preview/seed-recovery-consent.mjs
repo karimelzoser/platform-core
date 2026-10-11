@@ -12,7 +12,7 @@ export function previewConsentConfiguration(environment) {
     'Development fixtures must be explicit',
   );
   const api = new URL(environment.API_INTERNAL_URL ?? 'http://127.0.0.1:4000');
-  const issuer = new URL(environment.KEYCLOAK_ISSUER ?? 'http://127.0.0.1:8080/realms/platform');
+  const issuer = new URL(environment.KEYCLOAK_ISSUER ?? 'http://localhost:8080/realms/platform');
   const loopback = (hostname) => ['localhost', '127.0.0.1', '[::1]'].includes(hostname);
   assert.ok(api.protocol === 'http:' && loopback(api.hostname), 'Fixture API must be loopback');
   assert.ok(api.pathname === '/' && !api.search && !api.hash && !api.username && !api.password);
@@ -82,7 +82,10 @@ async function seed() {
         'x-tenant-id': tenantId,
       },
     });
-    assert.ok(response.ok, 'Protected development customer read failed');
+    assert.ok(
+      response.ok,
+      `Protected development customer read failed (HTTP ${response.status}); verify the token issuer matches API configuration`,
+    );
     const detail = await response.json();
     assert.equal(detail.id, customerId);
     assert.equal(detail.displayName, 'Recovery Preview Customer');

@@ -27,5 +27,5 @@ ENABLE_DEVELOPMENT_CONNECTOR_FIXTURES=true DATABASE_URL=postgres://platform_app:
 nohup python -m uvicorn apps.ai-gateway.app.main:app --host 0.0.0.0 --port 8000 > .preview/ai-gateway.log 2>&1 &
 APP_ENV=development API_INTERNAL_URL=http://localhost:4000 KEYCLOAK_ISSUER=http://localhost:8080/realms/platform KEYCLOAK_CLIENT_ID=platform-web PREVIEW_TENANT_ID=cccccccc-cccc-cccc-cccc-cccccccccccc nohup corepack pnpm --filter @platform/web exec next dev --port 3000 > .preview/web.log 2>&1 &
 nohup corepack pnpm --filter @platform/admin exec next dev --port 3001 > .preview/admin.log 2>&1 &
-APP_ENV=development ENABLE_DEVELOPMENT_CONNECTOR_FIXTURES=true API_INTERNAL_URL=http://127.0.0.1:4000 KEYCLOAK_ISSUER=http://127.0.0.1:8080/realms/platform node scripts/preview/seed-recovery-consent.mjs
+APP_ENV=development ENABLE_DEVELOPMENT_CONNECTOR_FIXTURES=true API_INTERNAL_URL=http://127.0.0.1:4000 KEYCLOAK_ISSUER=http://localhost:8080/realms/platform node scripts/preview/seed-recovery-consent.mjs
 echo 'Preview started. Run corepack pnpm preview:health.'
