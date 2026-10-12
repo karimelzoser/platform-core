@@ -151,9 +151,7 @@ export default async function ReviewSurfacePage({
               {config.nextActions.map((action, index) => (
                 <button
                   className={
-                    index === 0
-                      ? 'ds-button ds-button--primary'
-                      : 'ds-button ds-button--secondary'
+                    index === 0 ? 'ds-button ds-button--primary' : 'ds-button ds-button--secondary'
                   }
                   disabled
                   key={action}
