@@ -48,32 +48,11 @@ WHERE NOT EXISTS (SELECT 1 FROM pg_database WHERE datname = 'temporal_visibility
 
 GRANT CREATE ON DATABASE platform TO platform_migrator;
 
+-- Match the proven clean-install bootstrap used by integration tests. Later domain
+-- schemas are owned by their migrations; pre-creating them here would alter the
+-- migration contract and can make a clean VPS differ from CI.
 CREATE SCHEMA IF NOT EXISTS platform AUTHORIZATION platform_migrator;
 CREATE SCHEMA IF NOT EXISTS identity AUTHORIZATION platform_migrator;
 CREATE SCHEMA IF NOT EXISTS crm AUTHORIZATION platform_migrator;
-CREATE SCHEMA IF NOT EXISTS integrations AUTHORIZATION platform_migrator;
-CREATE SCHEMA IF NOT EXISTS messaging AUTHORIZATION platform_migrator;
-CREATE SCHEMA IF NOT EXISTS tickets AUTHORIZATION platform_migrator;
-CREATE SCHEMA IF NOT EXISTS commerce AUTHORIZATION platform_migrator;
-CREATE SCHEMA IF NOT EXISTS shipping AUTHORIZATION platform_migrator;
-CREATE SCHEMA IF NOT EXISTS returns AUTHORIZATION platform_migrator;
-CREATE SCHEMA IF NOT EXISTS recovery AUTHORIZATION platform_migrator;
-CREATE SCHEMA IF NOT EXISTS sales AUTHORIZATION platform_migrator;
-CREATE SCHEMA IF NOT EXISTS campaigns AUTHORIZATION platform_migrator;
-CREATE SCHEMA IF NOT EXISTS automation AUTHORIZATION platform_migrator;
-CREATE SCHEMA IF NOT EXISTS configuration AUTHORIZATION platform_migrator;
-CREATE SCHEMA IF NOT EXISTS ai AUTHORIZATION platform_migrator;
-CREATE SCHEMA IF NOT EXISTS knowledge AUTHORIZATION platform_migrator;
-CREATE SCHEMA IF NOT EXISTS custom_data AUTHORIZATION platform_migrator;
-CREATE SCHEMA IF NOT EXISTS analytics AUTHORIZATION platform_migrator;
-CREATE SCHEMA IF NOT EXISTS billing AUTHORIZATION platform_migrator;
-CREATE SCHEMA IF NOT EXISTS developer AUTHORIZATION platform_migrator;
-CREATE SCHEMA IF NOT EXISTS admin AUTHORIZATION platform_migrator;
-CREATE SCHEMA IF NOT EXISTS governance AUTHORIZATION platform_migrator;
-
-GRANT USAGE ON SCHEMA
-  platform, identity, crm, integrations, messaging, tickets, commerce, shipping,
-  returns, recovery, sales, campaigns, automation, configuration, ai, knowledge,
-  custom_data, analytics, billing, developer, admin, governance
-TO platform_app;
+GRANT USAGE ON SCHEMA platform, identity, crm TO platform_app;
 SQL
