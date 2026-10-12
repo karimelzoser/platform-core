@@ -1,0 +1,177 @@
+.module-search {
+  display: grid;
+  gap: 6px;
+  margin-top: 14px;
+}
+.module-search span {
+  color: #8a93a1;
+  font-size: 10px;
+  font-weight: 800;
+  letter-spacing: .08em;
+  text-transform: uppercase;
+}
+.module-search input {
+  width: 100%;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  background: #fafbfc;
+  color: var(--text);
+  padding: 10px 11px;
+  font-size: 12px;
+}
+.top-link { text-decoration: none; }
+.review-notice {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 18px;
+  margin-bottom: 18px;
+  padding: 14px 16px;
+  border: 1px solid #bfd2ed;
+  border-radius: 14px;
+  background: #f2f7ff;
+}
+.review-notice > div { display: grid; gap: 3px; }
+.review-notice strong { font-size: 12px; }
+.review-notice span:not(.badge) { color: #596579; font-size: 11px; line-height: 1.45; }
+.product-groups {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 16px;
+  margin-bottom: 16px;
+}
+.product-group-card { margin: 0 !important; }
+.module-card-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 9px;
+}
+.module-card {
+  min-height: 74px;
+  display: grid;
+  align-content: space-between;
+  gap: 10px;
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  background: #fafbfc;
+  padding: 12px;
+  text-decoration: none;
+  transition: .15s ease;
+}
+.module-card:hover,
+.module-card:focus-visible {
+  border-color: #9eabc0;
+  background: #fff;
+  transform: translateY(-1px);
+}
+.module-card strong { font-size: 12px; }
+.module-card span { color: var(--muted); font-size: 10px; }
+.review-contract { margin-top: 16px; }
+.contract-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 12px;
+}
+.contract-list { display: grid; }
+.contract-item {
+  display: grid;
+  gap: 5px;
+  padding: 12px 0;
+  border-top: 1px solid var(--line);
+}
+.contract-item:first-child { border-top: 0; padding-top: 0; }
+.contract-item strong { font-size: 11px; }
+.contract-item span { color: var(--muted); font-size: 11px; line-height: 1.55; }
+.review-layout {
+  display: grid;
+  grid-template-columns: minmax(0, 2fr) minmax(260px, .72fr);
+  gap: 16px;
+  margin-bottom: 16px;
+}
+.review-layout > .card { margin: 0; }
+.board {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 10px;
+}
+.lane {
+  min-width: 0;
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  background: #fafbfc;
+  padding: 12px;
+}
+.lane-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+.lane ul,
+.signal-list {
+  list-style: none;
+  margin: 10px 0 0;
+  padding: 0;
+}
+.lane li,
+.signal-list li {
+  padding: 9px 0;
+  border-top: 1px solid var(--line);
+  color: #505a68;
+  font-size: 11px;
+  line-height: 1.45;
+}
+.lane li:first-child,
+.signal-list li:first-child { border-top: 0; }
+.signal-card { min-width: 0; }
+.queue-card { margin-bottom: 16px; }
+.review-table strong { font-size: 12px; }
+.review-controls > .card { margin: 0; }
+.review-footnote {
+  margin: 14px 0 0;
+  color: var(--muted);
+  font-size: 11px;
+  line-height: 1.55;
+}
+.nav a[hidden],
+.nav-group[hidden] { display: none !important; }
+
+@media (max-width: 1180px) {
+  .review-layout { grid-template-columns: 1fr; }
+  .product-groups { grid-template-columns: 1fr; }
+}
+@media (max-width: 900px) {
+  .board { grid-template-columns: 1fr; }
+  .contract-grid { grid-template-columns: 1fr; }
+}
+@media (max-width: 680px) {
+  .review-notice { align-items: flex-start; flex-direction: column; }
+  .module-card-grid { grid-template-columns: 1fr; }
+  .top-link { display: none; }
+  .review-table { min-width: 0; }
+  .review-table thead { display: none; }
+  .review-table,
+  .review-table tbody,
+  .review-table tr,
+  .review-table td { display: block; width: 100%; }
+  .review-table tr {
+    padding: 9px 0;
+    border-bottom: 1px solid var(--line);
+  }
+  .review-table tr:last-child { border-bottom: 0; }
+  .review-table td {
+    display: grid;
+    grid-template-columns: 72px minmax(0, 1fr);
+    gap: 9px;
+    border: 0;
+    padding: 5px 0;
+  }
+  .review-table td::before {
+    content: attr(data-label);
+    color: #8a93a1;
+    font-size: 9px;
+    font-weight: 800;
+    letter-spacing: .06em;
+    text-transform: uppercase;
+  }
+}
