@@ -13,16 +13,25 @@ const surfaces = {
   sales: 'Sales',
   campaigns: 'Campaigns',
   automation: 'Automation studio',
+  workflows: 'Workflow operations',
+  configuration: 'Configuration studio',
+  simulation: 'Configuration simulation',
   operators: 'AI operators',
+  'ai-tools': 'AI tool registry',
+  'ai-routing': 'AI gateway and routing',
   approvals: 'Approvals',
   integrations: 'Integrations',
   knowledge: 'Knowledge',
-  analytics: 'Analytics',
-  billing: 'Billing',
-  developer: 'Developer settings',
+  analytics: 'Analytics and ROI',
+  billing: 'Billing and usage',
+  developer: 'Developer platform',
+  'custom-data': 'Custom data',
+  admin: 'Admin control center',
+  governance: 'Data governance',
   team: 'Team and roles',
   settings: 'Organization settings',
   onboarding: 'Onboarding',
+  organizations: 'Organizations',
 } as const;
 
 type Surface = keyof typeof surfaces;
@@ -38,21 +47,26 @@ export default async function SurfacePage({ params }: { params: Promise<{ surfac
     <main className="workspace" aria-labelledby="surface-title">
       <header className="workspace-header">
         <Link href="/" className="brand">
-          Platform
+          PRENEURA
         </Link>
         <span aria-hidden="true">/</span>
         <span>{surfaces[surface]}</span>
       </header>
       <section className="state-panel">
-        <p className="eyebrow">TENANT WORKSPACE</p>
+        <p className="eyebrow">LIVE TENANT WORKSPACE</p>
         <h1 id="surface-title">{surfaces[surface]}</h1>
         <p>
-          Sign in and select an organization to load authorized live data. This surface never
-          renders fabricated operational metrics.
+          This route is reserved for authorized live tenant data and canonical commands. It does
+          not fall back to representative review data when the backend module is unavailable.
         </p>
-        <Link className="action" href="/onboarding">
-          Set up organization
-        </Link>
+        <div className="page-actions">
+          <Link className="action" href={`/review/${surface}`}>
+            Open frontend review
+          </Link>
+          <Link className="action secondary" href="/onboarding">
+            Set up organization
+          </Link>
+        </div>
       </section>
     </main>
   );
