@@ -3,7 +3,7 @@
 import type { Route } from 'next';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { DirectionControl } from './direction-control';
 
 const groups = [
@@ -71,6 +71,7 @@ const groups = [
 
 export function AppShell({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
+  const searchRef = useRef<HTMLInputElement>(null);
   const [query, setQuery] = useState('');
   const normalizedQuery = query.trim().toLowerCase();
   const filteredGroups = useMemo(
@@ -83,6 +84,33 @@ export function AppShell({ children }: { children: React.ReactNode }) {
         .filter((group) => group.items.length > 0),
     [normalizedQuery],
   );
+
+  useEffect(() => {
+    function handleShortcut(event: KeyboardEvent) {
+      const element = event.target instanceof HTMLElement ? event.target : null;
+      const editing =
+        element?.tagName === 'INPUT' ||
+        element?.tagName === 'TEXTAREA' ||
+        element?.tagName === 'SELECT' ||
+        element?.isContentEditable;
+
+      if (event.key === '/' && !editing && !event.metaKey && !event.ctrlKey && !event.altKey) {
+        event.preventDefault();
+        searchRef.current?.focus();
+      }
+      if (event.key === 'Escape' && document.activeElement === searchRef.current) {
+        setQuery('');
+        searchRef.current?.blur();
+      }
+    }
+
+    window.addEventListener('keydown', handleShortcut);
+    return () => window.removeEventListener('keydown', handleShortcut);
+  }, []);
+
+  useEffect(() => {
+    setQuery('');
+  }, [pathname]);
 
   return (
     <div className="product-shell">
@@ -101,6 +129,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
         <label className="product-shell__search">
           <span className="sr-only">Find a module</span>
           <input
+            ref={searchRef}
             type="search"
             value={query}
             onChange={(event) => {
@@ -112,7 +141,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
           <kbd>/</kbd>
         </label>
 
-        <nav className="product-shell__nav">
+        <nav className="product-shell__nav" aria-label="Product review modules">
           {filteredGroups.map((group) => (
             <section key={group.label} className="product-shell__nav-group">
               <h2>{group.label}</h2>
@@ -137,6 +166,11 @@ export function AppShell({ children }: { children: React.ReactNode }) {
               </div>
             </section>
           ))}
+          {filteredGroups.length === 0 ? (
+            <p className="product-shell__no-results" role="status">
+              No modules match “{query}”. Press Escape to clear.
+            </p>
+          ) : null}
         </nav>
 
         <div className="product-shell__sidebar-footer">
