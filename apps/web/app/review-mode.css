@@ -1,0 +1,90 @@
+.review-controls-grid {
+  display: grid;
+  grid-template-columns: minmax(0, 1.35fr) minmax(18rem, 0.65fr);
+  gap: var(--ds-space-4);
+}
+
+.review-contract-list {
+  display: grid;
+  gap: 0;
+  margin: 0;
+}
+
+.review-contract-list > div {
+  display: grid;
+  grid-template-columns: minmax(7.5rem, 0.45fr) 1fr;
+  gap: 1rem;
+  border-block-start: 1px solid var(--ds-border);
+  padding-block: 0.8rem;
+}
+
+.review-contract-list > div:first-child {
+  border-block-start: 0;
+  padding-block-start: 0;
+}
+
+.review-contract-list dt {
+  color: var(--ds-text);
+  font-size: 0.82rem;
+  font-weight: 750;
+}
+
+.review-contract-list dd {
+  margin: 0;
+  color: var(--ds-text-muted);
+  font-size: 0.84rem;
+  line-height: 1.5;
+}
+
+.review-index-callout {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 1rem;
+  border: 1px solid #b9cee9;
+  border-radius: var(--ds-radius-md);
+  background: #f2f7ff;
+  padding: 1rem 1.1rem;
+}
+
+.review-index-callout__icon {
+  display: grid;
+  place-items: center;
+  inline-size: 2.3rem;
+  block-size: 2.3rem;
+  border-radius: 0.7rem;
+  background: #dceaff;
+  color: var(--ds-info);
+  font-weight: 900;
+}
+
+.review-index-callout div {
+  display: grid;
+  gap: 0.2rem;
+}
+
+.review-index-callout span {
+  color: var(--ds-text-muted);
+  line-height: 1.45;
+}
+
+@media (max-width: 880px) {
+  .review-controls-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+@media (max-width: 620px) {
+  .review-contract-list > div {
+    grid-template-columns: 1fr;
+    gap: 0.3rem;
+  }
+
+  .review-index-callout {
+    grid-template-columns: auto 1fr;
+  }
+
+  .review-index-callout > :last-child {
+    grid-column: 1 / -1;
+  }
+}
