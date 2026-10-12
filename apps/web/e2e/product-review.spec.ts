@@ -72,10 +72,11 @@ test.describe('backend-independent full product review', () => {
       await expect(page.getByRole('tab', { name: 'Workflow' })).toBeVisible();
       await expect(page.getByRole('tab', { name: 'Work queue' })).toBeVisible();
       await expect(page.getByRole('tab', { name: 'Signals' })).toBeVisible();
+      await expect(page.getByRole('heading', { name: `Production states for ${label}` })).toBeVisible();
     }
   });
 
-  test('supports local queue filtering, detail inspection, and simulated actions', async ({ page }) => {
+  test('supports local queue filtering, detail inspection, simulated actions, and failure-state review', async ({ page }) => {
     await page.goto('/review/sales');
     await expect(
       page.getByRole('heading', { name: 'Forecast, next actions, and deal quality in one view' }),
@@ -101,6 +102,19 @@ test.describe('backend-independent full product review', () => {
     await action.click();
     await expect(page.getByRole('status')).toContainText('simulated locally');
     await expect(page.getByRole('status')).toContainText('No API');
+
+    await page.getByRole('button', { name: 'Recoverable error' }).click();
+    await expect(page.getByRole('alert')).toContainText('Provider data could not be refreshed');
+    await page.getByRole('button', { name: 'Retry safely' }).click();
+    await expect(page.getByRole('alert')).toContainText('Local retry simulated 1×.');
+
+    await page.getByRole('button', { name: 'Forbidden' }).click();
+    await expect(page.getByText('Access to Sales is restricted', { exact: true })).toBeVisible();
+    await expect(page.getByRole('button', { name: 'Review role requirements' })).toBeVisible();
+
+    await page.getByRole('button', { name: 'Fatal error' }).click();
+    await expect(page.getByRole('alert')).toContainText('Correlation');
+    await expect(page.getByRole('alert')).toContainText('Not modified');
   });
 
   test('keeps navigation responsive, keyboard-friendly, and direction-aware', async ({ page }) => {
