@@ -5,6 +5,7 @@ import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { DirectionControl } from './direction-control';
+import { ReviewActivityMenu } from './review-activity-menu';
 
 const groups = [
   {
@@ -132,9 +133,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
             ref={searchRef}
             type="search"
             value={query}
-            onChange={(event) => {
-              setQuery(event.target.value);
-            }}
+            onChange={(event) => setQuery(event.target.value)}
             placeholder="Find a module…"
             aria-label="Find a module"
           />
@@ -205,6 +204,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
           </div>
 
           <div className="product-shell__top-actions">
+            <ReviewActivityMenu />
             <Link
               className="product-shell__icon-link"
               href="/review/approvals"
