@@ -56,7 +56,7 @@ test.describe('backend-independent product review', () => {
         'href',
         `/${slug}`,
       );
-      await expect(page.getByRole('button').filter({ hasText: /.+/ }).first()).toBeDisabled();
+      await expect(page.locator('.preview-actions-grid button').first()).toBeDisabled();
     }
   });
 
