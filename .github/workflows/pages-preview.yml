@@ -5,7 +5,7 @@ on:
   push:
     branches:
       - main
-      - codex/onboarding-production-closure-20261007
+      - codex/frontend-review-mode-20261012
     paths:
       - 'pages-preview/**'
       - '.github/workflows/pages-preview.yml'
@@ -27,6 +27,8 @@ jobs:
       - uses: actions/configure-pages@v5
         with:
           enablement: true
+      - name: Validate static preview JavaScript
+        run: node --check pages-preview/review.js
       - name: Build static Pages artifact
         run: |
           rm -rf _site
