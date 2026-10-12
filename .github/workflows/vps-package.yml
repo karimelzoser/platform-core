@@ -6,6 +6,10 @@ on:
     paths:
       - 'docker/vps/**'
       - 'docker/Dockerfile.migrator'
+      - 'docker/Dockerfile.api'
+      - 'docker/Dockerfile.web'
+      - 'docker/Dockerfile.worker'
+      - 'docker/Dockerfile.ai-gateway'
       - 'scripts/vps/**'
       - 'docs/VPS_DEPLOYMENT.md'
       - '.github/workflows/vps-package.yml'
@@ -55,8 +59,10 @@ jobs:
           mkdir -p docker/vps/rendered
           PLATFORM_ORIGIN=https://app.example.test envsubst '$PLATFORM_ORIGIN' < docker/vps/keycloak-realm.template.json > docker/vps/rendered/keycloak-realm.json
           docker compose --env-file docker/vps/.env -f docker/vps/compose.yml config --quiet
-      - name: Build migration image
-        run: docker build --file docker/Dockerfile.migrator --tag preneura-migrator:ci .
+      - name: Build the exact locally installable application images
+        run: |
+          docker compose --env-file docker/vps/.env -f docker/vps/compose.yml build \
+            migrate api worker ai-gateway web
       - name: Confirm only the TLS edge publishes host ports
         run: |
           docker compose --env-file docker/vps/.env -f docker/vps/compose.yml config --format json > /tmp/vps-compose.json
