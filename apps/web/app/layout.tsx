@@ -3,6 +3,7 @@ import { AppShell } from './app-shell';
 import './styles.css';
 import './design-system.css';
 import './product-shell.css';
+import './review-mode.css';
 
 export const metadata: Metadata = {
   title: 'PRENEURA Platform',
