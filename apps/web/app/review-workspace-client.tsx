@@ -2,10 +2,17 @@
 
 import { useMemo, useState } from 'react';
 import type { PreviewRow, PreviewSurface } from './preview-surfaces';
+import { ReviewSpecialty } from './review-specialty';
 
 type View = 'workflow' | 'queue' | 'signals';
 
-export function ReviewWorkspaceClient({ config }: { config: PreviewSurface }) {
+export function ReviewWorkspaceClient({
+  config,
+  surface,
+}: {
+  config: PreviewSurface;
+  surface: string;
+}) {
   const [view, setView] = useState<View>('workflow');
   const [query, setQuery] = useState('');
   const [status, setStatus] = useState('ALL');
@@ -82,6 +89,8 @@ export function ReviewWorkspaceClient({ config }: { config: PreviewSurface }) {
           </button>
         </div>
       ) : null}
+
+      <ReviewSpecialty surface={surface} />
 
       {view === 'workflow' ? (
         <section className="review-console__workflow" aria-label={`${config.label} workflow review`}>
