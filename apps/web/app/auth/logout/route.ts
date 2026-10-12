@@ -9,7 +9,7 @@ import {
   oidcRuntime,
 } from '../oidc';
 
-export async function GET(request: NextRequest) {
+export function GET(request: NextRequest) {
   let destination = new URL('/', request.url);
   try {
     const runtime = oidcRuntime();
