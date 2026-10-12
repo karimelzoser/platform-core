@@ -1,9 +1,7 @@
 name: Frontend review formatter
 
 on:
-  push:
-    branches:
-      - codex/frontend-review-mode-20261012
+  pull_request:
 
 permissions:
   contents: read
