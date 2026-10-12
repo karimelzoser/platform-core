@@ -5,7 +5,6 @@ SCRIPT_DIR="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)"
 # shellcheck source=common.sh
 source "$SCRIPT_DIR/common.sh"
 
-require_command gzip
 require_command docker
 load_env
 
@@ -17,11 +16,13 @@ target="$backup_root/$stamp"
 mkdir -p "$target"
 chmod 700 "$target"
 
+# Preserve object ownership and ACLs. The clean-install bootstrap recreates the
+# required roles before restore; keeping owners/grants is what makes Keycloak,
+# Temporal and platform_app usable immediately after disaster recovery.
 for database in platform keycloak temporal temporal_visibility; do
   printf 'Backing up %s...\n' "$database"
   compose exec -T -e PGPASSWORD="$POSTGRES_ADMIN_PASSWORD" postgres \
-    pg_dump -U platform_admin -d "$database" --format=custom --no-owner --no-privileges \
-    >"$target/${database}.dump"
+    pg_dump -U platform_admin -d "$database" --format=custom >"$target/${database}.dump"
 done
 
 compose exec -T -e PGPASSWORD="$POSTGRES_ADMIN_PASSWORD" postgres \
