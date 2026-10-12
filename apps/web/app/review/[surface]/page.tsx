@@ -1,5 +1,7 @@
+import type { Route } from 'next';
 import Link from 'next/link';
 import { notFound } from 'next/navigation';
+import { isReviewSurface, reviewSurfaces } from '../../review-surfaces';
 import {
   MetricCard,
   PageHeader,
@@ -8,7 +10,6 @@ import {
   StatusBadge,
   SurfaceCard,
 } from '../../ui-primitives';
-import { isReviewSurface, reviewSurfaces } from '../../review-surfaces';
 
 export default async function ReviewSurfacePage({
   params,
@@ -31,7 +32,7 @@ export default async function ReviewSurfacePage({
               <Link className="ds-button ds-button--secondary" href="/">
                 Product home
               </Link>
-              <Link className="ds-button ds-button--primary" href={`/${surface}`}>
+              <Link className="ds-button ds-button--primary" href={liveHref(surface)}>
                 Open live route
               </Link>
             </>
@@ -42,8 +43,9 @@ export default async function ReviewSurfacePage({
           <div>
             <strong>Frontend product review mode</strong>
             <span>
-              Deterministic representative data is rendered without authentication, providers, or API
-              availability. Live routes remain separate and keep their canonical security boundaries.
+              Deterministic representative data is rendered without authentication, providers, or
+              API availability. Live routes remain separate and keep their canonical security
+              boundaries.
             </span>
           </div>
           <StatusBadge tone="info">No backend required</StatusBadge>
@@ -55,7 +57,10 @@ export default async function ReviewSurfacePage({
           ))}
         </div>
 
-        <section className="preview-grid preview-grid--main" aria-label={`${config.label} workflow`}>
+        <section
+          className="preview-grid preview-grid--main"
+          aria-label={`${config.label} workflow`}
+        >
           <SurfaceCard className="preview-board-card">
             <div className="preview-section-heading">
               <div>
@@ -190,4 +195,8 @@ export default async function ReviewSurfacePage({
       </Stack>
     </PageShell>
   );
+}
+
+function liveHref(surface: string): Route {
+  return `/${surface}` as Route;
 }
