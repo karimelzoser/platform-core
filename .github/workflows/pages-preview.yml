@@ -28,7 +28,9 @@ jobs:
         with:
           enablement: true
       - name: Validate static preview JavaScript
-        run: node --check pages-preview/review.js
+        run: |
+          node --check pages-preview/review.js
+          node --check pages-preview/review-extra.js
       - name: Build static Pages artifact
         run: |
           rm -rf _site
