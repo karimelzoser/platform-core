@@ -51,7 +51,7 @@ export default async function ReviewSurfacePage({
           ))}
         </div>
 
-        <ReviewWorkspaceClient config={config} />
+        <ReviewWorkspaceClient config={config} surface={surface} />
 
         <SurfaceCard>
           <div className="preview-section-heading">
