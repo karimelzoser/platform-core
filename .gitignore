@@ -8,6 +8,9 @@
 VPS Credentials.txt
 *Credentials*.txt
 
+docker/vps/.env
+docker/vps/rendered/
+
 *.pem
 *.key
 *.p12
@@ -26,6 +29,7 @@ credentials/
 *.tar.gz
 
 backups/
+docker/vps/backups/
 production-data/
 
 .baseline-import/
