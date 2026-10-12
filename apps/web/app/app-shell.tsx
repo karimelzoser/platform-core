@@ -85,7 +85,9 @@ export function AppShell({ children }: { children: React.ReactNode }) {
           <input
             type="search"
             value={query}
-            onChange={(event) => setQuery(event.target.value)}
+            onChange={(event) => {
+              setQuery(event.target.value);
+            }}
             placeholder="Find a module…"
             aria-label="Find a module"
           />
