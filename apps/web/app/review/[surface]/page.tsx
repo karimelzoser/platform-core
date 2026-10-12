@@ -2,6 +2,7 @@ import type { Route } from 'next';
 import Link from 'next/link';
 import { notFound } from 'next/navigation';
 import { allReviewSurfaces, isAllReviewSurface } from '../../all-review-surfaces';
+import { ReviewContext } from '../../review-context';
 import { ReviewStateLab } from '../../review-state-lab';
 import { ReviewWorkspaceClient } from '../../review-workspace-client';
 import { MetricCard, PageHeader, PageShell, Stack, StatusBadge, SurfaceCard } from '../../ui-primitives';
@@ -52,6 +53,7 @@ export default async function ReviewSurfacePage({
           ))}
         </div>
 
+        <ReviewContext surface={surface} />
         <ReviewWorkspaceClient config={config} surface={surface} />
         <ReviewStateLab moduleLabel={config.label} />
 
