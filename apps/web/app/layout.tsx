@@ -3,6 +3,7 @@ import { AppNavigation } from './app-navigation';
 import { DirectionControl } from './direction-control';
 import './styles.css';
 import './design-system.css';
+import './product-review.css';
 
 export const metadata: Metadata = {
   title: 'PRENEURA Platform',
