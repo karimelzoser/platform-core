@@ -18,9 +18,11 @@ export function GET(request: NextRequest) {
     // Clearing the local session is still safe when the provider is unavailable.
   }
   const response = NextResponse.redirect(destination, 303);
-  for (const cookie of [AUTH_COOKIE, REFRESH_COOKIE, ID_COOKIE, STATE_COOKIE, VERIFIER_COOKIE]) {
+  for (const cookie of [AUTH_COOKIE, REFRESH_COOKIE, ID_COOKIE]) {
     response.cookies.delete(cookie);
   }
+  response.cookies.set(STATE_COOKIE, '', { path: '/auth', maxAge: 0 });
+  response.cookies.set(VERIFIER_COOKIE, '', { path: '/auth', maxAge: 0 });
   response.cookies.delete('platform_tenant_id');
   return response;
 }
