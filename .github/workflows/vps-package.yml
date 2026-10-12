@@ -1,0 +1,72 @@
+name: VPS deployment package
+
+on:
+  workflow_dispatch:
+  pull_request:
+    paths:
+      - 'docker/vps/**'
+      - 'docker/Dockerfile.migrator'
+      - 'scripts/vps/**'
+      - 'docs/VPS_DEPLOYMENT.md'
+      - '.github/workflows/vps-package.yml'
+
+permissions:
+  contents: read
+
+jobs:
+  vps-package:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+      - name: Validate shell syntax
+        run: |
+          bash -n docker/vps/postgres-init.sh
+          for script in scripts/vps/*.sh; do
+            bash -n "$script"
+          done
+      - name: Render and validate production Keycloak realm
+        env:
+          PLATFORM_ORIGIN: https://app.example.test
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y gettext-base
+          mkdir -p docker/vps/rendered
+          envsubst '$PLATFORM_ORIGIN' < docker/vps/keycloak-realm.template.json > docker/vps/rendered/keycloak-realm.json
+          python -m json.tool docker/vps/rendered/keycloak-realm.json >/dev/null
+          python - <<'PY'
+          import json
+          realm=json.load(open('docker/vps/rendered/keycloak-realm.json', encoding='utf-8'))
+          client=next(c for c in realm['clients'] if c['clientId']=='platform-web')
+          assert client['standardFlowEnabled'] is True
+          assert client['directAccessGrantsEnabled'] is False
+          assert client['attributes']['pkce.code.challenge.method']=='S256'
+          assert 'https://app.example.test/*' in client['redirectUris']
+          assert any(m['protocolMapper']=='oidc-amr-mapper' for m in client['protocolMappers'])
+          assert realm.get('users') in (None, [])
+          PY
+      - name: Validate production Compose graph
+        run: |
+          cp docker/vps/.env.example docker/vps/.env
+          sed -i 's/app.example.com/app.example.test/' docker/vps/.env
+          sed -i 's/api.example.com/api.example.test/' docker/vps/.env
+          sed -i 's/auth.example.com/auth.example.test/' docker/vps/.env
+          sed -i 's/ops@example.com/ops@example.test/' docker/vps/.env
+          sed -i 's/CHANGE_ME/ci-only-not-a-secret/g' docker/vps/.env
+          mkdir -p docker/vps/rendered
+          PLATFORM_ORIGIN=https://app.example.test envsubst '$PLATFORM_ORIGIN' < docker/vps/keycloak-realm.template.json > docker/vps/rendered/keycloak-realm.json
+          docker compose --env-file docker/vps/.env -f docker/vps/compose.yml config --quiet
+      - name: Build migration image
+        run: docker build --file docker/Dockerfile.migrator --tag preneura-migrator:ci .
+      - name: Confirm only the TLS edge publishes host ports
+        run: |
+          docker compose --env-file docker/vps/.env -f docker/vps/compose.yml config --format json > /tmp/vps-compose.json
+          python - <<'PY'
+          import json
+          cfg=json.load(open('/tmp/vps-compose.json', encoding='utf-8'))
+          offenders=[]
+          for name, service in cfg['services'].items():
+              ports=service.get('ports') or []
+              if ports and name!='caddy': offenders.append((name, ports))
+          assert not offenders, f'non-edge services publish host ports: {offenders}'
+          assert cfg['services']['caddy'].get('ports'), 'caddy must publish TLS/HTTP ports'
+          PY

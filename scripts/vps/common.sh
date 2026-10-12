@@ -8,7 +8,7 @@ ENV_FILE="$VPS_DIR/.env"
 COMPOSE_FILE="$VPS_DIR/compose.yml"
 
 compose() {
-  docker compose --project-directory "$REPO_ROOT" --env-file "$ENV_FILE" -f "$COMPOSE_FILE" "$@"
+  docker compose --env-file "$ENV_FILE" -f "$COMPOSE_FILE" "$@"
 }
 
 require_command() {
