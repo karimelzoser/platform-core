@@ -50,21 +50,6 @@ const groups = [
   },
 ] as const;
 
-const previewOnly = new Set([
-  'confirmation',
-  'returns',
-  'recovery',
-  'sales',
-  'campaigns',
-  'analytics',
-  'billing',
-  'automation',
-  'operators',
-  'knowledge',
-  'developer',
-  'settings',
-]);
-
 export function AppShell({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
   const [query, setQuery] = useState('');
@@ -91,7 +76,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
               <small>Operations platform</small>
             </span>
           </Link>
-          <span className="product-shell__environment">Preview</span>
+          <span className="product-shell__environment">Review</span>
         </div>
 
         <label className="product-shell__search">
@@ -112,7 +97,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
               <h2>{group.label}</h2>
               <div>
                 {group.items.map(([slug, label]) => {
-                  const href = `/${slug}`;
+                  const href = `/review/${slug}`;
                   const active = pathname === href || pathname.startsWith(`${href}/`);
                   return (
                     <Link
@@ -124,7 +109,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
                     >
                       <span className="product-shell__nav-dot" aria-hidden="true" />
                       <span>{label}</span>
-                      {previewOnly.has(slug) ? <small>Preview</small> : null}
+                      <small>Review</small>
                     </Link>
                   );
                 })}
@@ -134,8 +119,8 @@ export function AppShell({ children }: { children: React.ReactNode }) {
         </nav>
 
         <div className="product-shell__sidebar-footer">
-          <Link href="/organizations">Switch organization</Link>
-          <Link href="/onboarding">Setup workspace</Link>
+          <Link href="/review/organizations">Organizations</Link>
+          <Link href="/review/onboarding">Setup workspace</Link>
         </div>
       </aside>
 
@@ -148,7 +133,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
                 <div key={group.label}>
                   <strong>{group.label}</strong>
                   {group.items.map(([slug, label]) => (
-                    <Link href={`/${slug}`} key={slug}>
+                    <Link href={`/review/${slug}`} key={slug}>
                       {label}
                     </Link>
                   ))}
@@ -159,16 +144,16 @@ export function AppShell({ children }: { children: React.ReactNode }) {
 
           <div className="product-shell__context">
             <span className="product-shell__context-label">Workspace</span>
-            <strong>Product review</strong>
+            <strong>Full product review</strong>
             <span className="product-shell__context-separator">/</span>
-            <span className="product-shell__preview-note">Backend-independent preview enabled</span>
+            <span className="product-shell__preview-note">No backend required</span>
           </div>
 
           <div className="product-shell__top-actions">
-            <Link className="product-shell__icon-link" href="/approvals" aria-label="Approvals">
+            <Link className="product-shell__icon-link" href="/review/approvals" aria-label="Approvals">
               Approvals
             </Link>
-            <Link className="product-shell__icon-link" href="/integrations" aria-label="Integrations">
+            <Link className="product-shell__icon-link" href="/review/integrations" aria-label="Integrations">
               Integrations
             </Link>
             <DirectionControl />
