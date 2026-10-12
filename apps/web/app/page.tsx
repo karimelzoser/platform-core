@@ -4,23 +4,22 @@ import Link from 'next/link';
 const moduleGroups = [
   {
     title: 'Customer operations',
-    description:
-      'Daily customer-facing work, service control, confirmation, and post-purchase care.',
+    description: 'Daily customer-facing work, commerce decisions, and post-purchase service.',
     modules: [
       ['inbox', 'Unified inbox'],
       ['customers', 'Customer 360'],
       ['tickets', 'Tickets'],
+      ['orders', 'Orders'],
       ['confirmation', 'Order confirmation'],
+      ['shipping', 'Shipping'],
       ['returns', 'Returns & refunds'],
       ['recovery', 'Recovery'],
     ],
   },
   {
-    title: 'Commerce & revenue',
-    description: 'Orders, fulfillment, pipeline, campaigns, analytics, and commercial control.',
+    title: 'Revenue & measurement',
+    description: 'Pipeline, campaigns, attribution, ROI, and commercial usage control.',
     modules: [
-      ['orders', 'Orders'],
-      ['shipping', 'Shipping'],
       ['sales', 'Sales'],
       ['campaigns', 'Campaigns'],
       ['analytics', 'Analytics & ROI'],
@@ -28,25 +27,43 @@ const moduleGroups = [
     ],
   },
   {
-    title: 'Automation & intelligence',
-    description:
-      'Durable workflows, governed AI, knowledge, approvals, integrations, and developer access.',
+    title: 'Automation & configuration',
+    description: 'Durable execution, typed workflow design, versioned configuration, and safe simulation.',
     modules: [
       ['automation', 'Automation studio'],
-      ['operators', 'AI operators'],
-      ['knowledge', 'Knowledge'],
-      ['approvals', 'Approvals'],
+      ['workflows', 'Workflow operations'],
+      ['configuration', 'Configuration studio'],
+      ['simulation', 'Configuration simulation'],
       ['integrations', 'Integrations'],
+    ],
+  },
+  {
+    title: 'AI & knowledge',
+    description: 'Governed operators, typed tools, model routing, evaluation boundaries, and tenant knowledge.',
+    modules: [
+      ['operators', 'AI operators'],
+      ['ai-tools', 'AI tool registry'],
+      ['ai-routing', 'AI gateway & routing'],
+      ['knowledge', 'Knowledge'],
+    ],
+  },
+  {
+    title: 'Platform & governance',
+    description: 'Extensibility, custom data, developer access, administration, privacy, and retention.',
+    modules: [
+      ['custom-data', 'Custom data'],
       ['developer', 'Developer platform'],
+      ['admin', 'Admin control center'],
+      ['governance', 'Data governance'],
     ],
   },
   {
     title: 'Organization control',
-    description:
-      'Tenant setup, access control, security, workspace configuration, and organization switching.',
+    description: 'Tenant setup, access control, approvals, security, and reusable business configuration.',
     modules: [
       ['onboarding', 'Onboarding'],
       ['team', 'Team & roles'],
+      ['approvals', 'Approvals'],
       ['settings', 'Organization settings'],
       ['organizations', 'Organizations'],
     ],
@@ -59,16 +76,16 @@ export default function HomePage() {
       <header className="platform-hero">
         <div>
           <p className="eyebrow">PRENEURA PLATFORM</p>
-          <h1>One operating system for customer operations and revenue.</h1>
+          <h1>One operating system for customer operations, revenue, automation, and AI.</h1>
           <p className="intro">
             Review the complete product experience without waiting for backend availability. Every
-            module below renders deterministic representative data, responsive states, and the same
-            design language that will bind to canonical APIs later.
+            review workspace uses deterministic representative data, local interaction state,
+            responsive layouts, and the same product contracts that later bind to canonical APIs.
           </p>
         </div>
         <div className="platform-hero__status" role="note">
           <strong>Full product review mode</strong>
-          <span>Visual review is decoupled from hosted services and provider credentials.</span>
+          <span>Visual and interaction review is decoupled from hosted services and provider credentials.</span>
         </div>
       </header>
 
@@ -77,10 +94,11 @@ export default function HomePage() {
           R
         </span>
         <div>
-          <strong>All product areas are reviewable now</strong>
+          <strong>All planned product areas are reviewable now</strong>
           <span>
-            Preview records are clearly labeled and never presented as production state. Each module
-            keeps a direct link to its live route for later backend verification.
+            Preview records are clearly labeled and never presented as production state. Search,
+            filters, detail states, workflow boards, and simulated controls run locally without
+            backend mutation.
           </span>
         </div>
         <Link className="ds-button ds-button--primary" href="/review/inbox">
@@ -90,20 +108,20 @@ export default function HomePage() {
 
       <section className="platform-summary" aria-label="Platform review summary">
         <div>
-          <strong>22</strong>
+          <strong>30</strong>
           <span>reviewable product surfaces</span>
+        </div>
+        <div>
+          <strong>6</strong>
+          <span>operating workspaces</span>
         </div>
         <div>
           <strong>RTL + LTR</strong>
           <span>shared interaction direction</span>
         </div>
         <div>
-          <strong>Responsive</strong>
-          <span>desktop, tablet, and mobile</span>
-        </div>
-        <div>
           <strong>Backend-free</strong>
-          <span>deterministic review data</span>
+          <span>deterministic local review data</span>
         </div>
       </section>
 
@@ -121,7 +139,7 @@ export default function HomePage() {
               {group.modules.map(([slug, label]) => (
                 <Link className="platform-module-card" href={reviewHref(slug)} key={slug}>
                   <span className="platform-module-card__status" data-preview="true">
-                    Product review
+                    Interactive review
                   </span>
                   <strong>{label}</strong>
                   <span>Open review workspace</span>
