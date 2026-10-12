@@ -1,19 +1,20 @@
 import type { Metadata } from 'next';
-import { DirectionControl } from './direction-control';
+import { AppShell } from './app-shell';
 import './styles.css';
 import './design-system.css';
+import './product-shell.css';
+import './review-mode.css';
 
 export const metadata: Metadata = {
-  title: 'Platform',
-  description: 'Operations platform for commerce and customer teams',
+  title: 'PRENEURA Platform',
+  description: 'Operations platform for customer operations, commerce, automation, and AI',
 };
 
 export default function RootLayout({ children }: Readonly<{ children: React.ReactNode }>) {
   return (
     <html lang="en" dir="ltr">
       <body>
-        <DirectionControl />
-        {children}
+        <AppShell>{children}</AppShell>
       </body>
     </html>
   );
