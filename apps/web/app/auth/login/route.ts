@@ -8,7 +8,7 @@ import {
   secureCookie,
 } from '../oidc';
 
-export async function GET() {
+export function GET() {
   if (process.env.APP_ENV === 'development') {
     return NextResponse.redirect(
       new URL('/preview-login', process.env.APP_PUBLIC_URL ?? 'http://localhost:3000'),
