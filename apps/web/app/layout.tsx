@@ -4,6 +4,7 @@ import './styles.css';
 import './design-system.css';
 import './product-shell.css';
 import './review-mode.css';
+import './frontend-review.css';
 
 export const metadata: Metadata = {
   title: 'PRENEURA Platform',
