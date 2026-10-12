@@ -1,5 +1,6 @@
 'use client';
 
+import type { Route } from 'next';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { useMemo, useState } from 'react';
@@ -97,7 +98,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
               <h2>{group.label}</h2>
               <div>
                 {group.items.map(([slug, label]) => {
-                  const href = `/review/${slug}`;
+                  const href = reviewHref(slug);
                   const active = pathname === href || pathname.startsWith(`${href}/`);
                   return (
                     <Link
@@ -133,7 +134,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
                 <div key={group.label}>
                   <strong>{group.label}</strong>
                   {group.items.map(([slug, label]) => (
-                    <Link href={`/review/${slug}`} key={slug}>
+                    <Link href={reviewHref(slug)} key={slug}>
                       {label}
                     </Link>
                   ))}
@@ -150,10 +151,18 @@ export function AppShell({ children }: { children: React.ReactNode }) {
           </div>
 
           <div className="product-shell__top-actions">
-            <Link className="product-shell__icon-link" href="/review/approvals" aria-label="Approvals">
+            <Link
+              className="product-shell__icon-link"
+              href="/review/approvals"
+              aria-label="Approvals"
+            >
               Approvals
             </Link>
-            <Link className="product-shell__icon-link" href="/review/integrations" aria-label="Integrations">
+            <Link
+              className="product-shell__icon-link"
+              href="/review/integrations"
+              aria-label="Integrations"
+            >
               Integrations
             </Link>
             <DirectionControl />
@@ -164,4 +173,8 @@ export function AppShell({ children }: { children: React.ReactNode }) {
       </section>
     </div>
   );
+}
+
+function reviewHref(slug: string): Route {
+  return `/review/${slug}` as Route;
 }
