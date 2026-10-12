@@ -52,7 +52,18 @@ export async function middleware(request: NextRequest) {
     if (typeof body.access_token !== 'string' || typeof body.expires_in !== 'number') {
       return loginRedirect(request, true);
     }
-    const next = NextResponse.next();
+
+    // The refreshed access token must be visible to server components during this
+    // same request, not only after the browser receives Set-Cookie. Authorization
+    // still happens in the API; these request cookies are session transport only.
+    const requestHeaders = new Headers(request.headers);
+    setRequestCookie(requestHeaders, ACCESS, body.access_token);
+    if (typeof body.refresh_token === 'string') {
+      setRequestCookie(requestHeaders, REFRESH, body.refresh_token);
+    }
+    if (typeof body.id_token === 'string') setRequestCookie(requestHeaders, ID, body.id_token);
+
+    const next = NextResponse.next({ request: { headers: requestHeaders } });
     const secure = request.nextUrl.protocol === 'https:' || process.env.APP_ENV === 'production';
     const cookie = { httpOnly: true, sameSite: 'lax' as const, secure, path: '/' };
     next.cookies.set(ACCESS, body.access_token, {
@@ -95,6 +106,16 @@ function loginRedirect(request: NextRequest, clearSession = false) {
     response.cookies.delete('platform_tenant_id');
   }
   return response;
+}
+
+function setRequestCookie(headers: Headers, name: string, value: string): void {
+  const existing = headers.get('cookie') ?? '';
+  const kept = existing
+    .split(';')
+    .map((part) => part.trim())
+    .filter((part) => part && !part.startsWith(`${name}=`));
+  kept.push(`${name}=${value}`);
+  headers.set('cookie', kept.join('; '));
 }
 
 function jwtExpiry(token: string): number | undefined {
