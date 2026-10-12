@@ -9,7 +9,7 @@ import {
   pkceChallenge,
 } from './oidc';
 
-test('builds Authorization Code + PKCE request against the public issuer', () => {
+void test('builds Authorization Code + PKCE request against the public issuer', () => {
   const runtime = oidcRuntime({
     APP_PUBLIC_URL: 'https://app.example.test',
     KEYCLOAK_ISSUER: 'https://auth.example.test/realms/platform',
@@ -28,7 +28,7 @@ test('builds Authorization Code + PKCE request against the public issuer', () =>
   assert.equal(url.searchParams.get('state'), 'state-value');
 });
 
-test('keeps public issuer separate from private token endpoint issuer', () => {
+void test('keeps public issuer separate from private token endpoint issuer', () => {
   const runtime = oidcRuntime({
     APP_PUBLIC_URL: 'https://app.example.test',
     KEYCLOAK_ISSUER: 'https://auth.example.test/realms/platform',
@@ -43,12 +43,12 @@ test('keeps public issuer separate from private token endpoint issuer', () => {
   assert.equal(logout.searchParams.get('post_logout_redirect_uri'), 'https://app.example.test/');
 });
 
-test('reads token expiry only as refresh timing metadata', () => {
+void test('reads token expiry only as refresh timing metadata', () => {
   const payload = Buffer.from(JSON.stringify({ exp: 2_000_000_000 }), 'utf8').toString('base64url');
   assert.equal(jwtExpiresAt(`header.${payload}.signature`), 2_000_000_000);
   assert.equal(jwtExpiresAt('not-a-jwt'), undefined);
 });
 
-test('requires deployment identity configuration', () => {
+void test('requires deployment identity configuration', () => {
   assert.throws(() => oidcRuntime({} as NodeJS.ProcessEnv), /APP_PUBLIC_URL is required/);
 });
