@@ -47,7 +47,7 @@ for database in platform keycloak temporal temporal_visibility; do
       -c "CREATE DATABASE ${database} OWNER ${owner};"
   fi
   cat "$backup_dir/${database}.dump" | compose exec -T -e PGPASSWORD="$POSTGRES_ADMIN_PASSWORD" postgres \
-    pg_restore -U platform_admin -d "$database" --clean --if-exists --no-owner --no-privileges
+    pg_restore -U platform_admin -d "$database" --clean --if-exists
  done
 
 if [ -f "$backup_dir/platform-media.tar.gz" ]; then
