@@ -54,8 +54,7 @@ export async function GET(request: NextRequest) {
         maxAge: Math.max(60, tokens.refresh_expires_in ?? tokens.expires_in),
       });
     }
-    response.cookies.delete(STATE_COOKIE);
-    response.cookies.delete(VERIFIER_COOKIE);
+    clearTransientCookies(response);
     return response;
   } catch {
     return failure(runtime.publicOrigin, 'Authentication token exchange failed.');
@@ -66,7 +65,11 @@ function failure(origin: URL, message: string) {
   const target = new URL('/', origin);
   target.searchParams.set('auth_error', message);
   const response = NextResponse.redirect(target, 303);
-  response.cookies.delete(STATE_COOKIE);
-  response.cookies.delete(VERIFIER_COOKIE);
+  clearTransientCookies(response);
   return response;
+}
+
+function clearTransientCookies(response: NextResponse): void {
+  response.cookies.set(STATE_COOKIE, '', { path: '/auth', maxAge: 0 });
+  response.cookies.set(VERIFIER_COOKIE, '', { path: '/auth', maxAge: 0 });
 }
