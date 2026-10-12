@@ -1,8 +1,8 @@
 import Link from 'next/link';
 import { notFound } from 'next/navigation';
+import { allPreviewSurfaces, isAllPreviewSurface } from '../all-preview-surfaces';
 import { PageHeader, PageShell, Stack, StatusBadge } from '../ui-primitives';
 import { PreviewWorkspaceClient } from '../preview-workspace-client';
-import { isPreviewSurface, previewSurfaces } from '../preview-surfaces';
 
 const surfaceLabels = {
   inbox: 'Unified inbox',
@@ -47,7 +47,7 @@ export default async function SurfacePage({ params }: { params: Promise<{ surfac
   const { surface } = await params;
   if (!isSurface(surface)) notFound();
 
-  if (!isPreviewSurface(surface)) {
+  if (!isAllPreviewSurface(surface)) {
     return (
       <PageShell aria-labelledby="surface-title">
         <Stack gap="spacious">
@@ -66,7 +66,7 @@ export default async function SurfacePage({ params }: { params: Promise<{ surfac
     );
   }
 
-  const config = previewSurfaces[surface];
+  const config = allPreviewSurfaces[surface];
 
   return (
     <PageShell aria-labelledby="surface-title" className="preview-workspace">
