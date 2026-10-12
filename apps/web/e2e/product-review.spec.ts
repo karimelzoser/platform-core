@@ -26,42 +26,41 @@ const surfaces = [
 ] as const;
 
 test.describe('backend-independent product review', () => {
-  test(
-    'renders every product surface without authentication or API state',
-    async ({ page }, testInfo) => {
-      testInfo.setTimeout(240_000);
+  test('renders every product surface without authentication or API state', async ({
+    page,
+  }, testInfo) => {
+    testInfo.setTimeout(240_000);
 
-      await page.goto('/');
-      await expect(
-        page.getByRole('heading', {
-          name: 'One operating system for customer operations and revenue.',
-        }),
-      ).toBeVisible();
-      await expect(page.getByText('Full product review mode', { exact: true })).toBeVisible();
-      await expect(page.getByRole('link', { name: 'Start product tour' })).toHaveAttribute(
+    await page.goto('/');
+    await expect(
+      page.getByRole('heading', {
+        name: 'One operating system for customer operations and revenue.',
+      }),
+    ).toBeVisible();
+    await expect(page.getByText('Full product review mode', { exact: true })).toBeVisible();
+    await expect(page.getByRole('link', { name: 'Start product tour' })).toHaveAttribute(
+      'href',
+      '/review/inbox',
+    );
+
+    const search = page.getByRole('searchbox', { name: 'Find a module' });
+    await search.fill('shipping');
+    await expect(page.getByRole('link', { name: /Shipping/ })).toBeVisible();
+    await expect(page.getByRole('link', { name: /Unified inbox/ })).toHaveCount(0);
+    await search.clear();
+
+    for (const [slug, label] of surfaces) {
+      await page.goto(`/review/${slug}`);
+      await expect(page.getByRole('heading', { name: label, exact: true })).toBeVisible();
+      await expect(page.getByText('No backend required', { exact: true })).toBeVisible();
+      await expect(page.getByText('Sample records only', { exact: true })).toBeVisible();
+      await expect(page.getByRole('link', { name: 'Open live route' })).toHaveAttribute(
         'href',
-        '/review/inbox',
+        `/${slug}`,
       );
-
-      const search = page.getByRole('searchbox', { name: 'Find a module' });
-      await search.fill('shipping');
-      await expect(page.getByRole('link', { name: /Shipping/ })).toBeVisible();
-      await expect(page.getByRole('link', { name: /Unified inbox/ })).toHaveCount(0);
-      await search.clear();
-
-      for (const [slug, label] of surfaces) {
-        await page.goto(`/review/${slug}`);
-        await expect(page.getByRole('heading', { name: label, exact: true })).toBeVisible();
-        await expect(page.getByText('No backend required', { exact: true })).toBeVisible();
-        await expect(page.getByText('Sample records only', { exact: true })).toBeVisible();
-        await expect(page.getByRole('link', { name: 'Open live route' })).toHaveAttribute(
-          'href',
-          `/${slug}`,
-        );
-        await expect(page.locator('.preview-actions-grid button').first()).toBeDisabled();
-      }
-    },
-  );
+      await expect(page.locator('.preview-actions-grid button').first()).toBeDisabled();
+    }
+  });
 
   test('keeps navigation responsive and direction-aware', async ({ page }) => {
     await page.goto('/review/inbox');
