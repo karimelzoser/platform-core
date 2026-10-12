@@ -114,7 +114,8 @@ services:
     volumes:
       - ../../docs/production-reference/temporal-dynamicconfig.yaml:/etc/temporal/config/dynamicconfig/development-sql.yaml:ro
     healthcheck:
-      test: ['CMD-SHELL', 'temporal operator cluster health --address 127.0.0.1:7233 | grep -q SERVING']
+      test:
+        ['CMD-SHELL', 'temporal operator cluster health --address 127.0.0.1:7233 | grep -q SERVING']
       interval: 10s
       timeout: 5s
       retries: 30
@@ -202,7 +203,13 @@ services:
       MEDIA_LOCAL_ROOT: /srv/platform/media
     volumes: [platform_media:/srv/platform/media]
     healthcheck:
-      test: ['CMD', 'node', '-e', "fetch('http://127.0.0.1:3001/health').then(r=>{if(!r.ok)process.exit(1)}).catch(()=>process.exit(1))"]
+      test:
+        [
+          'CMD',
+          'node',
+          '-e',
+          "fetch('http://127.0.0.1:3001/health').then(r=>{if(!r.ok)process.exit(1)}).catch(()=>process.exit(1))",
+        ]
       interval: 10s
       timeout: 5s
       retries: 30
@@ -230,7 +237,13 @@ services:
       ENABLE_DEVELOPMENT_CONNECTOR_FIXTURES: 'false'
     volumes: [platform_media:/srv/platform/media:ro]
     healthcheck:
-      test: ['CMD', 'node', '-e', "fetch('http://127.0.0.1:3002/health').then(r=>{if(!r.ok)process.exit(1)}).catch(()=>process.exit(1))"]
+      test:
+        [
+          'CMD',
+          'node',
+          '-e',
+          "fetch('http://127.0.0.1:3002/health').then(r=>{if(!r.ok)process.exit(1)}).catch(()=>process.exit(1))",
+        ]
       interval: 10s
       timeout: 5s
       retries: 30
@@ -245,7 +258,13 @@ services:
     depends_on:
       migrate: { condition: service_completed_successfully }
     healthcheck:
-      test: ['CMD', 'python', '-c', "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8000/health', timeout=3)"]
+      test:
+        [
+          'CMD',
+          'python',
+          '-c',
+          "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8000/health', timeout=3)",
+        ]
       interval: 10s
       timeout: 5s
       retries: 20
@@ -270,7 +289,13 @@ services:
       KEYCLOAK_CLIENT_ID: platform-web
       PREVIEW_SECURE_COOKIES: 'true'
     healthcheck:
-      test: ['CMD', 'node', '-e', "fetch('http://127.0.0.1:3000/health').then(r=>{if(!r.ok)process.exit(1)}).catch(()=>process.exit(1))"]
+      test:
+        [
+          'CMD',
+          'node',
+          '-e',
+          "fetch('http://127.0.0.1:3000/health').then(r=>{if(!r.ok)process.exit(1)}).catch(()=>process.exit(1))",
+        ]
       interval: 10s
       timeout: 5s
       retries: 30

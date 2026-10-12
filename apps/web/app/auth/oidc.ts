@@ -101,7 +101,9 @@ export function jwtExpiresAt(token: string): number | undefined {
     const payload = JSON.parse(Buffer.from(encoded, 'base64url').toString('utf8')) as {
       exp?: unknown;
     };
-    return typeof payload.exp === 'number' && Number.isFinite(payload.exp) ? payload.exp : undefined;
+    return typeof payload.exp === 'number' && Number.isFinite(payload.exp)
+      ? payload.exp
+      : undefined;
   } catch {
     return undefined;
   }

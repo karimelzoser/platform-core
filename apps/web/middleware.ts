@@ -63,7 +63,9 @@ export async function middleware(request: NextRequest) {
       next.cookies.set(REFRESH, body.refresh_token, {
         ...cookie,
         maxAge:
-          typeof body.refresh_expires_in === 'number' ? Math.max(300, body.refresh_expires_in) : 1800,
+          typeof body.refresh_expires_in === 'number'
+            ? Math.max(300, body.refresh_expires_in)
+            : 1800,
       });
     }
     if (typeof body.id_token === 'string') {
@@ -102,7 +104,9 @@ function jwtExpiry(token: string): number | undefined {
     const base64 = encoded.replace(/-/g, '+').replace(/_/g, '/');
     const padded = base64.padEnd(Math.ceil(base64.length / 4) * 4, '=');
     const payload = JSON.parse(atob(padded)) as { exp?: unknown };
-    return typeof payload.exp === 'number' && Number.isFinite(payload.exp) ? payload.exp : undefined;
+    return typeof payload.exp === 'number' && Number.isFinite(payload.exp)
+      ? payload.exp
+      : undefined;
   } catch {
     return undefined;
   }
