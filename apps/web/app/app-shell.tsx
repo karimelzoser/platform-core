@@ -13,16 +13,16 @@ const groups = [
       ['inbox', 'Unified inbox'],
       ['customers', 'Customer 360'],
       ['tickets', 'Tickets'],
+      ['orders', 'Orders'],
       ['confirmation', 'Confirmation'],
+      ['shipping', 'Shipping'],
       ['returns', 'Returns & refunds'],
       ['recovery', 'Recovery'],
     ],
   },
   {
-    label: 'Commerce & revenue',
+    label: 'Revenue & measurement',
     items: [
-      ['orders', 'Orders'],
-      ['shipping', 'Shipping'],
       ['sales', 'Sales'],
       ['campaigns', 'Campaigns'],
       ['analytics', 'Analytics & ROI'],
@@ -30,14 +30,31 @@ const groups = [
     ],
   },
   {
-    label: 'Automation & AI',
+    label: 'Automation & configuration',
     items: [
       ['automation', 'Automation studio'],
-      ['operators', 'AI operators'],
-      ['knowledge', 'Knowledge'],
-      ['approvals', 'Approvals'],
+      ['workflows', 'Workflow operations'],
+      ['configuration', 'Configuration studio'],
+      ['simulation', 'Configuration simulation'],
       ['integrations', 'Integrations'],
+    ],
+  },
+  {
+    label: 'AI & knowledge',
+    items: [
+      ['operators', 'AI operators'],
+      ['ai-tools', 'AI tool registry'],
+      ['ai-routing', 'AI gateway & routing'],
+      ['knowledge', 'Knowledge'],
+    ],
+  },
+  {
+    label: 'Platform & governance',
+    items: [
+      ['custom-data', 'Custom data'],
       ['developer', 'Developer platform'],
+      ['admin', 'Admin control center'],
+      ['governance', 'Data governance'],
     ],
   },
   {
@@ -45,6 +62,7 @@ const groups = [
     items: [
       ['onboarding', 'Onboarding'],
       ['team', 'Team & roles'],
+      ['approvals', 'Approvals'],
       ['settings', 'Settings'],
       ['organizations', 'Organizations'],
     ],
