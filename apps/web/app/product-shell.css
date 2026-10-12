@@ -77,6 +77,10 @@
 .product-shell__search input::placeholder {
   color: #809289;
 }
+.product-shell__search input:focus-visible {
+  outline: 2px solid #8ad1b2;
+  outline-offset: 2px;
+}
 .product-shell__search kbd {
   position: absolute;
   inset-inline-end: 0.6rem;
@@ -144,6 +148,15 @@
 }
 .product-shell__nav-link[data-active='true'] .product-shell__nav-dot {
   opacity: 1;
+}
+.product-shell__no-results {
+  margin: 0;
+  border: 1px dashed #3a5046;
+  border-radius: 0.65rem;
+  padding: 0.75rem;
+  color: #9fb1a8;
+  font-size: 0.76rem;
+  line-height: 1.45;
 }
 .product-shell__sidebar-footer {
   display: grid;
