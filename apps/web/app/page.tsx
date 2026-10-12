@@ -3,48 +3,48 @@ import Link from 'next/link';
 const moduleGroups = [
   {
     title: 'Customer operations',
-    description: 'Daily customer-facing work and service control.',
+    description: 'Daily customer-facing work, service control, confirmation, and post-purchase care.',
     modules: [
-      ['inbox', 'Unified inbox', 'Live surface'],
-      ['customers', 'Customer 360', 'Live surface'],
-      ['tickets', 'Tickets', 'Live surface'],
-      ['confirmation', 'Order confirmation', 'Preview'],
-      ['returns', 'Returns & refunds', 'Preview'],
-      ['recovery', 'Recovery', 'Preview'],
+      ['inbox', 'Unified inbox'],
+      ['customers', 'Customer 360'],
+      ['tickets', 'Tickets'],
+      ['confirmation', 'Order confirmation'],
+      ['returns', 'Returns & refunds'],
+      ['recovery', 'Recovery'],
     ],
   },
   {
     title: 'Commerce & revenue',
-    description: 'Orders, fulfillment, sales motion, campaigns, and business outcomes.',
+    description: 'Orders, fulfillment, pipeline, campaigns, analytics, and commercial control.',
     modules: [
-      ['orders', 'Orders', 'Live surface'],
-      ['shipping', 'Shipping', 'Live surface'],
-      ['sales', 'Sales', 'Preview'],
-      ['campaigns', 'Campaigns', 'Preview'],
-      ['analytics', 'Analytics & ROI', 'Preview'],
-      ['billing', 'Billing & usage', 'Preview'],
+      ['orders', 'Orders'],
+      ['shipping', 'Shipping'],
+      ['sales', 'Sales'],
+      ['campaigns', 'Campaigns'],
+      ['analytics', 'Analytics & ROI'],
+      ['billing', 'Billing & usage'],
     ],
   },
   {
     title: 'Automation & intelligence',
-    description: 'Durable workflows, controlled AI, knowledge, and governed actions.',
+    description: 'Durable workflows, governed AI, knowledge, approvals, integrations, and developer access.',
     modules: [
-      ['automation', 'Automation studio', 'Preview'],
-      ['operators', 'AI operators', 'Preview'],
-      ['knowledge', 'Knowledge', 'Preview'],
-      ['approvals', 'Approvals', 'Live surface'],
-      ['integrations', 'Integrations', 'Live surface'],
-      ['developer', 'Developer platform', 'Preview'],
+      ['automation', 'Automation studio'],
+      ['operators', 'AI operators'],
+      ['knowledge', 'Knowledge'],
+      ['approvals', 'Approvals'],
+      ['integrations', 'Integrations'],
+      ['developer', 'Developer platform'],
     ],
   },
   {
     title: 'Organization control',
-    description: 'Tenant setup, access control, security, and reusable business configuration.',
+    description: 'Tenant setup, access control, security, workspace configuration, and organization switching.',
     modules: [
-      ['onboarding', 'Onboarding', 'Live surface'],
-      ['team', 'Team & roles', 'Live surface'],
-      ['settings', 'Organization settings', 'Preview'],
-      ['organizations', 'Organizations', 'Live surface'],
+      ['onboarding', 'Onboarding'],
+      ['team', 'Team & roles'],
+      ['settings', 'Organization settings'],
+      ['organizations', 'Organizations'],
     ],
   },
 ] as const;
@@ -57,33 +57,47 @@ export default function HomePage() {
           <p className="eyebrow">PRENEURA PLATFORM</p>
           <h1>One operating system for customer operations and revenue.</h1>
           <p className="intro">
-            Review the complete product structure now. Backend-independent preview modules use
-            deterministic sample data, while implemented modules continue to use their real tenant
-            routes and security boundaries.
+            Review the complete product experience without waiting for backend availability. Every
+            module below renders deterministic representative data, responsive states, and the same
+            design language that will bind to canonical APIs later.
           </p>
         </div>
         <div className="platform-hero__status" role="note">
-          <strong>Product review mode</strong>
-          <span>Frontend work can continue without waiting for the hosted backend.</span>
+          <strong>Full product review mode</strong>
+          <span>Visual review is intentionally decoupled from hosted services and provider credentials.</span>
         </div>
       </header>
 
-      <section className="platform-summary" aria-label="Platform implementation summary">
+      <section className="review-index-callout" aria-label="Review mode explanation">
+        <span className="review-index-callout__icon" aria-hidden="true">R</span>
         <div>
-          <strong>21</strong>
-          <span>product surfaces mapped</span>
+          <strong>All product areas are reviewable now</strong>
+          <span>
+            Preview records are clearly labeled and never presented as production state. Each module
+            keeps a direct link to its live route for later backend verification.
+          </span>
+        </div>
+        <Link className="ds-button ds-button--primary" href="/review/inbox">
+          Start product tour
+        </Link>
+      </section>
+
+      <section className="platform-summary" aria-label="Platform review summary">
+        <div>
+          <strong>22</strong>
+          <span>reviewable product surfaces</span>
         </div>
         <div>
           <strong>RTL + LTR</strong>
           <span>shared interaction direction</span>
         </div>
         <div>
-          <strong>Tenant-safe</strong>
-          <span>live modules retain canonical auth/RLS</span>
+          <strong>Responsive</strong>
+          <span>desktop, tablet, and mobile</span>
         </div>
         <div>
-          <strong>Preview-safe</strong>
-          <span>sample metrics are explicitly labeled</span>
+          <strong>Backend-free</strong>
+          <span>deterministic review data</span>
         </div>
       </section>
 
@@ -98,13 +112,13 @@ export default function HomePage() {
               <p>{group.description}</p>
             </div>
             <nav aria-label={group.title} className="platform-module-grid">
-              {group.modules.map(([slug, label, status]) => (
-                <Link className="platform-module-card" href={`/${slug}`} key={slug}>
-                  <span className="platform-module-card__status" data-preview={status === 'Preview'}>
-                    {status}
+              {group.modules.map(([slug, label]) => (
+                <Link className="platform-module-card" href={`/review/${slug}`} key={slug}>
+                  <span className="platform-module-card__status" data-preview="true">
+                    Product review
                   </span>
                   <strong>{label}</strong>
-                  <span>Open workspace</span>
+                  <span>Open review workspace</span>
                 </Link>
               ))}
             </nav>
