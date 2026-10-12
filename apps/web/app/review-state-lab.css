@@ -1,0 +1,250 @@
+.review-state-lab {
+  display: grid;
+  gap: 1rem;
+  border: 1px solid #d7e1dc;
+  border-radius: 1rem;
+  padding: clamp(1rem, 2vw, 1.35rem);
+  background: #fff;
+}
+
+.review-state-lab__heading {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 1.25rem;
+}
+
+.review-state-lab__heading > div:first-child {
+  max-width: 660px;
+}
+
+.review-state-lab__heading h2 {
+  margin: 0.2rem 0 0.4rem;
+}
+
+.review-state-lab__heading p:last-child {
+  margin: 0;
+  color: #61736c;
+  line-height: 1.55;
+}
+
+.review-state-lab__controls {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: 0.4rem;
+}
+
+.review-state-lab__state-button {
+  border: 1px solid #d7e1dc;
+  border-radius: 999px;
+  padding: 0.45rem 0.65rem;
+  background: #fff;
+  color: #52665f;
+  cursor: pointer;
+  font: inherit;
+  font-size: 0.72rem;
+  font-weight: 750;
+}
+
+.review-state-lab__state-button:hover,
+.review-state-lab__state-button:focus-visible,
+.review-state-lab__state-button[data-active] {
+  border-color: #17705a;
+  background: #edf8f3;
+  color: #155b49;
+}
+
+.review-state-lab__stage {
+  min-height: 240px;
+  display: grid;
+  place-items: center;
+  border: 1px dashed #cfdad5;
+  border-radius: 0.9rem;
+  padding: clamp(1rem, 3vw, 2rem);
+  background: #f8faf9;
+}
+
+.review-state-card {
+  width: min(100%, 560px);
+  display: grid;
+  justify-items: start;
+  gap: 0.7rem;
+  border: 1px solid #dbe4df;
+  border-radius: 0.9rem;
+  padding: 1.15rem;
+  background: white;
+  box-shadow: 0 14px 40px rgb(23 45 36 / 7%);
+}
+
+.review-state-card h3,
+.review-state-card p {
+  margin: 0;
+}
+
+.review-state-card p {
+  color: #61736c;
+  line-height: 1.55;
+}
+
+.review-state-card--warning {
+  border-color: #efd793;
+  background: #fffdf5;
+}
+
+.review-state-card--danger {
+  border-color: #efbbb8;
+  background: #fffafa;
+}
+
+.review-state-card__icon {
+  display: grid;
+  min-width: 2.2rem;
+  height: 2.2rem;
+  place-items: center;
+  border-radius: 0.65rem;
+  background: #edf3f0;
+  color: #33584b;
+  font-size: 0.78rem;
+  font-weight: 900;
+}
+
+.review-state-card--warning .review-state-card__icon {
+  background: #fff0c6;
+  color: #7a5200;
+}
+
+.review-state-card--danger .review-state-card__icon {
+  background: #ffe5e3;
+  color: #8a2e28;
+}
+
+.review-state-card__actions {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 0.75rem;
+}
+
+.review-state-card__actions span {
+  color: #6d7d77;
+  font-size: 0.74rem;
+}
+
+.review-state-card__reference {
+  width: 100%;
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0.6rem;
+  margin: 0;
+}
+
+.review-state-card__reference div {
+  border: 1px solid #eadfdf;
+  border-radius: 0.65rem;
+  padding: 0.65rem;
+  background: rgb(255 255 255 / 70%);
+}
+
+.review-state-card__reference dt {
+  color: #80716f;
+  font-size: 0.66rem;
+  font-weight: 800;
+  letter-spacing: 0.07em;
+  text-transform: uppercase;
+}
+
+.review-state-card__reference dd {
+  margin: 0.2rem 0 0;
+  font-size: 0.78rem;
+  font-weight: 700;
+}
+
+.review-state-card--loading {
+  overflow: hidden;
+}
+
+.review-state-card__title-skeleton,
+.review-state-card__line-skeleton,
+.review-state-card__rows span {
+  position: relative;
+  overflow: hidden;
+  border-radius: 0.4rem;
+  background: #e8efeb;
+}
+
+.review-state-card__title-skeleton::after,
+.review-state-card__line-skeleton::after,
+.review-state-card__rows span::after {
+  position: absolute;
+  inset: 0;
+  content: '';
+  transform: translateX(-100%);
+  background: linear-gradient(90deg, transparent, rgb(255 255 255 / 72%), transparent);
+  animation: review-state-shimmer 1.3s infinite;
+}
+
+.review-state-card__title-skeleton {
+  width: 52%;
+  height: 22px;
+}
+
+.review-state-card__line-skeleton {
+  width: 92%;
+  height: 12px;
+}
+
+.review-state-card__line-skeleton--short {
+  width: 66%;
+}
+
+.review-state-card__rows {
+  width: 100%;
+  display: grid;
+  gap: 0.55rem;
+  margin-top: 0.35rem;
+}
+
+.review-state-card__rows span {
+  height: 42px;
+}
+
+@keyframes review-state-shimmer {
+  to {
+    transform: translateX(100%);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .review-state-card__title-skeleton::after,
+  .review-state-card__line-skeleton::after,
+  .review-state-card__rows span::after {
+    animation: none;
+  }
+}
+
+@media (max-width: 800px) {
+  .review-state-lab__heading {
+    flex-direction: column;
+  }
+
+  .review-state-lab__controls {
+    justify-content: flex-start;
+  }
+}
+
+@media (max-width: 520px) {
+  .review-state-lab__controls {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    width: 100%;
+  }
+
+  .review-state-lab__state-button {
+    border-radius: 0.55rem;
+  }
+
+  .review-state-card__reference {
+    grid-template-columns: 1fr;
+  }
+}
