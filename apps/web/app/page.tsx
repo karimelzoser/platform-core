@@ -1,9 +1,11 @@
+import type { Route } from 'next';
 import Link from 'next/link';
 
 const moduleGroups = [
   {
     title: 'Customer operations',
-    description: 'Daily customer-facing work, service control, confirmation, and post-purchase care.',
+    description:
+      'Daily customer-facing work, service control, confirmation, and post-purchase care.',
     modules: [
       ['inbox', 'Unified inbox'],
       ['customers', 'Customer 360'],
@@ -27,7 +29,8 @@ const moduleGroups = [
   },
   {
     title: 'Automation & intelligence',
-    description: 'Durable workflows, governed AI, knowledge, approvals, integrations, and developer access.',
+    description:
+      'Durable workflows, governed AI, knowledge, approvals, integrations, and developer access.',
     modules: [
       ['automation', 'Automation studio'],
       ['operators', 'AI operators'],
@@ -39,7 +42,8 @@ const moduleGroups = [
   },
   {
     title: 'Organization control',
-    description: 'Tenant setup, access control, security, workspace configuration, and organization switching.',
+    description:
+      'Tenant setup, access control, security, workspace configuration, and organization switching.',
     modules: [
       ['onboarding', 'Onboarding'],
       ['team', 'Team & roles'],
@@ -115,7 +119,7 @@ export default function HomePage() {
             </div>
             <nav aria-label={group.title} className="platform-module-grid">
               {group.modules.map(([slug, label]) => (
-                <Link className="platform-module-card" href={`/review/${slug}`} key={slug}>
+                <Link className="platform-module-card" href={reviewHref(slug)} key={slug}>
                   <span className="platform-module-card__status" data-preview="true">
                     Product review
                   </span>
@@ -129,4 +133,8 @@ export default function HomePage() {
       </div>
     </main>
   );
+}
+
+function reviewHref(slug: string): Route {
+  return `/review/${slug}` as Route;
 }
