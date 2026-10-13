@@ -1,0 +1,338 @@
+name: preneura-vps
+
+x-app-common: &app-common
+  restart: unless-stopped
+  networks: [platform_internal]
+  security_opt: [no-new-privileges:true]
+
+services:
+  postgres:
+    image: pgvector/pgvector:0.8.0-pg16
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: platform
+      POSTGRES_USER: platform_admin
+      POSTGRES_PASSWORD: ${POSTGRES_ADMIN_PASSWORD:?set POSTGRES_ADMIN_PASSWORD}
+      PLATFORM_APP_DB_PASSWORD: ${PLATFORM_APP_DB_PASSWORD:?set PLATFORM_APP_DB_PASSWORD}
+      PLATFORM_MIGRATOR_DB_PASSWORD: ${PLATFORM_MIGRATOR_DB_PASSWORD:?set PLATFORM_MIGRATOR_DB_PASSWORD}
+      KEYCLOAK_DB_PASSWORD: ${KEYCLOAK_DB_PASSWORD:?set KEYCLOAK_DB_PASSWORD}
+      TEMPORAL_DB_PASSWORD: ${TEMPORAL_DB_PASSWORD:?set TEMPORAL_DB_PASSWORD}
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ./postgres-init.sh:/docker-entrypoint-initdb.d/001-platform-init.sh:ro
+    healthcheck:
+      test: ['CMD-SHELL', 'pg_isready -U platform_admin -d platform']
+      interval: 5s
+      timeout: 5s
+      retries: 30
+      start_period: 10s
+    networks: [platform_internal]
+    security_opt: [no-new-privileges:true]
+
+  valkey:
+    image: valkey/valkey:8.0.1-alpine
+    restart: unless-stopped
+    command:
+      - valkey-server
+      - --appendonly
+      - 'yes'
+      - --appendfsync
+      - everysec
+      - --requirepass
+      - ${VALKEY_PASSWORD:?set VALKEY_PASSWORD}
+      - --maxmemory-policy
+      - noeviction
+    volumes: [valkey_data:/data]
+    healthcheck:
+      test: ['CMD-SHELL', 'valkey-cli -a "$${VALKEY_PASSWORD}" ping | grep -q PONG']
+      interval: 5s
+      timeout: 5s
+      retries: 30
+    environment:
+      VALKEY_PASSWORD: ${VALKEY_PASSWORD:?set VALKEY_PASSWORD}
+    networks: [platform_internal]
+    security_opt: [no-new-privileges:true]
+
+  nats:
+    image: nats:2.10.24-alpine
+    restart: unless-stopped
+    command:
+      - -js
+      - -sd
+      - /data
+      - -m
+      - '8222'
+      - --user
+      - platform
+      - --pass
+      - ${NATS_PASSWORD:?set NATS_PASSWORD}
+    volumes: [nats_data:/data]
+    healthcheck:
+      test: ['CMD', 'wget', '--spider', '-q', 'http://127.0.0.1:8222/healthz']
+      interval: 5s
+      timeout: 5s
+      retries: 30
+    networks: [platform_internal]
+    security_opt: [no-new-privileges:true]
+
+  temporal-schema:
+    image: temporalio/auto-setup:1.29.7
+    depends_on:
+      postgres: { condition: service_healthy }
+    restart: 'no'
+    environment:
+      SQL_PASSWORD: ${TEMPORAL_DB_PASSWORD:?set TEMPORAL_DB_PASSWORD}
+    entrypoint: ['/bin/bash', '-ec']
+    command:
+      - |
+        temporal-sql-tool --plugin postgres12 --ep postgres -u temporal -p 5432 --db temporal setup-schema -v 0.0 || true
+        temporal-sql-tool --plugin postgres12 --ep postgres -u temporal -p 5432 --db temporal update-schema -d /etc/temporal/schema/postgresql/v12/temporal/versioned
+        temporal-sql-tool --plugin postgres12 --ep postgres -u temporal -p 5432 --db temporal_visibility setup-schema -v 0.0 || true
+        temporal-sql-tool --plugin postgres12 --ep postgres -u temporal -p 5432 --db temporal_visibility update-schema -d /etc/temporal/schema/postgresql/v12/visibility/versioned
+    networks: [platform_internal]
+    security_opt: [no-new-privileges:true]
+
+  temporal:
+    image: temporalio/auto-setup:1.29.7
+    restart: unless-stopped
+    depends_on:
+      temporal-schema: { condition: service_completed_successfully }
+    environment:
+      DB: postgres12
+      DB_PORT: 5432
+      POSTGRES_SEEDS: postgres
+      POSTGRES_USER: temporal
+      POSTGRES_PWD: ${TEMPORAL_DB_PASSWORD:?set TEMPORAL_DB_PASSWORD}
+      SKIP_DB_CREATE: 'true'
+      SKIP_SCHEMA_SETUP: 'true'
+      SKIP_ADD_CUSTOM_SEARCH_ATTRIBUTES: 'true'
+      DEFAULT_NAMESPACE: platform
+      DEFAULT_NAMESPACE_RETENTION: 168h
+      DYNAMIC_CONFIG_FILE_PATH: config/dynamicconfig/development-sql.yaml
+      BIND_ON_IP: 0.0.0.0
+      TEMPORAL_ADDRESS: 127.0.0.1:7233
+    volumes:
+      - ../../docs/production-reference/temporal-dynamicconfig.yaml:/etc/temporal/config/dynamicconfig/development-sql.yaml:ro
+    healthcheck:
+      test:
+        ['CMD-SHELL', 'temporal operator cluster health --address 127.0.0.1:7233 | grep -q SERVING']
+      interval: 10s
+      timeout: 5s
+      retries: 30
+      start_period: 20s
+    networks: [platform_internal]
+    security_opt: [no-new-privileges:true]
+
+  keycloak:
+    image: quay.io/keycloak/keycloak:26.8.0
+    restart: unless-stopped
+    depends_on:
+      postgres: { condition: service_healthy }
+    command: ['start', '--import-realm']
+    environment:
+      KC_DB: postgres
+      KC_DB_URL_HOST: postgres
+      KC_DB_URL_DATABASE: keycloak
+      KC_DB_USERNAME: keycloak
+      KC_DB_PASSWORD: ${KEYCLOAK_DB_PASSWORD:?set KEYCLOAK_DB_PASSWORD}
+      KC_BOOTSTRAP_ADMIN_USERNAME: ${KEYCLOAK_ADMIN_USERNAME:-platform-admin}
+      KC_BOOTSTRAP_ADMIN_PASSWORD: ${KEYCLOAK_ADMIN_PASSWORD:?set KEYCLOAK_ADMIN_PASSWORD}
+      KC_HEALTH_ENABLED: 'true'
+      KC_HTTP_ENABLED: 'true'
+      KC_PROXY_HEADERS: xforwarded
+      KC_HOSTNAME: https://${AUTH_DOMAIN:?set AUTH_DOMAIN}
+      KC_HOSTNAME_STRICT: 'true'
+    volumes:
+      - ./rendered/keycloak-realm.json:/opt/keycloak/data/import/platform-realm.json:ro
+    healthcheck:
+      test: ['CMD-SHELL', 'exec 3<>/dev/tcp/127.0.0.1/9000']
+      interval: 10s
+      timeout: 5s
+      retries: 30
+      start_period: 20s
+    networks: [platform_internal]
+    security_opt: [no-new-privileges:true]
+
+  opa:
+    image: openpolicyagent/opa:1.20.2-static
+    restart: unless-stopped
+    command: ['run', '--server', '--addr=0.0.0.0:8181', '/policies/authorization.rego']
+    volumes:
+      - ../../docs/production-reference/authorization.rego:/policies/authorization.rego:ro
+    healthcheck:
+      test: ['CMD', '/opa', 'eval', '--fail-defined', 'true']
+      interval: 10s
+      timeout: 5s
+      retries: 10
+    networks: [platform_internal]
+    security_opt: [no-new-privileges:true]
+
+  migrate:
+    build:
+      context: ../..
+      dockerfile: docker/Dockerfile.migrator
+    image: preneura/migrator:${PLATFORM_IMAGE_TAG:-local}
+    depends_on:
+      postgres: { condition: service_healthy }
+    environment:
+      DATABASE_URL: postgresql://platform_migrator:${PLATFORM_MIGRATOR_DB_PASSWORD}@postgres:5432/platform
+    restart: 'no'
+    networks: [platform_internal]
+    security_opt: [no-new-privileges:true]
+
+  api:
+    <<: *app-common
+    build:
+      context: ../..
+      dockerfile: docker/Dockerfile.api
+    image: preneura/api:${PLATFORM_IMAGE_TAG:-local}
+    depends_on:
+      migrate: { condition: service_completed_successfully }
+      keycloak: { condition: service_healthy }
+      opa: { condition: service_healthy }
+    environment:
+      APP_ENV: ${APP_ENV:-production}
+      API_PORT: '3001'
+      DATABASE_URL: postgresql://platform_app:${PLATFORM_APP_DB_PASSWORD}@postgres:5432/platform
+      OPA_URL: http://opa:8181
+      KEYCLOAK_ISSUER: https://${AUTH_DOMAIN}/realms/platform
+      KEYCLOAK_JWKS_URL: http://keycloak:8080/realms/platform/protocol/openid-connect/certs
+      KEYCLOAK_CLIENT_ID: platform-web
+      ENABLE_DEVELOPMENT_CONNECTOR_FIXTURES: 'false'
+      MEDIA_DRIVER: local
+      MEDIA_LOCAL_ROOT: /srv/platform/media
+    volumes: [platform_media:/srv/platform/media]
+    healthcheck:
+      test:
+        [
+          'CMD',
+          'node',
+          '-e',
+          "fetch('http://127.0.0.1:3001/health').then(r=>{if(!r.ok)process.exit(1)}).catch(()=>process.exit(1))",
+        ]
+      interval: 10s
+      timeout: 5s
+      retries: 30
+      start_period: 15s
+
+  worker:
+    <<: *app-common
+    build:
+      context: ../..
+      dockerfile: docker/Dockerfile.worker
+    image: preneura/worker:${PLATFORM_IMAGE_TAG:-local}
+    depends_on:
+      migrate: { condition: service_completed_successfully }
+      nats: { condition: service_healthy }
+      temporal: { condition: service_healthy }
+      opa: { condition: service_healthy }
+    environment:
+      APP_ENV: ${APP_ENV:-production}
+      DATABASE_URL: postgresql://platform_app:${PLATFORM_APP_DB_PASSWORD}@postgres:5432/platform
+      NATS_URL: nats://platform:${NATS_PASSWORD}@nats:4222
+      OPA_URL: http://opa:8181
+      TEMPORAL_ADDRESS: temporal:7233
+      TEMPORAL_NAMESPACE: platform
+      WORKER_HEALTH_PORT: '3002'
+      ENABLE_DEVELOPMENT_CONNECTOR_FIXTURES: 'false'
+    volumes: [platform_media:/srv/platform/media:ro]
+    healthcheck:
+      test:
+        [
+          'CMD',
+          'node',
+          '-e',
+          "fetch('http://127.0.0.1:3002/health').then(r=>{if(!r.ok)process.exit(1)}).catch(()=>process.exit(1))",
+        ]
+      interval: 10s
+      timeout: 5s
+      retries: 30
+      start_period: 20s
+
+  ai-gateway:
+    <<: *app-common
+    build:
+      context: ../..
+      dockerfile: docker/Dockerfile.ai-gateway
+    image: preneura/ai-gateway:${PLATFORM_IMAGE_TAG:-local}
+    depends_on:
+      migrate: { condition: service_completed_successfully }
+    healthcheck:
+      test:
+        [
+          'CMD',
+          'python',
+          '-c',
+          "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8000/health', timeout=3)",
+        ]
+      interval: 10s
+      timeout: 5s
+      retries: 20
+      start_period: 10s
+
+  web:
+    <<: *app-common
+    build:
+      context: ../..
+      dockerfile: docker/Dockerfile.web
+    image: preneura/web:${PLATFORM_IMAGE_TAG:-local}
+    depends_on:
+      api: { condition: service_healthy }
+    environment:
+      APP_ENV: ${APP_ENV:-production}
+      PORT: '3000'
+      APP_PUBLIC_URL: https://${PLATFORM_DOMAIN:?set PLATFORM_DOMAIN}
+      API_INTERNAL_URL: http://api:3001
+      API_PUBLIC_URL: https://${API_DOMAIN:?set API_DOMAIN}
+      KEYCLOAK_ISSUER: https://${AUTH_DOMAIN:?set AUTH_DOMAIN}/realms/platform
+      KEYCLOAK_INTERNAL_ISSUER: http://keycloak:8080/realms/platform
+      KEYCLOAK_CLIENT_ID: platform-web
+      PREVIEW_SECURE_COOKIES: 'true'
+    healthcheck:
+      test:
+        [
+          'CMD',
+          'node',
+          '-e',
+          "fetch('http://127.0.0.1:3000/health').then(r=>{if(!r.ok)process.exit(1)}).catch(()=>process.exit(1))",
+        ]
+      interval: 10s
+      timeout: 5s
+      retries: 30
+      start_period: 20s
+
+  caddy:
+    image: caddy:2.10.2-alpine
+    restart: unless-stopped
+    depends_on:
+      web: { condition: service_healthy }
+      api: { condition: service_healthy }
+      keycloak: { condition: service_healthy }
+    environment:
+      PLATFORM_DOMAIN: ${PLATFORM_DOMAIN:?set PLATFORM_DOMAIN}
+      API_DOMAIN: ${API_DOMAIN:?set API_DOMAIN}
+      AUTH_DOMAIN: ${AUTH_DOMAIN:?set AUTH_DOMAIN}
+      ACME_EMAIL: ${ACME_EMAIL:?set ACME_EMAIL}
+    ports:
+      - '80:80'
+      - '443:443'
+      - '443:443/udp'
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy_data:/data
+      - caddy_config:/config
+    networks: [platform_internal]
+    security_opt: [no-new-privileges:true]
+
+networks:
+  platform_internal:
+    name: preneura_platform_internal
+    driver: bridge
+
+volumes:
+  postgres_data:
+  valkey_data:
+  nats_data:
+  platform_media:
+  caddy_data:
+  caddy_config:

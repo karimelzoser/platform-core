@@ -4,8 +4,10 @@
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width,initial-scale=1" />
   <meta name="color-scheme" content="light" />
-  <title>PRENEURA Platform Preview</title>
+  <meta name="description" content="Backend-independent PRENEURA product review" />
+  <title>PRENEURA Full Product Review</title>
   <link rel="stylesheet" href="./styles.css" />
+  <link rel="stylesheet" href="./review.css" />
 </head>
 <body>
   <div class="app-shell">
@@ -14,43 +16,68 @@
         <div class="brand-mark">P</div>
         <div>
           <strong>PRENEURA</strong>
-          <span>Platform Preview</span>
+          <span>Full Product Review</span>
         </div>
       </div>
 
-      <div class="preview-badge">STATIC PREVIEW · DEMO DATA</div>
+      <div class="preview-badge">BACKEND-INDEPENDENT · REVIEW DATA</div>
 
-      <nav class="nav" aria-label="Platform navigation">
-        <div class="nav-group"><span>WORKSPACE</span>
-          <a href="#dashboard" data-route="dashboard">Dashboard</a>
-          <a href="#onboarding" data-route="onboarding">Onboarding</a>
-          <a href="#customers" data-route="customers">Customers</a>
-          <a href="#inbox" data-route="inbox">Inbox</a>
-          <a href="#tickets" data-route="tickets">Tickets</a>
+      <label class="module-search">
+        <span>Find a module</span>
+        <input id="moduleSearch" type="search" placeholder="Search modules…" autocomplete="off" />
+      </label>
+
+      <nav class="nav" aria-label="Platform navigation" id="navigation">
+        <div class="nav-group" data-nav-group><span>OVERVIEW</span>
+          <a href="#dashboard" data-route="dashboard">Executive dashboard</a>
         </div>
-        <div class="nav-group"><span>COMMERCE</span>
+        <div class="nav-group" data-nav-group><span>CUSTOMER OPERATIONS</span>
+          <a href="#inbox" data-route="inbox">Unified inbox</a>
+          <a href="#customers" data-route="customers">Customer 360</a>
+          <a href="#tickets" data-route="tickets">Tickets</a>
           <a href="#orders" data-route="orders">Orders</a>
+          <a href="#confirmation" data-route="confirmation">Confirmation</a>
           <a href="#shipping" data-route="shipping">Shipping</a>
-          <a href="#returns" data-route="returns">Returns</a>
+          <a href="#returns" data-route="returns">Returns & refunds</a>
           <a href="#recovery" data-route="recovery">Recovery</a>
         </div>
-        <div class="nav-group"><span>GROWTH</span>
+        <div class="nav-group" data-nav-group><span>REVENUE & MEASUREMENT</span>
           <a href="#sales" data-route="sales">Sales</a>
           <a href="#campaigns" data-route="campaigns">Campaigns</a>
-          <a href="#automation" data-route="automation">Automation</a>
-          <a href="#ai" data-route="ai">AI Operators</a>
-          <a href="#analytics" data-route="analytics">Analytics</a>
+          <a href="#analytics" data-route="analytics">Analytics & ROI</a>
+          <a href="#billing" data-route="billing">Billing & usage</a>
         </div>
-        <div class="nav-group"><span>PLATFORM</span>
+        <div class="nav-group" data-nav-group><span>AUTOMATION & CONFIGURATION</span>
+          <a href="#automation" data-route="automation">Automation Studio</a>
+          <a href="#workflows" data-route="workflows">Workflow operations</a>
+          <a href="#configuration" data-route="configuration">Configuration studio</a>
+          <a href="#simulation" data-route="simulation">Configuration simulation</a>
           <a href="#integrations" data-route="integrations">Integrations</a>
-          <a href="#team" data-route="team">Team & Roles</a>
+        </div>
+        <div class="nav-group" data-nav-group><span>AI & KNOWLEDGE</span>
+          <a href="#operators" data-route="operators">AI Operators</a>
+          <a href="#ai-tools" data-route="ai-tools">AI tool registry</a>
+          <a href="#ai-routing" data-route="ai-routing">AI gateway & routing</a>
+          <a href="#knowledge" data-route="knowledge">Knowledge</a>
+        </div>
+        <div class="nav-group" data-nav-group><span>PLATFORM & GOVERNANCE</span>
+          <a href="#custom-data" data-route="custom-data">Custom data</a>
+          <a href="#developer" data-route="developer">Developer platform</a>
+          <a href="#admin" data-route="admin">Admin control center</a>
+          <a href="#governance" data-route="governance">Data governance</a>
+        </div>
+        <div class="nav-group" data-nav-group><span>ORGANIZATION</span>
+          <a href="#onboarding" data-route="onboarding">Onboarding</a>
+          <a href="#team" data-route="team">Team & roles</a>
+          <a href="#approvals" data-route="approvals">Approvals</a>
           <a href="#settings" data-route="settings">Settings</a>
+          <a href="#organizations" data-route="organizations">Organizations</a>
         </div>
       </nav>
 
       <div class="sidebar-footer">
         <span class="status-dot"></span>
-        <span>Preview state is local to this browser</span>
+        <span>Review data never writes to production systems</span>
       </div>
     </aside>
 
@@ -58,13 +85,15 @@
       <header class="topbar">
         <button class="icon-button mobile-only" id="menuButton" aria-label="Open navigation">☰</button>
         <div class="workspace-select">
-          <span>Organization</span>
+          <span>Review workspace</span>
           <strong>AI PRENEURA Demo</strong>
         </div>
         <div class="top-actions">
+          <a class="text-button top-link" href="#approvals" data-route="approvals">Approvals</a>
+          <a class="text-button top-link" href="#integrations" data-route="integrations">Integrations</a>
           <button class="text-button" id="directionButton">العربية · RTL</button>
-          <button class="icon-button" aria-label="Notifications">◔<span class="notification-dot"></span></button>
-          <div class="avatar">KM</div>
+          <button class="icon-button" id="notificationButton" aria-label="Notifications">◔<span class="notification-dot"></span></button>
+          <div class="avatar" aria-label="Preview user">KM</div>
         </div>
       </header>
 
@@ -73,6 +102,7 @@
   </div>
 
   <div class="toast" id="toast" role="status" aria-live="polite"></div>
-  <script src="./app.js"></script>
+  <script src="./review.js"></script>
+  <script src="./review-extra.js"></script>
 </body>
 </html>
