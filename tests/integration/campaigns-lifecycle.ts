@@ -52,6 +52,12 @@ async function main(): Promise<void> {
   const database = databaseService.database;
   const contextA = context(tenantA, actorA, 'test-subject-a');
   const contextB = context(tenantB, actorB, 'test-subject-b');
+  const webhookContext: TenantRequestContext = {
+    ...contextA,
+    subject: 'worker:webhook:campaign-lifecycle',
+    requestId: 'campaigns-webhook-consent-a',
+    correlationId: 'campaigns-webhook-consent-a',
+  };
   try {
     await withTenantTransaction(database, contextA, async (transaction) => {
       await sql`update integrations.connections
@@ -85,9 +91,15 @@ async function main(): Promise<void> {
           (${contactSuppressed}::uuid, ${tenantA}::uuid, ${customerSuppressed}::uuid,
            'WHATSAPP', '+201000000012', '+201000000012', true, true, 'ACTIVE')
         on conflict (id) do update set status = 'ACTIVE', updated_at = now()`.execute(transaction);
+    });
 
-      // The opt-in transition is deliberately evidence-first. The database trigger
-      // rejects OPTED_IN unless verified provider-webhook evidence already exists.
+    await withTenantTransaction(database, webhookContext, async (transaction) => {
+      await sql`update integrations.webhook_deliveries
+        set state = 'PROCESSING', claimed_by = 'campaign-lifecycle-webhook-worker',
+            claimed_at = now(), signature_valid = true, replay_valid = true,
+            processed_at = null, last_error = null
+        where id = ${webhookEvidenceA}::uuid`.execute(transaction);
+
       await sql`insert into crm.communication_consent_evidence (
           tenant_id, customer_id, channel, webhook_delivery_id, provider_consent_id,
           occurred_at, metadata
@@ -97,17 +109,21 @@ async function main(): Promise<void> {
         ) on conflict (webhook_delivery_id) do nothing`.execute(transaction);
 
       await sql`insert into crm.communication_preferences (
-          tenant_id, customer_id, channel, status, source, captured_at, reason
+          tenant_id, customer_id, channel, status, source, captured_at, reason, metadata
         ) values
           (${tenantA}::uuid, ${customerEligible}::uuid, 'WHATSAPP', 'OPTED_IN',
-           'verified-webhook', now(), 'Integration lifecycle consent'),
+           'provider_webhook', now(), 'Integration lifecycle consent',
+           ${JSON.stringify({ evidenceType: 'VERIFIED_PROVIDER_WEBHOOK', webhookDeliveryId: webhookEvidenceA })}::jsonb),
           (${tenantA}::uuid, ${customerSuppressed}::uuid, 'WHATSAPP', 'OPTED_OUT',
-           'customer-request', now(), 'Integration lifecycle suppression')
+           'customer-request', now(), 'Integration lifecycle suppression', '{}'::jsonb)
         on conflict (tenant_id, customer_id, channel) do update
           set status = excluded.status, source = excluded.source, captured_at = excluded.captured_at,
-              reason = excluded.reason, suppressed_until = null, updated_at = now()`.execute(
-        transaction,
-      );
+              reason = excluded.reason, metadata = excluded.metadata,
+              suppressed_until = null, updated_at = now()`.execute(transaction);
+
+      await sql`update integrations.webhook_deliveries
+        set state = 'PROCESSED', processed_at = now(), updated_at = now()
+        where id = ${webhookEvidenceA}::uuid`.execute(transaction);
     });
 
     const opaUrl = process.env.OPA_URL;
