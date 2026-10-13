@@ -106,12 +106,7 @@ export class CampaignsController {
     const context = await this.context(authorization, tenantId, correlationId);
     this.require(context.permissions, 'campaigns.send');
     return this.execute(() =>
-      this.campaigns.start(
-        context,
-        requireIdempotency(idempotencyKey),
-        campaignId,
-        approvalId,
-      ),
+      this.campaigns.start(context, requireIdempotency(idempotencyKey), campaignId, approvalId),
     );
   }
 
