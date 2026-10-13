@@ -97,9 +97,11 @@ BEGIN
   END;
 END;
 $$;
-COMMIT;
 
-BEGIN;
+-- Switch tenant context inside the same transaction so the fixture rows remain
+-- available for cross-tenant RLS/relationship checks but are rolled back after
+-- the test. This prevents migration verification from contaminating later
+-- application lifecycle tests with same-tenant Messaging/CRM fixtures.
 SELECT platform.set_request_context(
   'bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb',
   '22222222-2222-2222-2222-222222222222',
