@@ -27,18 +27,12 @@ test.describe('Sales disposable development preview', () => {
     await page.goto('/sales');
     await expect(page.getByRole('heading', { name: 'Sales pipeline', exact: true })).toBeVisible();
 
-    const pipelineCard = page
-      .getByRole('heading', { name: 'Create a configurable pipeline' })
-      .locator('..')
-      .locator('..');
+    const pipelineCard = surfaceCardByHeading(page, 'Create a configurable pipeline');
     await pipelineCard.getByLabel('Pipeline name').fill(`E2E pipeline ${stamp}`);
     await pipelineCard.getByRole('button', { name: 'Create pipeline' }).click();
     await expect(page.getByRole('status')).toHaveText('Sales pipeline created.');
 
-    const leadsCard = page
-      .getByRole('heading', { name: 'Qualify CRM customers' })
-      .locator('..')
-      .locator('..');
+    const leadsCard = surfaceCardByHeading(page, 'Qualify CRM customers');
     await leadsCard.getByLabel('CRM customer ID').fill(customerId);
     await leadsCard.getByLabel('Lead source').fill('browser-e2e');
     await leadsCard.getByRole('button', { name: 'Create lead' }).click();
@@ -59,32 +53,16 @@ test.describe('Sales disposable development preview', () => {
     await leadCard.getByRole('button', { name: 'Update qualification' }).click();
     await expect(page.getByRole('status')).toHaveText('Lead qualification updated.');
 
-    const opportunityCard = page
-      .getByRole('heading', { name: 'Commercial pipeline' })
-      .locator('..')
-      .locator('..');
-    await opportunityCard.locator('form').first().getByLabel('CRM customer ID').fill(customerId);
-    await opportunityCard.locator('form').first().getByLabel('Lead ID (optional)').fill(leadId);
-    await opportunityCard
-      .locator('form')
-      .first()
-      .getByLabel('Opportunity name')
-      .fill(`E2E opportunity ${stamp}`);
-    await opportunityCard
-      .locator('form')
-      .first()
+    const opportunityCard = surfaceCardByHeading(page, 'Commercial pipeline');
+    const opportunityForm = opportunityCard.locator('form').first();
+    await opportunityForm.getByLabel('CRM customer ID').fill(customerId);
+    await opportunityForm.getByLabel('Lead ID (optional)').fill(leadId);
+    await opportunityForm.getByLabel('Opportunity name').fill(`E2E opportunity ${stamp}`);
+    await opportunityForm
       .getByLabel('Pipeline / initial stage')
       .selectOption({ label: `E2E pipeline ${stamp} · Qualified · 25%` });
-    await opportunityCard
-      .locator('form')
-      .first()
-      .getByLabel('Expected value (minor units)')
-      .fill('2500000');
-    await opportunityCard
-      .locator('form')
-      .first()
-      .getByRole('button', { name: 'Create opportunity' })
-      .click();
+    await opportunityForm.getByLabel('Expected value (minor units)').fill('2500000');
+    await opportunityForm.getByRole('button', { name: 'Create opportunity' }).click();
     await expect(page.getByRole('status')).toHaveText('Sales opportunity created.');
 
     const opportunityRow = page.getByRole('row').filter({ hasText: `E2E opportunity ${stamp}` });
@@ -102,10 +80,7 @@ test.describe('Sales disposable development preview', () => {
       page.getByRole('row').filter({ hasText: `E2E opportunity ${stamp}` }),
     ).toContainText('Proposal');
 
-    const activitiesCard = page
-      .getByRole('heading', { name: 'Tasks and touchpoints' })
-      .locator('..')
-      .locator('..');
+    const activitiesCard = surfaceCardByHeading(page, 'Tasks and touchpoints');
     const activityForm = activitiesCard.locator('form').first();
     await activityForm.getByLabel('CRM customer ID').fill(customerId);
     await activityForm.getByLabel('Opportunity ID').fill(opportunityId);
@@ -163,6 +138,12 @@ function monitorBrowserErrors(page: Page, errors: string[]) {
     if (message.type() === 'error') errors.push(message.text());
   });
   page.on('pageerror', (error) => errors.push(error.message));
+}
+
+function surfaceCardByHeading(page: Page, heading: string) {
+  return page
+    .getByRole('heading', { name: heading, exact: true })
+    .locator('xpath=ancestor::section[contains(concat(" ", normalize-space(@class), " "), " ds-card ")][1]');
 }
 
 async function login(page: Page) {
