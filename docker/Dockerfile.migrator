@@ -1,0 +1,8 @@
+FROM postgres:16-alpine
+WORKDIR /workspace
+RUN apk add --no-cache bash coreutils
+COPY migrations /workspace/migrations
+COPY scripts/vps/apply-migrations.sh /usr/local/bin/apply-platform-migrations
+RUN chmod 0555 /usr/local/bin/apply-platform-migrations
+USER 70:70
+ENTRYPOINT ["/usr/local/bin/apply-platform-migrations"]

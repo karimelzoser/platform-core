@@ -11,7 +11,12 @@ const primarySurfaces = [
   ['automation', 'Automation'],
 ] as const;
 
-export default function HomePage() {
+interface PageProps {
+  searchParams: Promise<{ auth_error?: string }>;
+}
+
+export default async function HomePage({ searchParams }: PageProps) {
+  const { auth_error: authError } = await searchParams;
   return (
     <main className="landing">
       <p className="eyebrow">PLATFORM</p>
@@ -20,6 +25,19 @@ export default function HomePage() {
         Manage customer operations, commerce, and approved AI actions from one tenant-isolated
         workspace.
       </p>
+      {authError ? (
+        <p role="alert" className="identity-notice">
+          {authError}
+        </p>
+      ) : null}
+      <div className="identity-role-list">
+        <Link className="ds-button ds-button--primary" href="/auth/login">
+          Sign in
+        </Link>
+        <Link className="ds-button ds-button--secondary" href="/organizations">
+          Open organizations
+        </Link>
+      </div>
       <nav aria-label="Primary operations" className="surface-grid">
         {primarySurfaces.map(([slug, label]) => (
           <Link className="surface-link" href={`/${slug}`} key={slug}>
