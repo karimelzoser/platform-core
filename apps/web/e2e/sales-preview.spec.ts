@@ -46,7 +46,7 @@ test.describe('Sales disposable development preview', () => {
     const leadId = await leadCard.locator('input[name="leadId"]').inputValue();
     await leadCard.getByLabel('Score').fill('92');
     await leadCard.getByLabel('Grade').selectOption('HOT');
-    await leadCard.getByLabel('Qualification').selectOption('QUALIFIED');
+    await leadCard.getByLabel('Qualification', { exact: true }).selectOption('QUALIFIED');
     await leadCard
       .getByLabel('Qualification notes')
       .fill('Budget and timing confirmed in browser acceptance.');
