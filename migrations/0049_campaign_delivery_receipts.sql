@@ -1,6 +1,6 @@
 -- Keep Campaign delivery evidence aligned with canonical Messaging receipts.
--- Provider workers update messaging.messages; this trigger projects only the bounded
--- delivery state/cost-neutral receipt into Campaigns without creating a second provider path.
+-- Provider workers update messaging.messages; this trigger projects only bounded
+-- delivery state into Campaigns without creating a second provider path.
 
 BEGIN;
 
@@ -10,6 +10,7 @@ LANGUAGE plpgsql
 AS $$
 DECLARE
   mapped_status text;
+  affected_campaign_id uuid;
 BEGIN
   mapped_status := CASE NEW.delivery_status
     WHEN 'PENDING' THEN 'QUEUED'
@@ -37,10 +38,15 @@ BEGIN
       failed_at = CASE WHEN mapped_status IN ('FAILED','DEAD_LETTER')
                       THEN coalesce(delivery.failed_at, now()) ELSE delivery.failed_at END,
       last_error = CASE WHEN mapped_status IN ('FAILED','DEAD_LETTER')
-                       THEN NEW.last_delivery_error ELSE delivery.last_error END,
+                       THEN NEW.last_delivery_error ELSE NULL END,
       updated_at = now()
   WHERE delivery.tenant_id = NEW.tenant_id
-    AND delivery.message_id = NEW.id;
+    AND delivery.message_id = NEW.id
+  RETURNING delivery.campaign_id INTO affected_campaign_id;
+
+  IF affected_campaign_id IS NULL THEN
+    RETURN NEW;
+  END IF;
 
   UPDATE campaigns.recipients recipient
   SET delivery_status = mapped_status,
@@ -53,6 +59,23 @@ BEGIN
     AND (
       recipient.delivery_status NOT IN ('DELIVERED','READ')
       OR mapped_status = 'READ'
+    );
+
+  -- A campaign is operationally complete only when no consent-eligible recipient
+  -- remains pending, queued, or retryable-failed. Provider acceptance (SENT) is
+  -- terminal for dispatch completion; later delivery/read receipts still refine metrics.
+  UPDATE campaigns.campaigns campaign
+  SET status = 'COMPLETED', completed_at = coalesce(completed_at, now()), updated_at = now()
+  WHERE campaign.tenant_id = NEW.tenant_id
+    AND campaign.id = affected_campaign_id
+    AND campaign.status = 'RUNNING'
+    AND NOT EXISTS (
+      SELECT 1
+      FROM campaigns.recipients recipient
+      WHERE recipient.tenant_id = campaign.tenant_id
+        AND recipient.campaign_id = campaign.id
+        AND recipient.eligibility = 'ELIGIBLE'
+        AND recipient.delivery_status IN ('PENDING','QUEUED','FAILED')
     );
 
   RETURN NEW;
