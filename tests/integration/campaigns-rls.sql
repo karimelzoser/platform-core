@@ -29,7 +29,7 @@ VALUES (
 );
 
 INSERT INTO crm.contact_points (
-  id, tenant_id, customer_id, channel, value, normalized_value, is_primary, status
+  id, tenant_id, customer_id, channel, value_original, normalized_value, is_primary, status
 ) VALUES (
   'aaaaaaaa-0000-0000-0000-000000000703',
   'aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa',
