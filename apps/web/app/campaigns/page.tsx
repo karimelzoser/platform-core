@@ -119,7 +119,9 @@ export default async function CampaignsPage({ searchParams }: PageProps) {
       item.capabilities.includes('messaging.outbound'),
   );
   const campaignTemplates = templates.data.filter(
-    (item) => item.status === 'ACTIVE' && ['EMAIL', 'WHATSAPP', 'MESSENGER', 'INSTAGRAM'].includes(item.channel ?? ''),
+    (item) =>
+      item.status === 'ACTIVE' &&
+      ['EMAIL', 'WHATSAPP', 'MESSENGER', 'INSTAGRAM'].includes(item.channel ?? ''),
   );
   const activeSegments = segments.data.filter((item) => item.status === 'ACTIVE');
   const running = campaigns.data.items.filter((item) => item.status === 'RUNNING').length;
@@ -158,7 +160,11 @@ export default async function CampaignsPage({ searchParams }: PageProps) {
           <MetricCard label="Campaigns" value={campaigns.data.items.length} />
           <MetricCard label="Running" value={running} />
           <MetricCard label="Eligible recipients" value={eligible} />
-          <MetricCard label="Attributed revenue" value={formatMinor(conversionValue)} detail={`${String(conversions)} conversion(s)`} />
+          <MetricCard
+            label="Attributed revenue"
+            value={formatMinor(conversionValue)}
+            detail={`${String(conversions)} conversion(s)`}
+          />
         </div>
 
         <SurfaceCard>
@@ -178,32 +184,78 @@ export default async function CampaignsPage({ searchParams }: PageProps) {
                     id="campaign-channel"
                     name="channel"
                     label="Channel"
-                    options={['WHATSAPP', 'EMAIL', 'MESSENGER', 'INSTAGRAM'].map((value) => ({ value, label: value }))}
+                    options={['WHATSAPP', 'EMAIL', 'MESSENGER', 'INSTAGRAM'].map((value) => ({
+                      value,
+                      label: value,
+                    }))}
                   />
                   <Select
                     id="campaign-connection"
                     name="connectionId"
                     label="Outbound connection"
-                    options={outboundConnections.map((item) => ({ value: item.id, label: `${item.displayName} · ${item.connectorKey}` }))}
+                    options={outboundConnections.map((item) => ({
+                      value: item.id,
+                      label: `${item.displayName} · ${item.connectorKey}`,
+                    }))}
                   />
                   <Select
                     id="campaign-template"
                     name="templateId"
                     label="Message template"
-                    options={campaignTemplates.map((item) => ({ value: item.id, label: `${item.name} · ${item.channel ?? 'Any'} · ${item.locale}` }))}
+                    options={campaignTemplates.map((item) => ({
+                      value: item.id,
+                      label: `${item.name} · ${item.channel ?? 'Any'} · ${item.locale}`,
+                    }))}
                   />
                   <Select
                     id="campaign-segment"
                     name="segmentId"
                     label="CRM segment (optional)"
                     optional
-                    options={activeSegments.map((item) => ({ value: item.id, label: `${item.name} · ${String(item.memberCount)} members` }))}
+                    options={activeSegments.map((item) => ({
+                      value: item.id,
+                      label: `${item.name} · ${String(item.memberCount)} members`,
+                    }))}
                   />
-                  <Field id="campaign-timezone" name="timezone" label="Timezone" value="UTC" required />
-                  <Field id="campaign-start" name="sendWindowStart" label="Send window start" value="00:00" type="time" required />
-                  <Field id="campaign-end" name="sendWindowEnd" label="Send window end" value="23:59" type="time" required />
-                  <Field id="campaign-batch" name="batchSize" label="Batch size" value="500" type="number" required />
-                  <Field id="campaign-attribution" name="attributionWindowHours" label="Attribution window (hours)" value="168" type="number" required />
+                  <Field
+                    id="campaign-timezone"
+                    name="timezone"
+                    label="Timezone"
+                    value="UTC"
+                    required
+                  />
+                  <Field
+                    id="campaign-start"
+                    name="sendWindowStart"
+                    label="Send window start"
+                    value="00:00"
+                    type="time"
+                    required
+                  />
+                  <Field
+                    id="campaign-end"
+                    name="sendWindowEnd"
+                    label="Send window end"
+                    value="23:59"
+                    type="time"
+                    required
+                  />
+                  <Field
+                    id="campaign-batch"
+                    name="batchSize"
+                    label="Batch size"
+                    value="500"
+                    type="number"
+                    required
+                  />
+                  <Field
+                    id="campaign-attribution"
+                    name="attributionWindowHours"
+                    label="Attribution window (hours)"
+                    value="168"
+                    type="number"
+                    required
+                  />
                 </div>
                 <button className="ds-button ds-button--primary" type="submit">
                   Create campaign
@@ -216,7 +268,9 @@ export default async function CampaignsPage({ searchParams }: PageProps) {
               />
             )}
             <p className="identity-muted">
-              Automatic scheduled execution is intentionally not claimed here. The campaign records a durable Temporal workflow identity, while timer/replay/cancellation execution is closed in the dedicated Temporal platform workstream.
+              Automatic scheduled execution is intentionally not claimed here. The campaign records
+              a durable Temporal workflow identity, while timer/replay/cancellation execution is
+              closed in the dedicated Temporal platform workstream.
             </p>
           </Stack>
         </SurfaceCard>
@@ -237,48 +291,90 @@ export default async function CampaignsPage({ searchParams }: PageProps) {
                     <div className="identity-card-heading">
                       <div>
                         <h3>{campaign.name}</h3>
-                        <p className="identity-muted">{campaign.channel} · {campaign.connectionName}</p>
+                        <p className="identity-muted">
+                          {campaign.channel} · {campaign.connectionName}
+                        </p>
                       </div>
-                      <StatusBadge tone={statusTone(campaign.status)}>{campaign.status}</StatusBadge>
+                      <StatusBadge tone={statusTone(campaign.status)}>
+                        {campaign.status}
+                      </StatusBadge>
                     </div>
                     <div className="identity-role-list">
                       <StatusBadge>{campaign.metrics.eligible} eligible</StatusBadge>
-                      <StatusBadge tone={campaign.metrics.suppressed ? 'warning' : 'neutral'}>{campaign.metrics.suppressed} suppressed</StatusBadge>
-                      <StatusBadge tone="info">{campaign.metrics.sent + campaign.metrics.delivered + campaign.metrics.read} accepted+</StatusBadge>
-                      <StatusBadge tone={campaign.metrics.failed ? 'danger' : 'neutral'}>{campaign.metrics.failed} failed</StatusBadge>
+                      <StatusBadge tone={campaign.metrics.suppressed ? 'warning' : 'neutral'}>
+                        {campaign.metrics.suppressed} suppressed
+                      </StatusBadge>
+                      <StatusBadge tone="info">
+                        {campaign.metrics.sent + campaign.metrics.delivered + campaign.metrics.read}{' '}
+                        accepted+
+                      </StatusBadge>
+                      <StatusBadge tone={campaign.metrics.failed ? 'danger' : 'neutral'}>
+                        {campaign.metrics.failed} failed
+                      </StatusBadge>
                     </div>
                     <p className="identity-muted">
-                      Window {formatMinute(campaign.sendWindowStartMinute)}–{formatMinute(campaign.sendWindowEndMinute)} {campaign.timezone} · batch {campaign.batchSize} · workflow {campaign.temporalWorkflowId ?? 'not started'}
+                      Window {formatMinute(campaign.sendWindowStartMinute)}–
+                      {formatMinute(campaign.sendWindowEndMinute)} {campaign.timezone} · batch{' '}
+                      {campaign.batchSize} · workflow {campaign.temporalWorkflowId ?? 'not started'}
                     </p>
                     {campaign.status === 'DRAFT' && campaign.metrics.total === 0 ? (
                       <form action={freezeCampaignAudience}>
                         <input type="hidden" name="campaignId" value={campaign.id} />
-                        <button className="ds-button ds-button--secondary" type="submit">Freeze audience</button>
+                        <button className="ds-button ds-button--secondary" type="submit">
+                          Freeze audience
+                        </button>
                       </form>
                     ) : null}
-                    {['DRAFT', 'SCHEDULED'].includes(campaign.status) && campaign.metrics.eligible > 0 ? (
+                    {['DRAFT', 'SCHEDULED'].includes(campaign.status) &&
+                    campaign.metrics.eligible > 0 ? (
                       <form action={startCampaign} className="identity-form identity-form--compact">
                         <input type="hidden" name="campaignId" value={campaign.id} />
                         <div className="identity-field">
                           <label htmlFor={`campaign-approval-${campaign.id}`}>Approval ID</label>
-                          <input id={`campaign-approval-${campaign.id}`} name="approvalId" placeholder="Approved campaigns.campaign.start action" />
+                          <input
+                            id={`campaign-approval-${campaign.id}`}
+                            name="approvalId"
+                            placeholder="Approved campaigns.campaign.start action"
+                          />
                         </div>
-                        <button className="ds-button ds-button--primary" type="submit">Start campaign</button>
+                        <button className="ds-button ds-button--primary" type="submit">
+                          Start campaign
+                        </button>
                       </form>
                     ) : null}
-                    {campaign.status === 'RUNNING' ? <StateForm action={pauseCampaign} campaignId={campaign.id} label="Pause" /> : null}
-                    {campaign.status === 'PAUSED' ? <StateForm action={resumeCampaign} campaignId={campaign.id} label="Resume" /> : null}
-                    {['DRAFT', 'SCHEDULED', 'RUNNING', 'PAUSED'].includes(campaign.status) ? <StateForm action={cancelCampaign} campaignId={campaign.id} label="Cancel" danger /> : null}
+                    {campaign.status === 'RUNNING' ? (
+                      <StateForm action={pauseCampaign} campaignId={campaign.id} label="Pause" />
+                    ) : null}
+                    {campaign.status === 'PAUSED' ? (
+                      <StateForm action={resumeCampaign} campaignId={campaign.id} label="Resume" />
+                    ) : null}
+                    {['DRAFT', 'SCHEDULED', 'RUNNING', 'PAUSED'].includes(campaign.status) ? (
+                      <StateForm
+                        action={cancelCampaign}
+                        campaignId={campaign.id}
+                        label="Cancel"
+                        danger
+                      />
+                    ) : null}
                     <div className="identity-role-list">
-                      <StatusBadge tone="success">{campaign.metrics.conversions} conversions</StatusBadge>
-                      <StatusBadge>{formatMinor(Number(campaign.metrics.conversionValueMinor))} attributed</StatusBadge>
-                      <StatusBadge>{formatMinor(Number(campaign.metrics.providerCostMinor))} provider cost</StatusBadge>
+                      <StatusBadge tone="success">
+                        {campaign.metrics.conversions} conversions
+                      </StatusBadge>
+                      <StatusBadge>
+                        {formatMinor(Number(campaign.metrics.conversionValueMinor))} attributed
+                      </StatusBadge>
+                      <StatusBadge>
+                        {formatMinor(Number(campaign.metrics.providerCostMinor))} provider cost
+                      </StatusBadge>
                     </div>
                   </article>
                 ))}
               </div>
             ) : (
-              <EmptyState title="No campaigns yet" description="Create a campaign to freeze its consent-aware CRM audience." />
+              <EmptyState
+                title="No campaigns yet"
+                description="Create a campaign to freeze its consent-aware CRM audience."
+              />
             )}
           </Stack>
         </SurfaceCard>
@@ -287,31 +383,83 @@ export default async function CampaignsPage({ searchParams }: PageProps) {
   );
 }
 
-function StateForm({ action, campaignId, label, danger = false }: { action: (formData: FormData) => Promise<void>; campaignId: string; label: string; danger?: boolean }) {
+function StateForm({
+  action,
+  campaignId,
+  label,
+  danger = false,
+}: {
+  action: (formData: FormData) => Promise<void>;
+  campaignId: string;
+  label: string;
+  danger?: boolean;
+}) {
   return (
     <form action={action}>
       <input type="hidden" name="campaignId" value={campaignId} />
-      <button className={`ds-button ${danger ? 'ds-button--danger' : 'ds-button--secondary'}`} type="submit">{label}</button>
+      <button
+        className={`ds-button ${danger ? 'ds-button--danger' : 'ds-button--secondary'}`}
+        type="submit"
+      >
+        {label}
+      </button>
     </form>
   );
 }
 
-function Field({ id, name, label, value, type = 'text', required = false }: { id: string; name: string; label: string; value?: string; type?: string; required?: boolean }) {
+function Field({
+  id,
+  name,
+  label,
+  value,
+  type = 'text',
+  required = false,
+}: {
+  id: string;
+  name: string;
+  label: string;
+  value?: string;
+  type?: string;
+  required?: boolean;
+}) {
   return (
     <div className="identity-field">
       <label htmlFor={id}>{label}</label>
-      <input id={id} name={name} type={type} defaultValue={value} required={required} min={type === 'number' ? 1 : undefined} />
+      <input
+        id={id}
+        name={name}
+        type={type}
+        defaultValue={value}
+        required={required}
+        min={type === 'number' ? 1 : undefined}
+      />
     </div>
   );
 }
 
-function Select({ id, name, label, options, optional = false }: { id: string; name: string; label: string; options: readonly { value: string; label: string }[]; optional?: boolean }) {
+function Select({
+  id,
+  name,
+  label,
+  options,
+  optional = false,
+}: {
+  id: string;
+  name: string;
+  label: string;
+  options: readonly { value: string; label: string }[];
+  optional?: boolean;
+}) {
   return (
     <div className="identity-field">
       <label htmlFor={id}>{label}</label>
       <select id={id} name={name} required={!optional} defaultValue="">
         <option value="">{optional ? 'All active customers' : 'Choose'}</option>
-        {options.map((option) => <option key={option.value} value={option.value}>{option.label}</option>)}
+        {options.map((option) => (
+          <option key={option.value} value={option.value}>
+            {option.label}
+          </option>
+        ))}
       </select>
     </div>
   );
@@ -320,7 +468,8 @@ function Select({ id, name, label, options, optional = false }: { id: string; na
 function firstFailure(...results: Array<{ kind: string; detail?: string }>): string | undefined {
   const failure = results.find((result) => result.kind !== 'success');
   if (!failure) return undefined;
-  if (failure.kind === 'authentication_required') return 'Sign in and select an active organization.';
+  if (failure.kind === 'authentication_required')
+    return 'Sign in and select an active organization.';
   if (failure.kind === 'configuration_error') return 'The server API is not configured.';
   return failure.detail ?? 'The Campaign API could not load this workspace.';
 }

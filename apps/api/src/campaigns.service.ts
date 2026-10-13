@@ -371,7 +371,8 @@ export class CampaignsService {
     const id = uuidSchema.parse(campaignId);
     const validated = scheduleInputSchema.parse(input);
     const scheduledAt = new Date(validated.scheduledAt);
-    if (scheduledAt.getTime() <= Date.now()) throw new Error('Campaign schedule must be in the future');
+    if (scheduledAt.getTime() <= Date.now())
+      throw new Error('Campaign schedule must be in the future');
     return this.commands.execute(
       {
         action: 'campaigns.campaign.schedule',
@@ -481,7 +482,9 @@ export class CampaignsService {
           if (target === 'CANCELLED') {
             await sql`update campaigns.batches
               set state = 'CANCELLED', finished_at = now(), updated_at = now()
-              where campaign_id = ${id}::uuid and state in ('QUEUED','FAILED')`.execute(transaction);
+              where campaign_id = ${id}::uuid and state in ('QUEUED','FAILED')`.execute(
+              transaction,
+            );
             await sql`update campaigns.recipients
               set delivery_status = 'CANCELLED', updated_at = now()
               where campaign_id = ${id}::uuid and delivery_status in ('PENDING','FAILED')`.execute(
@@ -501,7 +504,9 @@ export class CampaignsService {
     idempotencyKey: string,
     campaignId: string,
     batchId: string,
-  ): Promise<CommandResult<{ campaignId: string; batchId: string; queued: number; skipped: number }>> {
+  ): Promise<
+    CommandResult<{ campaignId: string; batchId: string; queued: number; skipped: number }>
+  > {
     const id = uuidSchema.parse(campaignId);
     const batch = uuidSchema.parse(batchId);
     return this.commands.execute(
@@ -551,7 +556,9 @@ export class CampaignsService {
             state: string;
           }>`select first_recipient_ordinal, last_recipient_ordinal, state
              from campaigns.batches
-             where id = ${batch}::uuid and campaign_id = ${id}::uuid for update`.execute(transaction);
+             where id = ${batch}::uuid and campaign_id = ${id}::uuid for update`.execute(
+            transaction,
+          );
           const batchRow = batchResult.rows[0];
           if (!batchRow || !['QUEUED', 'FAILED'].includes(batchRow.state))
             throw new Error('Dispatchable campaign batch was not found');
@@ -629,7 +636,8 @@ export class CampaignsService {
                 set customer_id = excluded.customer_id, updated_at = now()
               returning id`.execute(transaction);
             const canonicalConversationId = conversation.rows[0]?.id;
-            if (!canonicalConversationId) throw new Error('Campaign conversation could not be created');
+            if (!canonicalConversationId)
+              throw new Error('Campaign conversation could not be created');
             const messageId = randomUUID();
             await sql`insert into messaging.messages (
                 id, tenant_id, connection_id, conversation_id, direction, sender_type, body,
@@ -704,7 +712,11 @@ export class CampaignsService {
             order by frozen_at, id limit 1`.execute(transaction);
           const recipientId = recipient.rows[0]?.id;
           if (!recipientId) throw new Error('Delivered campaign recipient was not found');
-          const order = await sql<{ customer_id: string | null; currency: string; total_minor: string }>`
+          const order = await sql<{
+            customer_id: string | null;
+            currency: string;
+            total_minor: string;
+          }>`
             select customer_id, currency, total_minor::text as total_minor from commerce.orders
             where id = ${validated.orderId}::uuid`.execute(transaction);
           const orderRow = order.rows[0];

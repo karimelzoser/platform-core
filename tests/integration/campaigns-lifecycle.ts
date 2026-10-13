@@ -95,7 +95,9 @@ async function main(): Promise<void> {
            'customer-request', now(), 'Integration lifecycle suppression')
         on conflict (tenant_id, customer_id, channel) do update
           set status = excluded.status, source = excluded.source, captured_at = excluded.captured_at,
-              reason = excluded.reason, suppressed_until = null, updated_at = now()`.execute(transaction);
+              reason = excluded.reason, suppressed_until = null, updated_at = now()`.execute(
+        transaction,
+      );
 
       await sql`insert into crm.communication_consent_evidence (
           tenant_id, customer_id, channel, webhook_delivery_id, provider_consent_id,
@@ -228,9 +230,9 @@ async function main(): Promise<void> {
       assert.equal(recipient.rows[0]?.delivery_status, 'SENT');
       assert.equal(campaign.rows[0]?.status, 'COMPLETED');
 
-      const store = await sql<{ id: string }>`select id from commerce.stores order by created_at limit 1`.execute(
-        transaction,
-      );
+      const store = await sql<{
+        id: string;
+      }>`select id from commerce.stores order by created_at limit 1`.execute(transaction);
       assert.ok(store.rows[0]?.id, 'Commerce lifecycle store is required for attribution evidence');
       await sql`insert into commerce.orders (
           id, tenant_id, store_id, customer_id, order_number, status, financial_status,

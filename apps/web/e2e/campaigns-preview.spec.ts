@@ -57,7 +57,10 @@ test.describe('Campaigns disposable development preview', () => {
       .filter({ hasText: `E2E campaign ${stamp}` });
     await expect(frozenCard).toContainText(/\d+ eligible/);
     await expect(frozenCard).toContainText(/\d+ suppressed/);
-    const eligibleText = await frozenCard.locator('.ds-badge').filter({ hasText: 'eligible' }).textContent();
+    const eligibleText = await frozenCard
+      .locator('.ds-badge')
+      .filter({ hasText: 'eligible' })
+      .textContent();
     const suppressedText = await frozenCard
       .locator('.ds-badge')
       .filter({ hasText: 'suppressed' })
