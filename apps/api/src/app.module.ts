@@ -21,6 +21,8 @@ import { ApprovalService } from './approval.service.js';
 import { ApprovalsController } from './approvals.controller.js';
 import { ApiDatabaseService } from './api-database.service.js';
 import { AuthenticatedContextService } from './authenticated-context.service.js';
+import { CampaignsController } from './campaigns.controller.js';
+import { CampaignsService } from './campaigns.service.js';
 import { CommerceController } from './commerce.controller.js';
 import { loadApiConfig } from './config.js';
 import { CustomersController } from './customers.controller.js';
@@ -94,6 +96,7 @@ function createRuntimeConnectorRegistry(): ConnectorRegistry {
     ReturnsController,
     RecoveryController,
     SalesController,
+    CampaignsController,
   ],
   providers: [
     ApiDatabaseService,
@@ -167,6 +170,12 @@ function createRuntimeConnectorRegistry(): ConnectorRegistry {
       provide: SalesService,
       useFactory: (database: ApiDatabaseService, commands: CommandExecutor) =>
         new SalesService(database.database, commands),
+      inject: [ApiDatabaseService, CommandExecutor],
+    },
+    {
+      provide: CampaignsService,
+      useFactory: (database: ApiDatabaseService, commands: CommandExecutor) =>
+        new CampaignsService(database.database, commands),
       inject: [ApiDatabaseService, CommandExecutor],
     },
     {
