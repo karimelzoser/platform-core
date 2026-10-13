@@ -23,11 +23,18 @@ test.describe('Shipping disposable development preview', () => {
     await expect(page.getByRole('link', { name: 'Routing intelligence' })).toBeVisible();
     await expect(page.getByText('DEV-PREVIEW-1001', { exact: true }).first()).toBeVisible();
     await expect(page.getByText('PREVIEW-1001', { exact: true }).first()).toBeVisible();
-    const shipmentRow = page.getByRole('link').filter({ hasText: 'DEV-PREVIEW-1001' });
-    await expect(shipmentRow).toContainText('EXCEPTION');
-    await shipmentRow.click();
 
-    await expect(page).toHaveURL(new RegExp(`/shipping/${previewShipmentId}$`));
+    const shipmentRow = page.locator(`a[href="/shipping/${previewShipmentId}"]`);
+    await expect(shipmentRow).toHaveCount(1);
+    await expect(shipmentRow).toContainText('DEV-PREVIEW-1001');
+    await expect(shipmentRow).toContainText('EXCEPTION');
+    await Promise.all([
+      page.waitForURL(new RegExp(`/shipping/${previewShipmentId}$`), {
+        waitUntil: 'domcontentloaded',
+      }),
+      shipmentRow.click(),
+    ]);
+
     await expect(
       page.getByRole('heading', { name: 'DEV-PREVIEW-1001', exact: true }),
     ).toBeVisible();
