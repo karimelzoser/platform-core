@@ -1,4 +1,4 @@
-name: Campaign format artifact
+name: Campaign format helper
 
 on:
   push:
@@ -6,7 +6,7 @@ on:
       - codex/campaigns-production-closure-20261013-v2
 
 permissions:
-  contents: read
+  contents: write
 
 jobs:
   format:
@@ -29,14 +29,19 @@ jobs:
           apps/web/app/campaigns/page.tsx
           apps/web/e2e/campaigns-preview.spec.ts
           tests/integration/campaigns-lifecycle.ts
-      - name: Upload formatted Campaign closure
-        uses: actions/upload-artifact@v4
-        with:
-          name: campaign-formatted-${{ github.sha }}
-          path: |
-            apps/api/src/campaigns.controller.ts
-            apps/api/src/campaigns.service.ts
-            apps/web/app/campaigns/page.tsx
-            apps/web/e2e/campaigns-preview.spec.ts
+      - name: Commit formatter output when needed
+        run: |
+          if git diff --quiet; then
+            echo 'Campaign closure files already match canonical Prettier output.'
+            exit 0
+          fi
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add \
+            apps/api/src/campaigns.controller.ts \
+            apps/api/src/campaigns.service.ts \
+            apps/web/app/campaigns/page.tsx \
+            apps/web/e2e/campaigns-preview.spec.ts \
             tests/integration/campaigns-lifecycle.ts
-          if-no-files-found: error
+          git commit -m 'style: format Campaigns closure'
+          git push origin HEAD:codex/campaigns-production-closure-20261013-v2
