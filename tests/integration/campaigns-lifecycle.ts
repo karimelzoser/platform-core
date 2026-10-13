@@ -268,10 +268,11 @@ async function main(): Promise<void> {
 
     const dashboardA = await campaigns.dashboard(contextA);
     const campaignA = dashboardA.items.find((item) => item.id === created.result.campaignId);
-    assert.equal(campaignA?.status, 'COMPLETED');
-    assert.equal(campaignA?.connectionId, connectionA);
-    assert.equal(campaignA?.metrics.conversions, 1);
-    assert.equal(campaignA?.metrics.conversionValueMinor, '75000');
+    assert.ok(campaignA, 'Campaign was not present in tenant dashboard');
+    assert.equal(campaignA.status, 'COMPLETED');
+    assert.equal(campaignA.connectionId, connectionA);
+    assert.equal(campaignA.metrics.conversions, 1);
+    assert.equal(campaignA.metrics.conversionValueMinor, '75000');
 
     const dashboardB = await campaigns.dashboard(contextB);
     assert.equal(
