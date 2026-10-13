@@ -74,7 +74,7 @@ test.describe('Sales disposable development preview', () => {
       .locator('form')
       .first()
       .getByLabel('Pipeline / initial stage')
-      .selectOption({ label: /Qualified/ });
+      .selectOption({ label: `E2E pipeline ${stamp} · Qualified · 25%` });
     await opportunityCard
       .locator('form')
       .first()
@@ -94,7 +94,7 @@ test.describe('Sales disposable development preview', () => {
       .first()
       .inputValue();
     await opportunityRow.getByText('Update', { exact: true }).click();
-    await opportunityRow.getByLabel('Open stage').selectOption({ label: /Proposal/ });
+    await opportunityRow.getByLabel('Open stage').selectOption({ label: 'Proposal · 60%' });
     await opportunityRow.getByLabel('Reason').fill('Proposal submitted');
     await opportunityRow.getByRole('button', { name: 'Move stage' }).click();
     await expect(page.getByRole('status')).toHaveText('Opportunity stage updated.');
