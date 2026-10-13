@@ -143,7 +143,9 @@ function monitorBrowserErrors(page: Page, errors: string[]) {
 function surfaceCardByHeading(page: Page, heading: string) {
   return page
     .getByRole('heading', { name: heading, exact: true })
-    .locator('xpath=ancestor::section[contains(concat(" ", normalize-space(@class), " "), " ds-card ")][1]');
+    .locator(
+      'xpath=ancestor::section[contains(concat(" ", normalize-space(@class), " "), " ds-card ")][1]',
+    );
 }
 
 async function login(page: Page) {
