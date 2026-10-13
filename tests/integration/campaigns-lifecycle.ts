@@ -86,6 +86,16 @@ async function main(): Promise<void> {
            'WHATSAPP', '+201000000012', '+201000000012', true, true, 'ACTIVE')
         on conflict (id) do update set status = 'ACTIVE', updated_at = now()`.execute(transaction);
 
+      // The opt-in transition is deliberately evidence-first. The database trigger
+      // rejects OPTED_IN unless verified provider-webhook evidence already exists.
+      await sql`insert into crm.communication_consent_evidence (
+          tenant_id, customer_id, channel, webhook_delivery_id, provider_consent_id,
+          occurred_at, metadata
+        ) values (
+          ${tenantA}::uuid, ${customerEligible}::uuid, 'WHATSAPP', ${webhookEvidenceA}::uuid,
+          'campaign-lifecycle-consent-a', now(), '{"verified":true}'::jsonb
+        ) on conflict (webhook_delivery_id) do nothing`.execute(transaction);
+
       await sql`insert into crm.communication_preferences (
           tenant_id, customer_id, channel, status, source, captured_at, reason
         ) values
@@ -98,14 +108,6 @@ async function main(): Promise<void> {
               reason = excluded.reason, suppressed_until = null, updated_at = now()`.execute(
         transaction,
       );
-
-      await sql`insert into crm.communication_consent_evidence (
-          tenant_id, customer_id, channel, webhook_delivery_id, provider_consent_id,
-          occurred_at, metadata
-        ) values (
-          ${tenantA}::uuid, ${customerEligible}::uuid, 'WHATSAPP', ${webhookEvidenceA}::uuid,
-          'campaign-lifecycle-consent-a', now(), '{"verified":true}'::jsonb
-        ) on conflict (webhook_delivery_id) do nothing`.execute(transaction);
     });
 
     const opaUrl = process.env.OPA_URL;
@@ -302,10 +304,10 @@ async function main(): Promise<void> {
             where campaign_id = ${created.result.campaignId}::uuid
           )`.execute(transaction),
       ]);
-      assert.ok(Number(audit.rows[0]?.count ?? '0') >= 5);
-      assert.ok(Number(outbox.rows[0]?.count ?? '0') >= 5);
-      assert.ok(Number(timeline.rows[0]?.count ?? '0') >= 5);
-      assert.equal(Number(duplicateMessages.rows[0]?.count ?? '0'), dispatched.result.queued);
+      assert.ok(Number(audit.rows[0].count) >= 5);
+      assert.ok(Number(outbox.rows[0].count) >= 5);
+      assert.ok(Number(timeline.rows[0].count) >= 5);
+      assert.equal(Number(duplicateMessages.rows[0].count), dispatched.result.queued);
     });
   } finally {
     await databaseService.onModuleDestroy();
