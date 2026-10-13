@@ -42,7 +42,7 @@ INSERT INTO sales.pipeline_stages (
   'Lost', 3, 0, 'LOST'
 );
 INSERT INTO sales.leads (
-  id, tenant_id, customer_id, source, status, score, grade,
+  id, tenant_id, customer_id, source, status, score, qualification_grade,
   qualified_at, qualification_notes, created_by_user_id
 ) VALUES (
   'aaaaaaaa-0000-0000-0000-000000000806',
