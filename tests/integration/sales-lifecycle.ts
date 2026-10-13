@@ -100,7 +100,7 @@ async function main(): Promise<void> {
     assert.equal(qualified.result.status, 'QUALIFIED');
     assert.equal(qualified.result.score, 88);
 
-    const opportunity = await sales.createOpportunity(contextA, 'sales-opportunity-a', {
+    const opportunityInput = {
       customerId: customerA,
       leadId: lead.result.leadId,
       pipelineId: pipeline.result.pipelineId,
@@ -109,12 +109,44 @@ async function main(): Promise<void> {
       currencyCode: 'EGP',
       expectedValueMinor: 7500000,
       expectedCloseDate: '2026-12-15',
-    });
+    } as const;
+    const opportunity = await sales.createOpportunity(
+      contextA,
+      'sales-opportunity-a',
+      opportunityInput,
+    );
+    const opportunityReplay = await sales.createOpportunity(
+      contextA,
+      'sales-opportunity-a',
+      opportunityInput,
+    );
+    assert.equal(opportunityReplay.replayed, true);
+    assert.equal(opportunityReplay.result.opportunityId, opportunity.result.opportunityId);
+
     const dashboardAfterConversion = await sales.dashboard(contextA);
     const convertedLead = dashboardAfterConversion.leads.find(
       (item) => item.id === lead.result.leadId,
     );
     assert.equal(convertedLead?.status, 'CONVERTED');
+
+    await assert.rejects(
+      sales.createOpportunity(contextA, 'sales-opportunity-duplicate-conversion', {
+        ...opportunityInput,
+        name: 'Duplicate lead conversion must fail',
+      }),
+    );
+    await withTenantTransaction(database, contextA, async (transaction) => {
+      const convertedOpportunityCount = await sql<{ count: string }>`
+        select count(*)::text as count
+        from sales.opportunities
+        where lead_id = ${lead.result.leadId}::uuid
+      `.execute(transaction);
+      assert.equal(
+        convertedOpportunityCount.rows[0]?.count,
+        '1',
+        'A qualified lead must produce at most one opportunity',
+      );
+    });
 
     const moved = await sales.moveOpportunity(
       contextA,
