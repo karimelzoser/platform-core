@@ -1,15 +1,14 @@
 # Production Readiness Matrix
 
-This matrix distinguishes repository implementation from deployment and final production acceptance. A green branch or preview is evidence for its own gate only.
+This matrix separates repository implementation from deployment and final production acceptance. A green branch or preview is evidence only for its own gate.
 
 **Overall release state:** IN PROGRESS
 
-**Reviewed `main`:** `86facdbfe89b69d6859cabed9c670f9471bdf62a` — all seven jobs passed CI #546.
+**Reviewed `main`:** `9c1dfd7d51d8e21f5ab5209c5a413b81105cdf4f` — merged Recovery production closure; Continuous Integration #551 (`38153985259`) green.
 
-**Verified development preview:** deployment `451a935c-7ee7-4519-83ed-0907917801f2`,
-matching `/health` SHA, real Keycloak login/public redirects and protected reads.
+**Current product workstream:** Sales (`codex/sales-production-closure-20261012`).
 
-**Current product workstream:** Recovery
+**Requested Render preview:** EXTERNAL/BLOCKED — isolated Postgres creation in the connected Render workspace currently requires payment information. No Render URL is claimed until a real deployment exists.
 
 ## Status vocabulary
 
@@ -17,39 +16,39 @@ matching `/health` SHA, real Keycloak login/public redirects and protected reads
 - **FOUNDATION** — reusable substrate exists; production closure remains.
 - **IN PROGRESS** — active implementation/verification remains.
 - **NOT STARTED** — no release-acceptable closure yet.
-- **EXTERNAL** — real credential/certification/commercial/legal/deployment input is required and cannot be fabricated.
+- **EXTERNAL** — credential/certification/commercial/legal/hosting/deployment input is required and cannot be fabricated.
 
 ## Core platform
 
-| Capability                           | Repository state | Deployment/production boundary                                                           |
-| ------------------------------------ | ---------------- | ---------------------------------------------------------------------------------------- |
-| PostgreSQL / migrations / tenant RLS | FOUNDATION       | Previous-release upgrade, backup/restore/PITR and production capacity evidence remain    |
-| RBAC / OPA / approvals               | FOUNDATION       | Product-wide adversarial authorization and privileged admin closure remain               |
-| Idempotency / audit / outbox         | FOUNDATION       | Operational remediation, concurrency and ambiguous-provider closure remain               |
-| Temporal                             | FOUNDATION       | Real business workflow/activity workers and complete retry/cancel/replay evidence remain |
-| Usage / metering source ledger       | FOUNDATION       | Commercial plans/quotas/invoicing/enforcement remain                                     |
-| Observability contracts              | FOUNDATION       | Real dashboards/alerts/SLO ownership/runbooks remain                                     |
-| Shared design system                 | FOUNDATION       | Complete product adoption, translation and accessibility remain                          |
-| Dependency / image security          | FOUNDATION       | Main CI #546 audit/image gates pass; every later candidate must repeat them              |
+| Capability                           | Repository state | Deployment/production boundary                                                                      |
+| ------------------------------------ | ---------------- | --------------------------------------------------------------------------------------------------- |
+| PostgreSQL / migrations / tenant RLS | FOUNDATION       | previous-release upgrade, backup/restore/PITR and capacity evidence remain                          |
+| RBAC / OPA / approvals               | FOUNDATION       | product-wide adversarial authorization and privileged admin closure remain                          |
+| Idempotency / audit / outbox         | FOUNDATION       | operational remediation, concurrency and ambiguous-provider closure remain                          |
+| Temporal                             | FOUNDATION       | selected Recovery orchestration exists; complete business workflow family/replay/versioning remains |
+| Usage / metering source ledger       | FOUNDATION       | commercial plans/quotas/invoicing/enforcement remain                                                |
+| Observability contracts              | FOUNDATION       | production dashboards/alerts/SLO ownership/runbooks remain                                          |
+| Shared design system                 | FOUNDATION       | complete product adoption, translation and accessibility remain                                     |
+| Dependency / image security          | FOUNDATION       | every release candidate must repeat mandatory dependency/image gates                                |
 
 ## Business capabilities
 
-| Capability                        | Repository state         | Remaining boundary                                                                                                     |
-| --------------------------------- | ------------------------ | ---------------------------------------------------------------------------------------------------------------------- |
-| CRM / Customer 360                | FOUNDATION               | Final maintenance/identity-resolution/search/bulk/UX/governance closure                                                |
-| Inbox / Messaging / Tickets / SLA | FOUNDATION               | Real provider channels, final support/SLA behavior and dedicated browser closure                                       |
-| Commerce / Orders                 | COMPLETE repository gate | Real Shopify/WooCommerce/payment/provider execution and commercial edge cases                                          |
-| Shipping                          | COMPLETE repository gate | Real carriers/labels/tracking/address data and durable production workflow closure                                     |
-| Identity / Team / Organization    | COMPLETE repository gate | Production browser session/MFA/invitation-delivery and product-wide identity UX                                        |
-| Self-service onboarding           | COMPLETE repository gate | Config compiler/simulation, final AR copy and production acquisition-to-activation journey                             |
-| Returns / Exchanges / Refunds     | COMPLETE repository gate | Real payment/provider transports and actual durable Temporal orchestration                                             |
-| Recovery                          | IN PROGRESS — CURRENT    | CI #549 verifies branch migrations/RLS/lifecycles/expiry; browser repair and remaining delivery/attribution gates open |
-| Sales                             | NOT STARTED              | After Recovery                                                                                                         |
-| Campaigns                         | NOT STARTED              | After Sales                                                                                                            |
+| Capability                        | Repository state         | Remaining boundary                                                                                  |
+| --------------------------------- | ------------------------ | --------------------------------------------------------------------------------------------------- |
+| CRM / Customer 360                | FOUNDATION               | final maintenance/identity-resolution/search/bulk/UX/governance closure                             |
+| Inbox / Messaging / Tickets / SLA | FOUNDATION               | real channels, final support/SLA behavior and dedicated browser closure                             |
+| Commerce / Orders                 | COMPLETE repository gate | real Shopify/WooCommerce/payment/provider execution and commercial edge cases                       |
+| Shipping                          | COMPLETE repository gate | real carriers/labels/tracking/address data and complete durable workflows                           |
+| Identity / Team / Organization    | COMPLETE repository gate | production browser session/MFA/invitation-delivery and product-wide identity UX                     |
+| Self-service onboarding           | COMPLETE repository gate | config compiler/simulation, final AR copy and production activation journey                         |
+| Returns / Exchanges / Refunds     | COMPLETE repository gate | real payment/provider transports and complete durable orchestration                                 |
+| Recovery                          | COMPLETE repository gate | real delivery/provider staging, cross-product analytics/ROI and release-wide hardening              |
+| Sales                             | IN PROGRESS — CURRENT    | exact-head CI/security/browser review and merge; real downstream provider/AI/analytics remain later |
+| Campaigns                         | NOT STARTED              | after Sales                                                                                         |
 
 ## Orchestration and configuration
 
-- **Business Temporal closure — FOUNDATION / IN PROGRESS later:** infrastructure exists; real workflows do not yet satisfy release acceptance.
+- **Business Temporal closure — FOUNDATION:** infrastructure + selected Recovery workflow evidence exist; complete business workflow family remains.
 - **Automation Studio — NOT STARTED.**
 - **Configuration compiler — NOT STARTED.**
 - **Configuration simulation — NOT STARTED.**
@@ -57,8 +56,8 @@ matching `/health` SHA, real Keycloak login/public redirects and protected reads
 ## Integrations
 
 - **Connector/webhook/sync/provider-action infrastructure — FOUNDATION.**
-- **Development fixtures — IMPLEMENTED for deterministic CI only; never production evidence.**
-- **Protected secret resolver/storage/rotation — NOT COMPLETE.**
+- **Development fixtures — deterministic CI only; never production evidence.**
+- **Protected production secret resolver/storage/rotation — NOT COMPLETE.**
 - **Production Meta / WhatsApp / Instagram / Messenger / Email / Web Chat / API transports — NOT COMPLETE.**
 - **Production Shopify / WooCommerce — NOT COMPLETE.**
 - **Launch carriers / payment providers — EXTERNAL selection/credentials plus implementation/staging proof required.**
@@ -84,11 +83,8 @@ matching `/health` SHA, real Keycloak login/public redirects and protected reads
 
 - **English / Arabic UX — FOUNDATION:** complete translation/localization/bidi/responsive/a11y/error-state closure remains.
 - **Production browser authentication — INCOMPLETE:** authorization-code/PKCE, refresh/expiry/logout, CSRF/origin, MFA enrollment/recovery and invitation delivery remain.
-- **Adversarial application security — FOUNDATION:** formal BOLA/IDOR, approval concurrency, webhook forgery/replay, SSRF/injection/upload/API-key, AI-tool/prompt/RAG/admin misuse closure remains.
-- **Development Railway preview — VERIFIED development checkpoint:** deployment
-  `166cb1d9-c864-4371-8a95-1f11b5601827` runs main `a99053e`; the public
-  health endpoint returned 200 with matching full SHA and development environment.
-  This is not production acceptance.
+- **Adversarial application security — FOUNDATION:** formal BOLA/IDOR, approval concurrency, webhook replay/forgery, SSRF/injection/upload/API-key, AI-tool/prompt/RAG/admin misuse closure remains.
+- **Render development preview — EXTERNAL/BLOCKED:** connected workspace is available, but creating the requested isolated Postgres currently returns `402 Payment information is required`; no deployment is claimed.
 - **Production observability — FOUNDATION.**
 - **Performance / SLO / capacity — NOT STARTED as release benchmark.**
 - **Backup / restore / rollback — NOT STARTED as release drill.**
@@ -97,12 +93,11 @@ matching `/health` SHA, real Keycloak login/public redirects and protected reads
 
 ## Exact repository evidence
 
-- Identity merged main baseline: `63bdb1bf5127684f2d15fb2a4dc05157af724617`.
+- Identity merged baseline: `63bdb1bf5127684f2d15fb2a4dc05157af724617`.
 - Onboarding merged baseline: `9728098275ff42cf7397ea153a6b5a5026bf1a66`; main CI #505 green.
-- Returns PR #12 exact head: `17a05bf3fc9ceba8b8b6304202bfd922459d897b`; CI #527 green.
-- Current main after Returns: `01b48010b749bc780bfbd21afb464e91553b26d5`; CI #528 green.
-- Security/preview baseline: `a99053e9cc207546b23fd887e6f4e8eb60530f76`;
-  CI #536 passed all seven jobs including dependency/image scans.
+- Returns merged baseline: `01b48010b749bc780bfbd21afb464e91553b26d5`; main CI #528 green.
+- Recovery merged baseline/current reviewed main: `9c1dfd7d51d8e21f5ab5209c5a413b81105cdf4f`; main CI #551 (`38153985259`) green.
+- Sales active branch: `codex/sales-production-closure-20261012`; exact-head CI evidence pending.
 
 ## Release blockers
 
@@ -110,7 +105,7 @@ PRENEURA is not production-ready while any of these remain true:
 
 1. a mandatory product workstream is open;
 2. an advertised provider exists only as a fixture;
-3. actual long-running business paths lack executed Temporal workflow/activity evidence;
+3. required long-running paths lack complete Temporal workflow/activity evidence;
 4. production browser authentication/session/MFA flows are incomplete;
 5. AI tools/providers/operators lack typed authorization/evaluation gates;
 6. EN/AR responsive/a11y release journeys are incomplete;
