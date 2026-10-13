@@ -53,23 +53,8 @@ INSERT INTO crm.contact_points (
 ON CONFLICT (id) DO UPDATE
 SET status = 'ACTIVE', is_verified = true, verified_at = now(), updated_at = now();
 
-INSERT INTO crm.communication_preferences (
-  tenant_id, customer_id, channel, status, source, captured_at, reason
-) VALUES
-  (
-    'cccccccc-cccc-cccc-cccc-cccccccccccc',
-    'cccccccc-0000-0000-0000-000000000802',
-    'WHATSAPP', 'OPTED_IN', 'preview-verified-webhook', now(), 'Preview verified consent'
-  ),
-  (
-    'cccccccc-cccc-cccc-cccc-cccccccccccc',
-    'cccccccc-0000-0000-0000-000000000803',
-    'WHATSAPP', 'OPTED_OUT', 'preview-customer-request', now(), 'Preview suppression'
-  )
-ON CONFLICT (tenant_id, customer_id, channel) DO UPDATE
-SET status = EXCLUDED.status, source = EXCLUDED.source, captured_at = EXCLUDED.captured_at,
-    reason = EXCLUDED.reason, suppressed_until = null, updated_at = now();
-
+-- Verified provider evidence must exist before the customer preference can move
+-- to OPTED_IN. The database trigger intentionally enforces this ordering.
 INSERT INTO integrations.webhook_deliveries (
   id, tenant_id, connection_id, provider_delivery_id, event_type,
   signature_valid, replay_valid, headers, payload, dedupe_key, state, processed_at
@@ -95,6 +80,23 @@ INSERT INTO crm.communication_consent_evidence (
   'preview-campaign-consent-001', now(), '{"previewOnly":true}'::jsonb
 )
 ON CONFLICT (webhook_delivery_id) DO NOTHING;
+
+INSERT INTO crm.communication_preferences (
+  tenant_id, customer_id, channel, status, source, captured_at, reason
+) VALUES
+  (
+    'cccccccc-cccc-cccc-cccc-cccccccccccc',
+    'cccccccc-0000-0000-0000-000000000802',
+    'WHATSAPP', 'OPTED_IN', 'preview-verified-webhook', now(), 'Preview verified consent'
+  ),
+  (
+    'cccccccc-cccc-cccc-cccc-cccccccccccc',
+    'cccccccc-0000-0000-0000-000000000803',
+    'WHATSAPP', 'OPTED_OUT', 'preview-customer-request', now(), 'Preview suppression'
+  )
+ON CONFLICT (tenant_id, customer_id, channel) DO UPDATE
+SET status = EXCLUDED.status, source = EXCLUDED.source, captured_at = EXCLUDED.captured_at,
+    reason = EXCLUDED.reason, suppressed_until = null, updated_at = now();
 
 COMMIT;
 SQL
