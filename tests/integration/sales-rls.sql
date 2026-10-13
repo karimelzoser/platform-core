@@ -1,4 +1,5 @@
--- Sales tenant isolation, relationship guards, terminal-state and append-only evidence.
+-- Sales tenant isolation, relationship guards, conversion invariants,
+-- terminal-state and append-only evidence.
 
 BEGIN;
 SELECT platform.set_request_context(
@@ -41,12 +42,14 @@ INSERT INTO sales.pipeline_stages (
   'Lost', 3, 0, 'LOST'
 );
 INSERT INTO sales.leads (
-  id, tenant_id, customer_id, source, created_by_user_id
+  id, tenant_id, customer_id, source, status, score, grade,
+  qualified_at, qualification_notes, created_by_user_id
 ) VALUES (
   'aaaaaaaa-0000-0000-0000-000000000806',
   'aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa',
   'aaaaaaaa-0000-0000-0000-000000000801',
-  'rls-test',
+  'rls-test', 'QUALIFIED', 80, 'HOT',
+  now(), 'Qualified fixture for opportunity conversion guard',
   '11111111-1111-1111-1111-111111111111'
 );
 INSERT INTO sales.opportunities (
@@ -73,6 +76,8 @@ INSERT INTO sales.opportunity_stage_history (
 );
 
 DO $$
+DECLARE
+  new_lead_id uuid := 'aaaaaaaa-0000-0000-0000-000000000808';
 BEGIN
   BEGIN
     INSERT INTO sales.opportunities (
@@ -96,6 +101,51 @@ BEGIN
     RAISE EXCEPTION 'Append-only sales stage history was mutable';
   EXCEPTION WHEN OTHERS THEN
     IF SQLERRM = 'Append-only sales stage history was mutable' THEN RAISE; END IF;
+  END;
+
+  INSERT INTO sales.leads (
+    id, tenant_id, customer_id, source, created_by_user_id
+  ) VALUES (
+    new_lead_id,
+    'aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa',
+    'aaaaaaaa-0000-0000-0000-000000000801',
+    'rls-new-lead-test',
+    '11111111-1111-1111-1111-111111111111'
+  );
+
+  BEGIN
+    INSERT INTO sales.opportunities (
+      tenant_id, customer_id, lead_id, pipeline_id, stage_id, name,
+      currency_code, expected_value_minor, probability_bps
+    ) VALUES (
+      'aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa',
+      'aaaaaaaa-0000-0000-0000-000000000801',
+      new_lead_id,
+      'aaaaaaaa-0000-0000-0000-000000000802',
+      'aaaaaaaa-0000-0000-0000-000000000803',
+      'Unqualified lead conversion', 'EGP', 1, 2500
+    );
+    RAISE EXCEPTION 'NEW sales lead was converted to an opportunity';
+  EXCEPTION WHEN OTHERS THEN
+    IF SQLERRM = 'NEW sales lead was converted to an opportunity' THEN RAISE; END IF;
+    IF SQLERRM NOT LIKE '%requires a QUALIFIED lead%' THEN RAISE; END IF;
+  END;
+
+  BEGIN
+    INSERT INTO sales.opportunities (
+      tenant_id, customer_id, lead_id, pipeline_id, stage_id, name,
+      currency_code, expected_value_minor, probability_bps
+    ) VALUES (
+      'aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa',
+      'aaaaaaaa-0000-0000-0000-000000000801',
+      'aaaaaaaa-0000-0000-0000-000000000806',
+      'aaaaaaaa-0000-0000-0000-000000000802',
+      'aaaaaaaa-0000-0000-0000-000000000803',
+      'Duplicate qualified lead conversion', 'EGP', 1, 2500
+    );
+    RAISE EXCEPTION 'Qualified sales lead was converted more than once';
+  EXCEPTION WHEN unique_violation THEN
+    NULL;
   END;
 END;
 $$;
