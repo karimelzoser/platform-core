@@ -30,13 +30,13 @@ test.describe('Sales disposable development preview', () => {
     const pipelineCard = surfaceCardByHeading(page, 'Create a configurable pipeline');
     await pipelineCard.getByLabel('Pipeline name').fill(`E2E pipeline ${stamp}`);
     await pipelineCard.getByRole('button', { name: 'Create pipeline' }).click();
-    await expect(page.getByRole('status')).toHaveText('Sales pipeline created.');
+    await expect(salesNotice(page)).toHaveText('Sales pipeline created.');
 
     const leadsCard = surfaceCardByHeading(page, 'Qualify CRM customers');
     await leadsCard.getByLabel('CRM customer ID').fill(customerId);
     await leadsCard.getByLabel('Lead source').fill('browser-e2e');
     await leadsCard.getByRole('button', { name: 'Create lead' }).click();
-    await expect(page.getByRole('status')).toHaveText('Sales lead created from the CRM customer.');
+    await expect(salesNotice(page)).toHaveText('Sales lead created from the CRM customer.');
 
     const leadCard = page
       .locator('.identity-member-card')
@@ -51,7 +51,7 @@ test.describe('Sales disposable development preview', () => {
       .getByLabel('Qualification notes')
       .fill('Budget and timing confirmed in browser acceptance.');
     await leadCard.getByRole('button', { name: 'Update qualification' }).click();
-    await expect(page.getByRole('status')).toHaveText('Lead qualification updated.');
+    await expect(salesNotice(page)).toHaveText('Lead qualification updated.');
 
     const opportunityCard = surfaceCardByHeading(page, 'Commercial pipeline');
     const opportunityForm = opportunityCard.locator('form').first();
@@ -63,7 +63,7 @@ test.describe('Sales disposable development preview', () => {
       .selectOption({ label: `E2E pipeline ${stamp} · Qualified · 25%` });
     await opportunityForm.getByLabel('Expected value (minor units)').fill('2500000');
     await opportunityForm.getByRole('button', { name: 'Create opportunity' }).click();
-    await expect(page.getByRole('status')).toHaveText('Sales opportunity created.');
+    await expect(salesNotice(page)).toHaveText('Sales opportunity created.');
 
     const opportunityRow = page.getByRole('row').filter({ hasText: `E2E opportunity ${stamp}` });
     await expect(opportunityRow).toContainText('Qualified');
@@ -75,7 +75,7 @@ test.describe('Sales disposable development preview', () => {
     await opportunityRow.getByLabel('Open stage').selectOption({ label: 'Proposal · 60%' });
     await opportunityRow.getByLabel('Reason').fill('Proposal submitted');
     await opportunityRow.getByRole('button', { name: 'Move stage' }).click();
-    await expect(page.getByRole('status')).toHaveText('Opportunity stage updated.');
+    await expect(salesNotice(page)).toHaveText('Opportunity stage updated.');
     await expect(
       page.getByRole('row').filter({ hasText: `E2E opportunity ${stamp}` }),
     ).toContainText('Proposal');
@@ -87,13 +87,13 @@ test.describe('Sales disposable development preview', () => {
     await activityForm.getByLabel('Type').selectOption('TASK');
     await activityForm.getByLabel('Subject').fill(`Proposal follow-up ${stamp}`);
     await activityForm.getByRole('button', { name: 'Add activity' }).click();
-    await expect(page.getByRole('status')).toHaveText('Sales activity created.');
+    await expect(salesNotice(page)).toHaveText('Sales activity created.');
 
     const activityCard = page
       .locator('.identity-member-card')
       .filter({ hasText: `Proposal follow-up ${stamp}` });
     await activityCard.getByRole('button', { name: 'Mark complete' }).click();
-    await expect(page.getByRole('status')).toHaveText('Sales activity completed.');
+    await expect(salesNotice(page)).toHaveText('Sales activity completed.');
     await expect(
       page.locator('.identity-member-card').filter({ hasText: `Proposal follow-up ${stamp}` }),
     ).toContainText('DONE');
@@ -102,7 +102,7 @@ test.describe('Sales disposable development preview', () => {
     await finalRow.getByText('Update', { exact: true }).click();
     await finalRow.getByLabel('Loss reason').fill('Browser acceptance closure');
     await finalRow.getByRole('button', { name: 'Mark lost' }).click();
-    await expect(page.getByRole('status')).toHaveText('Opportunity marked lost.');
+    await expect(salesNotice(page)).toHaveText('Opportunity marked lost.');
     await expect(
       page.getByRole('row').filter({ hasText: `E2E opportunity ${stamp}` }),
     ).toContainText('LOST');
@@ -146,6 +146,10 @@ function surfaceCardByHeading(page: Page, heading: string) {
     .locator(
       'xpath=ancestor::section[contains(concat(" ", normalize-space(@class), " "), " ds-card ")][1]',
     );
+}
+
+function salesNotice(page: Page) {
+  return page.locator('.identity-notice[role="status"]');
 }
 
 async function login(page: Page) {
