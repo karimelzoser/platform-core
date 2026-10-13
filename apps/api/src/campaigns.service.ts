@@ -13,6 +13,7 @@ const campaignInputSchema = z.object({
   name: z.string().trim().min(1).max(200),
   description: z.string().trim().max(4000).optional(),
   channel: channelSchema,
+  connectionId: uuidSchema,
   segmentId: uuidSchema.optional(),
   templateId: uuidSchema,
   timezone: z.string().trim().min(1).max(100).default('UTC'),
@@ -39,8 +40,10 @@ interface CampaignRow {
   name: string;
   description: string | null;
   channel: z.infer<typeof channelSchema>;
+  connection_id: string;
+  connection_name: string;
   segment_id: string | null;
-  template_id: string | null;
+  template_id: string;
   status: string;
   timezone: string;
   send_window_start_minute: number;
@@ -63,12 +66,17 @@ export class CampaignsService {
   public async dashboard(context: TenantRequestContext) {
     return withTenantTransaction(this.database, context, async (transaction) => {
       const campaigns = await sql<CampaignRow>`
-        select id, name, description, channel, segment_id, template_id, status, timezone,
-               send_window_start_minute, send_window_end_minute, batch_size,
-               scheduled_at, started_at, completed_at, temporal_workflow_id,
-               attribution_window_hours, updated_at
-        from campaigns.campaigns
-        order by created_at desc, id
+        select campaign.id, campaign.name, campaign.description, campaign.channel,
+               campaign.connection_id, connection.display_name as connection_name,
+               campaign.segment_id, campaign.template_id, campaign.status, campaign.timezone,
+               campaign.send_window_start_minute, campaign.send_window_end_minute,
+               campaign.batch_size, campaign.scheduled_at, campaign.started_at,
+               campaign.completed_at, campaign.temporal_workflow_id,
+               campaign.attribution_window_hours, campaign.updated_at
+        from campaigns.campaigns campaign
+        join integrations.connections connection
+          on connection.tenant_id = campaign.tenant_id and connection.id = campaign.connection_id
+        order by campaign.created_at desc, campaign.id
         limit 200
       `.execute(transaction);
       const metrics = await sql<{
@@ -113,6 +121,8 @@ export class CampaignsService {
             name: campaign.name,
             description: campaign.description,
             channel: campaign.channel,
+            connectionId: campaign.connection_id,
+            connectionName: campaign.connection_name,
             segmentId: campaign.segment_id,
             templateId: campaign.template_id,
             status: campaign.status,
@@ -168,6 +178,14 @@ export class CampaignsService {
         },
         audit: { afterState: () => ({ campaignId, ...validated }) },
         execute: async (transaction) => {
+          const connection = await sql<{ id: string }>`
+            select id from integrations.connections
+            where id = ${validated.connectionId}::uuid
+              and status in ('CONNECTED','DEGRADED')
+              and capabilities ? 'messaging.outbound'
+          `.execute(transaction);
+          if (!connection.rows[0])
+            throw new Error('Connected outbound messaging integration was not found');
           if (validated.segmentId) {
             const segment = await sql<{ id: string }>`select id from crm.segments
               where id = ${validated.segmentId}::uuid and status = 'ACTIVE'`.execute(transaction);
@@ -182,12 +200,12 @@ export class CampaignsService {
           if (templateRow.channel && templateRow.channel !== validated.channel)
             throw new Error('Campaign channel must match the message template channel');
           await sql`insert into campaigns.campaigns (
-              id, tenant_id, name, description, channel, segment_id, template_id,
+              id, tenant_id, name, description, channel, connection_id, segment_id, template_id,
               timezone, send_window_start_minute, send_window_end_minute, batch_size,
               attribution_window_hours, created_by_user_id
             ) values (
               ${campaignId}::uuid, ${context.tenantId}::uuid, ${validated.name},
-              ${validated.description ?? null}, ${validated.channel},
+              ${validated.description ?? null}, ${validated.channel}, ${validated.connectionId}::uuid,
               ${validated.segmentId ?? null}::uuid, ${validated.templateId}::uuid,
               ${validated.timezone}, ${validated.sendWindowStartMinute},
               ${validated.sendWindowEndMinute}, ${validated.batchSize},
@@ -195,6 +213,7 @@ export class CampaignsService {
             )`.execute(transaction);
           await this.timeline(transaction, context, campaignId, 'campaign.created', {
             channel: validated.channel,
+            connectionId: validated.connectionId,
           });
           return { campaignId };
         },
@@ -207,7 +226,15 @@ export class CampaignsService {
     context: TenantRequestContext,
     idempotencyKey: string,
     campaignId: string,
-  ): Promise<CommandResult<{ campaignId: string; total: number; eligible: number; suppressed: number; batches: number }>> {
+  ): Promise<
+    CommandResult<{
+      campaignId: string;
+      total: number;
+      eligible: number;
+      suppressed: number;
+      batches: number;
+    }>
+  > {
     const id = uuidSchema.parse(campaignId);
     return this.commands.execute(
       {
@@ -368,7 +395,11 @@ export class CampaignsService {
           await this.timeline(transaction, context, id, 'campaign.scheduled', {
             scheduledAt: scheduledAt.toISOString(),
           });
-          return { campaignId: id, status: 'SCHEDULED' as const, scheduledAt: scheduledAt.toISOString() };
+          return {
+            campaignId: id,
+            status: 'SCHEDULED' as const,
+            scheduledAt: scheduledAt.toISOString(),
+          };
         },
       },
       { context, input: validated, idempotencyKey, approvalId },
@@ -448,9 +479,11 @@ export class CampaignsService {
             returning id`.execute(transaction);
           if (!result.rows[0]) throw new Error(`Campaign cannot transition to ${target}`);
           if (target === 'CANCELLED') {
-            await sql`update campaigns.batches set state = 'CANCELLED', finished_at = now(), updated_at = now()
+            await sql`update campaigns.batches
+              set state = 'CANCELLED', finished_at = now(), updated_at = now()
               where campaign_id = ${id}::uuid and state in ('QUEUED','FAILED')`.execute(transaction);
-            await sql`update campaigns.recipients set delivery_status = 'CANCELLED', updated_at = now()
+            await sql`update campaigns.recipients
+              set delivery_status = 'CANCELLED', updated_at = now()
               where campaign_id = ${id}::uuid and delivery_status in ('PENDING','FAILED')`.execute(
               transaction,
             );
@@ -486,19 +519,32 @@ export class CampaignsService {
         execute: async (transaction) => {
           const campaignResult = await sql<{
             channel: string;
+            connection_id: string;
             template_id: string;
             status: string;
             timezone: string;
             send_window_start_minute: number;
             send_window_end_minute: number;
-          }>`select channel, template_id, status, timezone,
+          }>`select channel, connection_id, template_id, status, timezone,
                     send_window_start_minute, send_window_end_minute
              from campaigns.campaigns where id = ${id}::uuid for update`.execute(transaction);
           const campaign = campaignResult.rows[0];
           if (!campaign || campaign.status !== 'RUNNING')
             throw new Error('Running campaign was not found');
-          if (!this.withinSendWindow(campaign.timezone, campaign.send_window_start_minute, campaign.send_window_end_minute))
+          if (
+            !this.withinSendWindow(
+              campaign.timezone,
+              campaign.send_window_start_minute,
+              campaign.send_window_end_minute,
+            )
+          )
             throw new Error('Campaign is outside its configured send window');
+          const connection = await sql<{ id: string }>`select id from integrations.connections
+            where id = ${campaign.connection_id}::uuid
+              and status in ('CONNECTED','DEGRADED')
+              and capabilities ? 'messaging.outbound'`.execute(transaction);
+          if (!connection.rows[0])
+            throw new Error('Campaign outbound integration is not currently dispatchable');
           const batchResult = await sql<{
             first_recipient_ordinal: number;
             last_recipient_ordinal: number;
@@ -575,22 +621,22 @@ export class CampaignsService {
             const conversationId = randomUUID();
             const providerConversationId = `campaign:${id}:${recipient.customer_id}:${campaign.channel}`;
             const conversation = await sql<{ id: string }>`insert into messaging.conversations (
-                id, tenant_id, customer_id, channel, provider_conversation_id, mode
+                id, tenant_id, connection_id, customer_id, channel, provider_conversation_id, mode
               ) values (
-                ${conversationId}::uuid, ${context.tenantId}::uuid, ${recipient.customer_id}::uuid,
-                ${campaign.channel}, ${providerConversationId}, 'HUMAN'
-              ) on conflict (tenant_id, channel, provider_conversation_id) do update
+                ${conversationId}::uuid, ${context.tenantId}::uuid, ${campaign.connection_id}::uuid,
+                ${recipient.customer_id}::uuid, ${campaign.channel}, ${providerConversationId}, 'HUMAN'
+              ) on conflict (tenant_id, connection_id, channel, provider_conversation_id) do update
                 set customer_id = excluded.customer_id, updated_at = now()
               returning id`.execute(transaction);
             const canonicalConversationId = conversation.rows[0]?.id;
             if (!canonicalConversationId) throw new Error('Campaign conversation could not be created');
             const messageId = randomUUID();
             await sql`insert into messaging.messages (
-                id, tenant_id, conversation_id, direction, sender_type, body,
+                id, tenant_id, connection_id, conversation_id, direction, sender_type, body,
                 delivery_status, next_delivery_attempt_at
               ) values (
-                ${messageId}::uuid, ${context.tenantId}::uuid, ${canonicalConversationId}::uuid,
-                'OUTBOUND', 'SYSTEM', ${body}, 'PENDING', now()
+                ${messageId}::uuid, ${context.tenantId}::uuid, ${campaign.connection_id}::uuid,
+                ${canonicalConversationId}::uuid, 'OUTBOUND', 'SYSTEM', ${body}, 'PENDING', now()
               )`.execute(transaction);
             const attempt = recipient.last_attempt + 1;
             await sql`insert into campaigns.deliveries (
