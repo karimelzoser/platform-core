@@ -73,7 +73,7 @@ test.describe('Sales disposable development preview', () => {
       .inputValue();
     await opportunityRow.getByText('Update', { exact: true }).click();
     await opportunityRow.getByLabel('Open stage').selectOption({ label: 'Proposal · 60%' });
-    await opportunityRow.getByLabel('Reason').fill('Proposal submitted');
+    await opportunityRow.getByLabel('Reason', { exact: true }).fill('Proposal submitted');
     await opportunityRow.getByRole('button', { name: 'Move stage' }).click();
     await expect(salesNotice(page)).toHaveText('Opportunity stage updated.');
     await expect(
