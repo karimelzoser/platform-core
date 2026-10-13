@@ -8,14 +8,23 @@ BEGIN;
 CREATE SCHEMA IF NOT EXISTS campaigns;
 GRANT USAGE ON SCHEMA campaigns TO platform_app;
 
+-- Campaign relationships are tenant-qualified. CRM contact points and Messaging templates
+-- predate the platform-wide composite-key convention, so add non-partial unique indexes
+-- before using them as tenant-qualified FK targets.
+CREATE UNIQUE INDEX IF NOT EXISTS crm_contact_points_tenant_id_id_unique
+  ON crm.contact_points (tenant_id, id);
+CREATE UNIQUE INDEX IF NOT EXISTS messaging_templates_tenant_id_id_unique
+  ON messaging.templates (tenant_id, id);
+
 CREATE TABLE campaigns.campaigns (
   id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
   tenant_id uuid NOT NULL REFERENCES identity.organizations(id),
   name text NOT NULL CHECK (length(trim(name)) BETWEEN 1 AND 200),
   description text CHECK (description IS NULL OR length(description) <= 4000),
   channel text NOT NULL CHECK (channel IN ('EMAIL','WHATSAPP','MESSENGER','INSTAGRAM')),
+  connection_id uuid NOT NULL,
   segment_id uuid,
-  template_id uuid,
+  template_id uuid NOT NULL,
   status text NOT NULL DEFAULT 'DRAFT' CHECK (status IN (
     'DRAFT','SCHEDULED','RUNNING','PAUSED','COMPLETED','CANCELLED'
   )),
@@ -39,6 +48,8 @@ CREATE TABLE campaigns.campaigns (
   created_at timestamptz NOT NULL DEFAULT now(),
   updated_at timestamptz NOT NULL DEFAULT now(),
   UNIQUE (tenant_id, id),
+  FOREIGN KEY (tenant_id, connection_id)
+    REFERENCES integrations.connections(tenant_id, id),
   FOREIGN KEY (tenant_id, segment_id) REFERENCES crm.segments(tenant_id, id),
   FOREIGN KEY (tenant_id, template_id) REFERENCES messaging.templates(tenant_id, id),
   CHECK (send_window_start_minute <> send_window_end_minute),
@@ -49,6 +60,8 @@ CREATE TABLE campaigns.campaigns (
 );
 CREATE INDEX campaigns_state_idx
   ON campaigns.campaigns (tenant_id, status, scheduled_at, created_at DESC);
+CREATE INDEX campaigns_connection_idx
+  ON campaigns.campaigns (tenant_id, connection_id, status, created_at DESC);
 CREATE TRIGGER campaigns_touch_updated_at
   BEFORE UPDATE ON campaigns.campaigns FOR EACH ROW EXECUTE FUNCTION platform.touch_updated_at();
 
